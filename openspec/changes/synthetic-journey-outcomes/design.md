@@ -2,120 +2,231 @@
 
 ## Context
 
-See proposal.md for motivation and scope. This is an initial review draft, not implementation authorization. Requirements describe proposed behavior; they do not certify existing behavior.
+See [proposal.md](proposal.md) for purpose and [README](../../../README.md) for the North Star. This is the evolved planning proposal, not implementation authorization. All architecture choices below are proposals. The repository currently contains documentation/OpenSpec only; canonical specs are empty, and there is no application, harness or measured deployment.
 
-Sentrame has a README, license, local OpenSpec configuration and generated skills. No application, Taskfile, CI or development harness was found. The existing untracked `.agents/` and `openspec/` setup is user work and remains untouched outside this new change.
-
-The name combines sens and trame: meaning, direction and the thread connecting events. The working tagline is “Find the meaning between events.” Neither naming nor this proposal establishes domain or trademark clearance.
-
-### Candidate integration evidence
-
-Source inspection through the GitHub connector on 2026-10-25 found:
-
-- [Invitation](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/pwa/src/app/(auth)/invite/page.tsx), blob `6aa4f3a7f49c23c6c0a6b85c38f4d90fe4327445`: invitation can select a member automatically and defaults to Home. Manual member selection and Discovery are not mandatory next steps. Invitation URLs contain sensitive parameters.
-- [Discovery](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/pwa/src/app/(app)/discovery/page.tsx), blob `98c77f8581745b8a977fe820abf98adde70c5332`: cards update optimistically; vote requests run afterward. Shared convergence and Planner navigation exist but are different from an individual's first contribution.
-- [Vote service](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/api/src/RecipeApi/Services/DiscoveryService.cs), blob `cfb43b2a611e50b1a56047625f15b7eedbb5d447`: persistence precedes follow-up publications, so a later error need not imply that saving failed.
-
-These observations are static source evidence from the preceding assessment, not runtime qualification, a complete telemetry audit or proof of deployed instrumentation. Recheck source before any separately approved WFS work.
+Research: [feasibility and comparables](../../../docs/research/sentrame-feasibility.md), [stack/resource analysis](../../../docs/research/sentrame-stack-and-resources.md), [decision traceability](../../../docs/planning/sentrame-decisions.md). These distinguish source observations, user decisions and proposed defaults. The original narrow concept is superseded by this approved planning reconciliation. The historical change identifier is retained; it is one evolved plan, not a competing implementation.
 
 ## Goals / Non-Goals
 
-**Goals:** A local synthetic producer, bounded ingestion, durable evidence, deterministic outcomes and one inspectable summary. Make completion and uncertainty useful before broadening the product question.
+**Goals:** Keep standard reception independent of optional product semantics; make a small sequence store sufficient for real path evidence; make every derived count explainable/correctable; bound memory/disk/work; separate ingestion trust, anonymous application context and viewer authorization.
 
-**Non-Goals:** Building a telemetry platform, automatic discovery of user intent, generalized funnel configuration, hosting infrastructure or instrumenting any real application in this change.
+**Non-Goals:** A telemetry vendor platform, identity resolution, arbitrary graph queries, session replay, automated intent/root-cause inference, a general SQL/dashboard builder, custom OTel transport or mandatory SDK. No scaffold, app, agent harness, benchmark service, live WFS change, deployment or production test is created in this pass.
 
 ## Decisions
 
-### Status and review baseline
+### Status of choices and activation gates
 
-User-established constraints: design before implementation; synthetic first; OTel foundation; default-off opt-in for the first integration; no personal content; no replay, fingerprinting, cross-site tracking or AI dependency. Short successful interactions must remain successes.
+“Confirmed” means D01–D27 in the decision register. The complete WFS release A, preserved roadmap B, automatic boundaries, narrow deferred invitations, 30-day detail/12-month summaries, Svelte/Vite + Go + SQLite, Home Server Compose/shared Tunnel, event-driven goal discovery, timing and client/server correlation are selected. The owner reports sufficient RAM and CPU options. Technical limits, pins, summary precision, timing thresholds and invitation expiry remain a focused design review before implementation; no hardware or measured fit is invented.
 
-Proposed defaults in this draft: Discovery start to first persisted vote; direct local ingestion; seven-day retention; no cross-attempt identity; one fixed outcome rule. These defaults are concrete enough to review and revise, but are not recorded as separately approved user decisions. The request to build the initial spec authorizes these planning artifacts only.
+The requested scope permits research and specification now. Material choices gate their dependent future implementation tasks; they do not gate finishing this package. Independent Astra review is a separate review step. Planning reconciliation and a documentation-only draft PR are approved; application implementation, canonical sync/archive, merge and deployment are not.
 
-### Foundation and signal roles
+### A. Selected stack and bounded deployment
 
-Use structured OTel log records as the product evidence carrier, with a small Sentrame schema. Reuse official protocol definitions, SDKs and exporters instead of writing a telemetry transport. Traces can later connect a product action to technical execution, but a human journey is not one long trace and sampled traces are not the counting source. Metrics summarize results and collection health; they cannot reconstruct attempts. No attempt IDs in metric labels.
+Selected stack: Svelte/TypeScript + Vite static frontend, Go serving assets/APIs/SSE, SQLite with indexed sequence rows and bounded JSON, and maintained OTLP components. Comparative alternatives remain research rationale, not an open stack ballot. Keep stable app/version/definition identity from day one without implementing roadmap B upfront or creating speculative extension frameworks. The first release includes working historical/live maps, timing and recovery; a list/row tracer proves seams only.
 
-OTLP standardizes transmission, not product meaning, consent, durable application commits or exactly-once processing. Sentrame owns evidence validation and outcome rules. Reference: [OTel signals](https://opentelemetry.io/docs/concepts/signals/) and [OTLP specification](https://opentelemetry.io/docs/specs/otlp/), consulted in the preceding assessment.
+The deployment direction is Docker Compose with a corresponding Compose file and `.env`, behind the existing shared Cloudflare Tunnel providing HTTPS. The [Home Server deployment contract](../../../docs/proposals/home-server-deployment-contract.md) is documentation only: this pass creates no deployment/configuration files, connector, credentials or network changes. The shared connector's reachability and lifecycle are outside the app's ownership. Browser-to-edge TLS, connector-to-origin HTTP/HTTPS and Sentrame's passphrase/producer authorization are distinct boundaries.
 
-### Architecture comparison
+Reuse the official Collector OTLP receiver unchanged, with a synchronous storage consumer and atomic whole-direct-request validation/commit if embedding is proportionate. Its ordinary consumer path does not provide per-item partial-success counts. Alternative: an official Collector sidecar, forwarding to a standards-compliant app receiver that still must exist. Choose from lifecycle complexity and measured resource/build cost. A direct handler implementation using official Protobuf definitions is a third choice only if maintained receiver overhead proves material or a separately accepted response contract requires it.
 
-| Concern | A: Direct local ingestion — proposed | B: Collector in front |
-| --- | --- | --- |
-| Ingestion | OTLP/HTTP protobuf logs endpoint using existing definitions | Standard OTLP receiver forwards to the same endpoint |
-| Validation | Sentrame allowlist, versions and bounds | Collector filtering plus authoritative Sentrame validation |
-| Storage | One transactional store | Same |
-| Aggregation | Derive from retained event sets on read initially | Same |
-| Interface | One summary and expandable evidence list | Same |
-| Cost | Few processes; Sentrame owns endpoint behavior | Extra process/configuration; reusable routing and buffering |
+```text
+Existing SDK/exporter                         Viewer browser
+  | standard OTLP                               | cookie + filters
+  v                                             v
+OTLP receiver --> app attribution --> scrub --> transactional evidence
+                       |                              |
+                       | config + policy              v
+                       +-----------------------> bounded derivation
+                                                      |
+                                          query snapshot + SSE updates
+```
 
-Choose A as the draft baseline because it exercises the product with fewer operational parts. Keep the endpoint Collector-compatible. Language, database and UI framework are deliberately unselected; choose maintained components supporting this contract before implementation. No cloud provider is needed for local synthetic work.
+An optional Collector sits before this path, with its own documented acknowledgement/queue boundary. A batch processor can enqueue and acknowledge before export, then merge/split SDK envelopes. No asynchronous batch/queue before storage may retain a final-commit acknowledgement claim. Atomicity covers one direct storage-receiver request, not the original SDK envelope after rebatching. Existing SDK processors still own producer batching; do not introduce a proprietary producer layer.
 
-No external queue or background aggregation service is justified by the assumed low volume. Acknowledge accepted records after storage commits. Use bounded producer retries for retryable failures, preserving IDs. If measured load or outage tolerance later requires buffering, first evaluate Collector sending queues and disk persistence; they still have capacity and loss limits. Reference: [Collector resiliency](https://opentelemetry.io/docs/collector/resiliency/).
+### B. Transport, signal and compatibility plan
 
-### Event contract and trust
+The proposed target includes logs, traces and metrics for OTLP/HTTP binary Protobuf, HTTP JSON Protobuf and gRPC Protobuf, including none/gzip compression. Profiles are excluded. See [telemetry intake](specs/telemetry-intake/spec.md) and the research matrix. Each cell must be qualified before being advertised; an early logs-only tracer bullet cannot claim full OTLP support.
 
-Draft profile: OTLP logs over HTTP/protobuf, one supported schema version, at most 100 records and 256 KiB uncompressed per request; reject compressed input initially. Use a standard exporter configured within these bounds. Bind services to loopback for the synthetic demonstration. Synthetic scope labels are not authentication and must never be presented as production access control.
+Publish a second qualification view for the actual tunnel route. Receiver/origin gRPC support does not make it work through a public Tunnel hostname; current Cloudflare documentation excludes that path. Use qualified standard OTLP/HTTP where applicable and retain origin/private gRPC as a distinct target without opening an alternate route implicitly. Browser exporters still need their own supported HTTP/CSP/CORS/lifecycle checks. SSE must stream `text/event-stream` and qualify flushing, heartbeat/idle behavior, reconnect, auth and revocation through the shared tunnel; HTTPS reachability alone proves none of these. Shared edge/body/time/cache policies can change path behavior. No actual tunnel configuration has been inspected or changed.
 
-Allowed envelope:
+Recommended qualification sources: pinned official JS browser HTTP exporters, the actual WFS .NET/Serilog packages and a pinned official Collector forwarding path. Test endpoints, mixed-resource requests, zero-commit whole-request rejection, unsupported signals, gzip bounds, empty requests and retry/error behavior. Explicitly map permanent validation to InvalidArgument/HTTP 400 and recoverable writer/overload errors to Unavailable/HTTP 503: the inspected receiver maps a generic permanent consumer error to Internal/HTTP 500, so do not rely on its stale comments. Per-item acceptance/counts require a separately qualified response integration. Browser JS uses HTTP; server gRPC support does not imply browser support. Preserve nanosecond precision.
 
-- Application scope from local configuration; schema version and fixed journey-definition version.
-- Random UUID event ID and attempt ID; no reuse as person or device identity.
-- OTel occurrence timestamp; server-assigned receipt timestamp.
-- Event name from `attempt.started`, `action.requested`, `action.persisted`, `attempt.interrupted`, `attempt.failed`, `request.error`.
-- Optional reason code from a documented finite enumeration; no free-text body, arbitrary attributes, URLs or resource enrichment.
+Initial metrics support means bounded sanitized receipt inspection, with no value-derived summaries. Privacy omission can collapse stream identity; temporality, resets, overlaps and histogram semantics must be qualified before arithmetic, without retaining forbidden attributes. Receiver-health counts are distinct from summing application metrics. Account separately for log records, spans, span events, metric points and bucket/attribute bytes. Traces may supply mapped evidence/exception context; sampled traces are not an exact business denominator. Logs/events are the recommended product carrier without custom fields required merely for reception. Unmapped technical telemetry stays received/unassigned.
 
-Only the configured synthetic authoritative producer emits persistence and terminal-failure records. That convention is sufficient for fixtures, not proof of authority from arbitrary clients. A real integration needs a separately reviewed authenticated server-origin path. Persistence evidence must describe a committed operation, not a click, optimistic UI, generic HTTP status or client assertion.
+### C. Application, producer and viewer trust boundaries
 
-Validate the complete OTLP envelope, including resources, scopes and record bodies. Reject unknown fields rather than retaining them for future analysis. For mixed valid/invalid batches, persist valid records and report rejected-record counts using OTLP partial-success semantics; never echo payloads. Retry transient request failures, not permanently rejected records. A conflicting duplicate is a rejected record; identical duplicates are successful no-ops.
+Application registration has immutable app identity, display name, allowed producer routes/credentials, configured service/resource selectors and metadata roles. Multiple services can map to WFS. Generic `service.name` is not globally unique and self-asserted resource attributes are not authorization. Intake route/credential binding establishes permitted app scope; selector ambiguity cannot merge apps. Unknown service/version values remain unknown.
 
-Reject events older than seven days or more than five minutes in the future. Keep occurrence and receipt time separate. Timestamp order does not determine completion; elapsed duration is unavailable when inconsistent. These numeric limits are proposed review defaults.
+Separate server-authenticated observations from browser-reported observations using trusted configured producer namespaces that a resource attribute cannot self-assert. Browser evidence can establish its own rendered-screen claim, while a committed vote requires trusted persistence evidence. Browser-embedded keys cannot establish server authority; CORS is not producer authentication. Proposed web path: app-origin forwarding with ordinary OTLP configuration and restricted routes/quotas, or deliberately public intake scoped to untrusted browser claims. Forwarding must preserve the authority distinction. Review reachability/CSP/CORS and never embed a viewer passphrase or server-authority credential in a browser SDK.
 
-### Outcome derivation and interface
+An emitted “vote committed” from an approved server origin can support a persistence milestone. A similarly named browser event cannot acquire that authority. Server persistence precedes follow-up publications in inspected WFS source, so an HTTP error can coexist with a saved vote. Commit-to-emission failures still leave an observation gap. Add an outbox only if a later requirement needs that stronger guarantee; there is no exactly-once product promise now.
 
-Group by application and attempt; deduplicate by application and event ID. Apply rule version 1 to the retained evidence set:
+Viewer access is an independent session/grant domain. Tracking context never contains viewer cookie/token/person or WFS household identity. Collector/receiver ports, protected viewer APIs and administration should have distinct access policies even if hosted by one process.
 
-1. Any authoritative persistence evidence: completed milestone.
-2. Both terminal failure and interruption, without persistence: unknown with conflicting evidence.
-3. Terminal failure only: failed.
-4. Interruption only: interrupted.
-5. Otherwise: unknown.
+### D. Optional recommended evidence mapping
 
-The rule is independent of arrival order. Later persistence can revise any incomplete result to completed; keep errors and interruptions visible as observations. For this slice, “interrupted” requires an explicit event; no WFS interruption control is presumed to exist. Activity after the milestone is outside the initial question, and absence of activity does not prove an exit.
+The controls map existing safe attributes/event names, rather than requiring a new Sentrame wire schema. A reference contract for a later WFS integration can recommend:
 
-Render the question, rule version, retention range and four outcome counts for attempts with a retained start. Show the started-attempt denominator explicitly. Show incomplete attempts separately, including persistence-only evidence; do not silently include them in conversion rates. Provide an evidence list with classification reason, occurrence/receipt times, conflicts and timing availability. Label outcomes revisable within retention and label the whole demo synthetic. No general dashboard builder is needed.
+The owner explicitly can emit events and instrument the app accordingly. This is settled capability, not an open feasibility question. Journey steps map to emitted events; the UI lists discovered events, the owner chooses a goal event, and the view traces matching journeys from their known beginning to that occurrence. Missing/expired starts or hidden intermediates remain marked, and later continuation/recovery remains inspectable. Selecting a diagnostic event for investigation does not silently activate a terminal/failure rule; changes to lifecycle definitions remain explicit and versioned.
 
-### Privacy, retention and deletion
+In standard OTel terms, named events are represented in the logs data model; warnings use severity and may have an event name, and exception conventions provide fields such as type/message/stack. Span events remain part of traces with trace context. SDK APIs and event-name support vary, so use existing standard logging/event/exception APIs and configured safe-field mappings where needed. Event, Warning and Exception can be discoverable UI classifications; they are not invented OTLP signals or transports. A WARN/ERROR record or exception is evidence at a point in a journey, not automatic failure/termination. Metrics remain aggregate signal data, not individual journey events.
 
-Do not collect recipe content or IDs, names, household/member IDs, passphrases, invitation secrets, sensitive URLs, request bodies, IP addresses as analytics attributes, or fingerprinting data. Do not export existing application logs wholesale. Reject raw payload logging and review access logs when any real transport is introduced.
+| Meaning | Optional context and constraint |
+| --- | --- |
+| Visit | Random app-scoped session/visit value, fresh per visit, no persistent person/device key; no `session.previous_id` linkage. |
+| Journey | Optional random journey value or configured start/goal/restart derivation within one visit. Several journeys may occur in that visit. |
+| Step | Stable semantic event/step name with documented meaning; unchanged across app versions only when behavior is unchanged. |
+| Action linkage | Optional random operation/action context linking browser intent, server commit and exception; standard trace/span relationship when verified. Never recipe/household/member ID. |
+| Replay identity | Optional stable event identity preserved across retry; receiver does not make it mandatory for ordinary logs. |
+| Exit/goal | Bounded explicit reason/goal code from the owning operation; candidate WFS reasons: recipes exhausted, agreement reached, explicit departure before completion. |
+| Timing/order | Occurrence timestamp, optional source sequence and tab context; preserve standard source-observed time and add receiver receipt time. |
+| Technical metadata | Service/resource, SDK/language/runtime, service version, release/build/deployment where actual SDK/detector/build metadata supplies them. |
 
-Attempt IDs permit correlation and are pseudonymous. Rotate between attempts and member changes; do not join across visits, sites or devices. This deliberately prevents longitudinal person-level analysis. Household administrator enablement alone is not assumed to establish participant consent. That consent model belongs to a separately approved integration design.
+Auto-instrumented request telemetry is useful for reception/technical context but does not manufacture a goal or visit. Existing WFS frontend/server identity must not be repurposed as the random visit identifier. Missing recommended fields disable only dependent interpretation and remain explained in event discovery.
 
-Expire events seven days after occurrence; exclude expired rows immediately at query time and physically purge daily. Derive on read so no separate aggregate retention is needed. Older partial attempts remain visibly incomplete until their own evidence expires. No backups or remote exports in the synthetic slice.
+### E. Journey lifecycle and deterministic classification
 
-Deletion removes evidence and dependent views. Retain only a minimal application/attempt deletion marker for seven days from deletion to prevent in-window replay; discard it afterward. Disable an application scope on whole-scope deletion so ingestion cannot recreate it without explicit reconfiguration. The marker is pseudonymous metadata with a bounded purpose, not a hidden event archive. Future backups need an explicit expiry and restore-deletion policy before real data is allowed.
+Each definition version owns event mappings and the active goal. Automatic boundaries are settled: first mapped event starts, selected active goal ends, next genuine mapped occurrence starts another, and 30 minutes without mapped activity closes inactive, not failed. Browser scopes stay per-tab. Server-only operations use bounded logical correlation without a tab; combined client/server events use the same correctly scoped correlation while preserving sources. Severity and saved reference queries do not implicitly change boundaries. Lateness/skew limits and pairing precision remain technical defaults.
 
-### Verification and harness
+Proposed lifecycle:
 
-Reuse the existing OpenSpec installation/configuration. There is no Taskfile to reuse. After implementation approval, add only task entry points for spec validation, focused tests and the local synthetic demonstration. Do not copy WFS's harness.
+```text
+Unassigned evidence --valid context/start--> Active journey
+Active --goal evidence--> Goal completed
+Active --explicit exit--> Explicitly ended (reason retained)
+Active --inactivity fallback--> Provisionally inactive / outcome unknown
+Any retained state --valid late evidence--> Revised result under its policy
+Exception --observation only--> Current journey continues
+```
 
-Verify protocol rejection and acknowledgements, duplicate/conflict handling, ordering permutations, completion after errors, summary denominators, timing inconsistency, expiry and deletion replay. The end-to-end demonstration must pass through actual ingestion and storage, not load precomputed outcomes into a mock interface. Tests and demo are future work, not claimed evidence here.
+This is a model for review, not a chosen timeout. Goal completion and positive business outcome are separate: first committed vote may complete a contribution milestone while agreement remains unobserved. A negative recipe vote is still a successful recorded action. Failed requires the configured authoritative evidence; flaky requires a visible deterministic retry/error condition and denominator. Unknown/conflicting evidence stays unknown/conflicting.
+
+WFS completion-screen observation is a visit outcome, separate from first persisted contribution, shared agreement/cause and emitted exhaustion/agreement/departure reason. Another participant can trigger it; no household/person/round join is needed. Automatic first-mapped-event/active-goal rules apply to an actual mapped screen-entry event, including initial entry into already-converged state. Supported replay of one goal occurrence is deduplicated before segmentation; instrumentation should distinguish actual entry from render/hydration noise. Without identity, uncertainty remains visible. Ten distinct committed votes are healthy, with nine successive vote transitions; post-commit publication failure does not undo commitment.
+
+Browser journeys use separate random per-tab correlation; server-only workflows use their own bounded operation correlation. Combined evidence can share a logical journey ID across client/server through existing context propagation, but trace/span/request ID, event identity and business correlation remain distinct. Correlation alone does not authorize a source, order cross-clock records or make them duplicates. Never reuse it as household/person identity or join unrelated visits/apps. Missing either source side does not block supported base OTLP intake.
+
+### F. Ordered evidence and derived storage
+
+Recommended logical records, not a SQL schema implementation:
+
+- App registrations and permitted producer bindings.
+- Immutable journey definitions/mapping revisions and activation metadata.
+- Sanitized evidence rows: app, source/signal, occurrence/observed/receipt times, effective expiry, optional source ID, visit/journey/action/trace/span context, step candidates, app/service versions and bounded allowed attributes.
+- Sequence memberships: ordered evidence references per app/visit/journey/definition, source ordering quality and provisional/complete status.
+- Rebuildable path/edge/outcome/exception read models tagged by definition and computation revision.
+- Separate viewer sessions, invitation grants and minimal bounded deletion markers.
+
+Index known query dimensions; do not scan arbitrary JSON for every filter. Store sequence rows, not only pairwise edge counts or one growing session JSON document. Display ordering uses reliable source sequence where available, otherwise event time with a stable receiver tie-break and visible uncertainty. Event times from unrelated clocks cannot establish causal order. Unknown or skewed timing yields unavailable duration rather than a negative value.
+
+Deduplication keys include app, trusted configured producer namespace, signal and supported source identity. Equal browser/server IDs coexist; cross-source action correlation is not deduplication or authority. Span identity follows a qualified trace/span policy within that namespace. Logs without reliable IDs cannot distinguish retries from legitimate identical repeats. Do not fingerprint away healthy votes. Browser intent and server commitment are different records for one supported action, not two votes. A log and span event can describe one exception, but a grouping signature cannot prove one occurrence; show diagnostic-record counts and qualify occurrence counts separately. Metric arithmetic remains unavailable until identity/temporality survives projection. Expose uncertainty rather than claiming exactly-once semantics.
+
+Direct intake sanitizes and prevalidates the entire permitted projection, then commits all accepted evidence/contribution invalidations atomically before success. A permanent record error commits zero records; privacy omission and missing optional context do not alone make valid telemetry erroneous. A bounded writer queue can serialize work only while ack remains synchronous to commit. Specify process/OS/power-loss durability separately: a restart test proves only its tested boundary. If power-loss durability is selected for SQLite, use an appropriate synchronous setting such as FULL and documented storage/fsync assumptions; do not weaken it to improve a benchmark. SSE must not hold a DB read transaction for a connection lifetime.
+
+Snapshot data and cursor represent one consistent committed revision. After-commit updates include lifecycle invalidations: a bounded in-process timer or query-driven mechanism must advance timeout/expiry/deletion state even without new telemetry. Define a freshness bound, replay/reset after restart or missed notification, and subscription identity so in-flight updates from old filters cannot contaminate a new view. A separate scheduler service is not required. Mark stale/recomputing state rather than mixing revisions invisibly.
+
+Start with bounded indexed queries and small caches. Add transactional contribution tables/counters only when actual query measurements demand them. A late event, duplicate resolution, expiry or deletion invalidates/rebuilds the affected journey and read-model contribution; blind additive counters cannot do this correctly. No generic arbitrary-path graph query engine is warranted.
+
+### G. Windows, comparisons, rare paths and stopping evidence
+
+Historical filters identify app, app version, explicit timezone/date range and definition version. Recommend UTC storage with displayed timezone; month/day buckets must name their timezone and calendar boundaries. A session spanning app deployments keeps per-event/service version evidence; select a declared version attribution rule and show mixed/unknown versions. Do not assign a frontend app release from an unrelated API version.
+
+Each query names its unit and selection policy: start-cohort eligibility versus event-window clipping, display-only step hiding, follow-up/censoring and version attribution. Hiding X from A-X-B may produce a labeled projection, never an observed direct A-B transition. Expired/missing/out-of-window starts remain partial even if a recent goal survives. Do not splice a mixed-version visit into fictitious paths. Repeated-step stopping rates declare occurrence versus journey units; ten votes are not ten journeys. Comparisons require compatible eligibility and follow-up and show numerator/denominator/support/coverage; a rate change is not release causality. Select the initial policy profile before the historical slice.
+
+Rare-path thresholds are visible settings and low-support results remain counts/examples, not automatic bugs. Graph display limits use an explicit “other” summary plus path-list drilldown; rare evidence is not silently excluded. Default stopping view distinguishes recent pending/censored journeys, provisional inactivity, explicit exits, observed failure and later recovery. “No further activity observed” is acceptable; “user tired/abandoned because of this error” is unsupported.
+
+### G1. Time at stage, without cognitive inference
+
+The user accepted **time at stage**, node size for duration, edge thickness for traffic, median duration plus slower cases, and safeguards around active/background/missing timing. The statistic describes observed timing, not measured thought or cognitive effort. Viewing a recipe and deciding/voting on one item are separate stage semantics; repeated occurrences of a vote step remain a healthy loop. A large node is not automatically friction or failure.
+
+Recommend explicit stage-entry/exit or start/end events through the existing standard SDK, optionally carrying safe random occurrence/tab linkage. A qualified semantic stage span can be another carrier, but technical request latency is not user-stage dwell, and sampled traces limit coverage. No mandatory Sentrame SDK, custom transport, recipe/person identity or new universal ingestion fields are introduced. Pair each occurrence within app/logical-correlation/source scope, with tab where applicable; stable supported record identity makes replay idempotent. Do not collapse consecutive occurrences of the same semantic step into one long occurrence or double-count intent and commitment.
+
+Retain timing basis and quality alongside the evidence: measured elapsed start-to-end, observed-active intervals only where visibility/idle/tab evidence exists, or explicitly estimated next-event fallback under a named adjacency/window policy. Plain elapsed can include hidden/background/idle time. Exact activity/idle and fallback rules are unchosen. Never infer attention from a missing visibility event. Overlapping/nested stages retain distinct occurrence scope and cannot be summed into a non-overlapping visit total by default.
+
+An end received before its start can reconcile by valid source evidence; incompatible clocks, jumps or ambiguous overlapping pairs yield unavailable/qualified timing, not fabricated negative duration. An absent end is ongoing/right-censored, not zero. Query filtering must not erase a true middle/exit event and then manufacture a fallback duration. Durations across window/version boundaries require the same declared cohort/follow-up policy used by comparisons.
+
+Show median plus slower cases with eligible sample/completeness and separate timing kinds; do not silently pool estimates with measurements or insert ongoing occurrences into completed percentiles. A slower percentile such as p90 and a minimum-support rule are recommendations still to choose. Low-support cases can remain individual observations. Historical/version comparisons show censoring, source/sampling/activity policy and shared visual scale; differences do not establish release causality or more thinking.
+
+Use a bounded, labeled duration scale, recommending node area rather than an unexplained radius transform. Exact scale/bounds are not chosen. Show units/statistic, clipped extremes, missing-data state and numeric/table equivalents; missing duration is not encoded as fast. In live mode show provisional elapsed/observed-active time so far with latency/clock uncertainty, under bounded refresh. Closing or late-correcting an occurrence adds at most one qualified completed contribution. Exporter/tunnel delay is not stage dwell. No timing calculation or rendering is implemented here.
+
+### H. Live views and consistency
+
+SSE is same-origin and cookie-authorized. Each connection snapshots app/visit/filter scope and grant. Snapshot + monotonic committed update cursor prevents gap/duplicate ambiguity; reconnect replays authorized updates within a bounded window or emits a reset requiring a snapshot. Cursor reuse cannot widen authorization, and revoked sessions close streams. Slow consumers have bounded buffers and disconnect/reset instead of blocking ingestion.
+
+The established voice decision is a toggle between a clean live window and the selected app's accumulated traffic over the last seven days, with the chosen live anonymous visit highlighted over it. At observation start T0, app-baseline time is `[T0-7 days,T0)` and live occurrence time is `[T0,now]`. The baseline does not inherit the isolated visit filter. Compatible app/version/definition filters remain common and visible; baseline and live counts stay separate. App-history permission is independent: a visit-only invite gains no app baseline merely by toggling it. Invitation permission, earlier visit-detail visibility and access after the visit ends still require explicit grants. Bounds freeze while late evidence may correct values. Propose event-time counts with receipt-time streaming; pre-T0 late data updates history rather than live action totals. Mark timestamp fallback and avoid double counting. Same-visit history is not an unresolved alternative to this confirmed baseline.
+
+Changing app/visit preserves applicable controls and shows incompatible filters as inactive or explicitly reset, never a silently broadened grant. Pausing rendering does not pause collection. Display freshness distinguishes source batching, receipt delay, connection state and paused motion. No promise of instant clicks.
+
+### I. Exception context and accessible UI
+
+Attach only through verified app/visit/action or trace/span relationships. A trace relationship without visit mapping can support technical context but not an invented visit. Group recurrence using a versioned sanitized fingerprint such as type + normalized frame signature; dynamic messages and minified stacks need explicit grouping limitations. Count occurrences separately from affected visits; unlinked records remain separate. Original source mapping is unavailable unless actual source maps/release artifacts are supplied under a later design.
+
+Detail/copy exposes sanitized allowed type/message/stack/runtime/service/release/context, linkage basis, later activity/goals and known gaps. No confidence badge/AI diagnosis is necessary. A copy action is a human-mediated export, so permission and privacy apply to that path too. Do not send it to another person or coding service automatically.
+
+Use self-explanatory controls for app/version/date, historical/live, all-traffic/visit, baseline on/off, step mapping and goal conditions. Offer table/sequence equivalents for canvas selection/counts/diagnostics. Preserve focus on updates; do not announce every streamed event to assistive technology. Review pause/reduced motion, keyboard, focus, contrast, error recovery and English/French task parity against the cited proposed WCAG 2.2 AA target. Purple energy must not encode state by color alone. No visual mockup/application is produced here.
+
+### J. Viewer access options
+
+Release A uses owner passphrase access. Invitations are deferred, with their narrow design selected: read-only one live anonymous session, owner explicitly includes/excludes its seven-day app baseline and exception details, no configuration edits, expiry and revocation. Broad read-only app-workspace/history/diagnostic sharing stays retained roadmap B. Exact expiry/use defaults remain to review. Permission checks govern queries, saved views, replay and detail disclosure.
+
+Recommend a high-entropy one-use, short-lived bearer redeemed into a revocable server-side session with HttpOnly/Secure/SameSite cookie, explicit allowed local redirect and bounded login attempts. Hash stored invite/session secrets as appropriate; do not persist the passphrase in telemetry. Use a maintained password verifier/KDF appropriate to the selected auth design rather than WFS's direct reusable secret comparison by analogy. Exact expiry/idle/lifetime and invite use count remain technical defaults; illustrative “15-minute redemption / one-hour watch” values are not requirements.
+
+A reusable invite is an alternative for group viewing, but scope/use count/revocation must be explicit. Atomically consume one-use bearers; simultaneous redemption cannot create two grants. Define an explicit CSRF/origin policy for cookie-authenticated mutations, prohibit destructive GETs and account for untrusted sibling Home Server origins and host-scoped cookies. Remove redeemed bearers from URLs/logs/referrers and copied view state. Check grants on queries, replay and active streams, including rotation/revocation. Render even scrubbed telemetry as inert untrusted text. Diagnostic detail permission is the disclosure boundary: disabling the copy button cannot prevent manual copying of content already shown. Shared passphrase access cannot establish per-person accountability.
+
+### K. Privacy, 30-day detail and cleanup
+
+Apply an explicit allowed projection before persistence/SSE/diagnostics. Prefer bounded safe event names/codes and controlled technical attributes; unknown raw bodies, URL queries, headers, request content, household/person/recipe identifiers and secrets are not retained for “future analysis.” Available stacks/messages must be scrubbed; scrubbers are imperfect, so choose what diagnostic content is permitted before real collection. Raw intake buffers are transient/bounded and never payload-logged. Disabling collection and deleting history are distinct actions.
+
+Recommended lifetime: valid occurrence time + 30 days; absent/unusable time uses first receipt for a known source identity and marks fallback. Reject stale data, bound future skew and quarantine/reject impossible times under an explicit policy rather than giving arbitrary future timestamps unlimited retention. Exact lateness/skew/cleanup limits are activation decisions. Unknown-ID missing-time retransmissions cannot be recognized perfectly; document this limit rather than claiming exact duplicate or original-age detection.
+
+Queries enforce expiry immediately; bounded lifecycle invalidation refreshes open views without new intake. Physical cleanup removes sequence memberships/contributions and invalidates replay/cache paths. SQLite free pages/WAL/backups need separate handling before physical-erasure claims. Initial targeted deletion is app or identifiable visit. Journey-only deletion requires stable replay membership, not a mutable inferred journey ID; otherwise explain and offer an explicitly selected broader scope. Tombstones retain minimal identity/scope/expiry through the accepted replay horizon and survive rule/boundary revision. Unknown-ID/missing-time replay cannot support an unlimited original-age guarantee. Whole-app deletion disables intake; re-registration needs a new generation or equivalent stale-queue/credential barrier. Missing visit context can only be deleted by an actually known scope.
+
+The selected retention is 30 days of detail and 12 months of aggregate counts/conversion/timing history. After detail expires, no individual journey/exception/ordered-path drilldown is available. Store sufficient mergeable numerators/denominators, coverage and duration distributions at declared safe grains/dimensions; never average medians. A bounded histogram or mergeable quantile structure is a technical option, with precision/approximation disclosed. Summaries retain semantic/timing versions and cannot satisfy arbitrary new filters or replay new definitions after source expiry. Keep no hidden long-lived individual membership merely to promise selective subtraction: correct identifiable contributions within the documented horizon; afterward offer explicit app/time-bucket deletion where necessary. Twelve-month expiry applies to summary caches too. Backup/restore policy remains a technical choice, not permission to retain detail longer.
+
+### L. Minimal engineering harness proposal
+
+The [harness proposal](../../../docs/proposals/sentrame-engineering-harness.md) adapts actual WFS patterns: contract before code, explicit observed red/green/refactor, one thin tracer bullet through affected real seams, focused discovery and proportionate verification. It does not copy WFS's large Taskfile, Kiota/client/mock stack, process-killing gates or multi-language fixtures into this empty repository.
+
+Future task entrypoints should be a handful of explicit commands for spec validation, focused behavior tests, isolated seam tests, static checks and a controlled synthetic scenario. Define public app APIs before implementation; use official protocol definitions for OTLP. Keep test doubles at external boundaries; a mocked frontend API does not prove durable receiver/storage behavior. Preserve unrelated work and report passed/failed/blocked/not-run separately.
 
 ## Risks / Trade-offs
 
-- [Persisted action with lost telemetry] → Unknown remains possible; even a durable ingest cannot close the application's commit-to-emission gap. Evaluate an outbox only if a future real integration requires stronger coverage.
-- [Selection bias] → Results describe observed opt-in attempts, not all users or value delivered to a population.
-- [Seven-day window and rotating IDs] → Limited trend and return-visit analysis; intentional privacy trade-off for this slice.
-- [Fixed milestone] → Demonstrates mechanics but cannot establish satisfaction or that Discovery improves household outcomes.
-- [OTLP ecosystem varies by language] → Confirm exporter/profile compatibility when choosing the implementation stack; do not claim broad OTLP conformance from one synthetic producer.
+- [Semantics cannot be obtained from standard HTTP spans] → Keep reception useful but unassigned; require optional sufficient context for business claims. Stop at G1 if this is not feasible.
+- [Low volume yields a compelling but misleading map] → Show support/counts and bounded examples; require a real decision at G0.
+- [All accepted technical signals exhaust disk] → Use owner-approved retention projection/quotas and volume model; do not silently discard accepted data or describe loss as zero activity.
+- [Receiver reuse brings large build/runtime dependencies] → Compare embedded versus official sidecar using actual qualification; retain protocol compatibility whichever wins.
+- [Counter drift under retries/late data/deletion] → Immutable evidence, known identity, revisioned derivation and rebuildable contributions; admit unknown-ID limitations.
+- [SQLite read scans starve checkpoint/ingest] → Bound query work, local-volume validation and measured G3; PostgreSQL is the first operational fallback.
+- [Viewer share leaks diagnostics/history] → Server-side scoped grants and explicit copy/baseline permissions; revoke active SSE as well as cookies.
+- [Full stacks compromise minimization] → Allowlisted technical projection, visible gaps and narrowly chosen diagnostics; do not claim universal scrubbing.
+- [Changing definition retroactively changes comparisons] → Pin definition/recomputation revision and request reinterpretation explicitly; do not mutate historical meanings invisibly.
+
+## Premortem
+
+| Failure six months later | Earliest falsifying observation | Response / stop gate |
+| --- | --- | --- |
+| Beautiful graph, no decision value | Reviewers cannot say what to change from the four WFS examples. | Stop at G0; prefer periodic counts/evidence. |
+| Healthy vote loops labeled broken | First fixture with ten votes and agreement becomes failed/flaky. | Block the rule; preserve business goal and loop semantics before expansion. |
+| Ingest works, no real journeys | All received WFS signals lack visit/goal linkage. | Stop at G1; optional standard instrumentation design before backend scope growth. |
+| Home Server runs hot/fills disk | 30-day projected detail exceeds owner budget or ingest degrades queries/cleanup. | Narrow allowed retained telemetry, use existing capacity or stop at G3. |
+| Retry/late corrections destroy trust | Counts change on replay without explanation, or deleted visits reappear. | Block expansion; qualify identities, corrections and deletion through the same read API. |
+| Invite behaves like admin access | Restricted viewer reaches another app/history/diagnostic copy or stream survives revocation. | Block viewer release; explicit scope tests before collaboration. |
+| Error context cannot explain recovery | A post-commit error ends the path, hides later agreement or is joined by timestamp proximity. | Block classification/linkage; use verified action/trace context and continued-activity cases. |
+| Maintenance becomes an observability project | New requests focus on generic metric explorers/trace query engines rather than WFS decisions. | Revisit G0/G2 and integrate an existing observability tool. |
 
 ## Migration Plan
 
-No deployed system or data migration exists. This change remains planning-only until a subsequent implementation request. Future local implementation can be rolled back by stopping the demo and deleting synthetic storage. Deployment, publication and live WFS instrumentation remain separately authorized steps.
+There is no deployed service/data to migrate. The approved documentation reconciliation replaces the initial proposal/design/tasks and obsolete deltas in the existing change. Publication is a documentation-only draft PR; it performs no canonical sync/archive, app/harness setup, implementation, merge or deployment. Every implementation task remains unchecked.
+
+After a future approved implementation decision, start with a single synthetic standard-exporter tracer bullet and temporary local storage; qualify protocol, ordering/replay, unknown outcomes and expiry before live WFS integration. Real telemetry, deployment, production testing and GitHub publication remain separate explicit scope. Rollback plans must be concrete at that later stage: stop service, revoke intake/viewer grants, preserve or delete data under the chosen lifecycle, and reverse a backward-compatible schema/config change only with verified data handling.
 
 ## Open Questions
 
-- Which language, transactional database and minimal UI framework best fit the local implementation? The choice must preserve the defined contract and single-service shape.
-- What exact labels and layout make outcome evidence easiest to read? Keep the fixed summary and evidence view; no additional analytics capability is implied.
+The main product choices are settled. Remaining implementation-level defaults are receiver packaging/pins, ingress and lateness/skew bounds, durability failure model, correlation/clock validation, summary grains/quantile precision/correction horizon, stage activity/fallback/slow-percentile policy, invitation expiry/use and deployment origin settings. Present these together for a focused design review before code; do not reopen release scope, automatic boundaries, selected stack or retention.
 
-Product scope, retention and ingestion proposals are documented above for iterative review rather than silently treated as final decisions.
+
+### Saved reference views and operational goals
+
+Save safe query definitions for goal-backward paths, beginning/end-event segments and origin-forward exploration, including app/filter/definition version and declared time semantics. Saved views neither preserve raw data beyond retention nor alter automatic capture boundaries. A retrospective goal differing from the active operational goal queries existing segments; if endpoints cross goal/timeout boundaries, render those boundaries rather than inventing a continuous captured journey. Summary-only dates support only their retained dimensions/statistics, not full path reconstruction.
+
+### External integration-agent instructions
+
+The public integration guide is separate from the internal engineering harness. It discovers the target app and existing OTel, asks developers focused success/friction/failure questions, proposes minimal prioritized event and new warning/error/recovery instrumentation with evidence/value/authority/privacy/noise/tests, and obtains event-plan authorization before edits. It provides no AI runtime, proprietary client abstraction or untested runnable SDK recipe. Client-only, server-only and combined correlation, stage timing, healthy loops, safe diagnostics and synthetic support-matrix qualification are covered.
