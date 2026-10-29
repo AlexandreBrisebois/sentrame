@@ -30,7 +30,7 @@ func sessionExpiry(ss session) time.Time {
 	return ss.Created.Add(8 * time.Hour)
 }
 func sessionPayload(ss session) map[string]string {
-	return map[string]string{"csrf": ss.CSRF, "role": sessionRole(ss), "expires": sessionExpiry(ss).UTC().Format(time.RFC3339Nano)}
+	return map[string]string{"csrf": ss.CSRF, "role": sessionRole(ss), "appId": ss.AppID, "generation": ss.Generation, "expires": sessionExpiry(ss).UTC().Format(time.RFC3339Nano)}
 }
 func viewerReadAllowed(r *http.Request) bool {
 	if r.Method == "POST" && r.URL.Path == "/api/logout" {
@@ -51,7 +51,10 @@ func viewerReadAllowed(r *http.Request) bool {
 
 // Caller holds Mu. Session storage is bounded without evicting active viewers.
 func (s *Service) pruneSessionsLocked() {
-	now := s.Store.Now()
+	now := time.Now()
+	if s.Store != nil {
+		now = s.Store.Now()
+	}
 	for key, ss := range s.sessions {
 		if ss.InviteID != 0 && !now.Before(ss.Expires) {
 			delete(s.sessions, key)
@@ -197,7 +200,7 @@ func (s *Service) revokeInvitation(w http.ResponseWriter, r *http.Request) {
 	// Reclaim capacity immediately; disconnected revoked viewers may never read again.
 	s.Mu.Lock()
 	for key, ss := range s.sessions {
-		if ss.InviteID == input.ID {
+		if ss.InviteID == input.ID && (s.selected == nil || ss.AppID == s.selected.ID && ss.Generation == s.selected.Generation) {
 			delete(s.sessions, key)
 		}
 	}
@@ -205,6 +208,10 @@ func (s *Service) revokeInvitation(w http.ResponseWriter, r *http.Request) {
 	write(w, map[string]bool{"ok": true})
 }
 func (s *Service) redeemInvitation(w http.ResponseWriter, r *http.Request) {
+	if s.Registry != nil && s.selected == nil {
+		s.managedRedemption(w, r)
+		return
+	}
 	if r.Method != "POST" {
 		http.Error(w, "POST required", 405)
 		return
@@ -213,12 +220,14 @@ func (s *Service) redeemInvitation(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Origin required", 403)
 		return
 	}
-	select {
-	case s.logins <- struct{}{}:
-		defer func() { <-s.logins }()
-	default:
-		http.Error(w, "Invitation busy; retry", 429)
-		return
+	if !s.redemptionReserved {
+		select {
+		case s.logins <- struct{}{}:
+			defer func() { <-s.logins }()
+		default:
+			http.Error(w, "Invitation busy; retry", 429)
+			return
+		}
 	}
 	var input struct {
 		Token string `json:"token"`
@@ -263,7 +272,31 @@ func (s *Service) redeemInvitation(w http.ResponseWriter, r *http.Request) {
 	}
 	token, csrf := random(), random()
 	ss := session{CSRF: csrf, Created: now, Last: now, InviteID: id, Expires: time.Unix(0, expires)}
+	if s.selected != nil {
+		ss.AppID = s.selected.ID
+		ss.Generation = s.selected.Generation
+	}
 	s.sessions[digest(token)] = ss
 	http.SetCookie(w, &http.Cookie{Name: "sentrame_viewer", Value: token, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(s.Origin, "https://"), SameSite: http.SameSiteStrictMode, MaxAge: int(ss.Expires.Sub(now).Seconds()), Expires: ss.Expires})
 	write(w, sessionPayload(ss))
+}
+
+func (s *Service) validViewer(ss session) bool {
+	if s.Registry == nil {
+		return s.Store.Now().Before(ss.Expires) && s.invitationValid(ss.InviteID)
+	}
+	if s.selected != nil {
+		if s.selected.ID != ss.AppID || s.selected.Generation != ss.Generation {
+			return false
+		}
+		return s.Store.Now().Before(ss.Expires) && s.invitationValid(ss.InviteID)
+	}
+	s.Registry.mu.RLock()
+	defer s.Registry.mu.RUnlock()
+	a, ok := s.Registry.entry(ss.AppID)
+	if !ok || a.Generation != ss.Generation {
+		return false
+	}
+	child := s.forApp(a)
+	return child.Store.Now().Before(ss.Expires) && child.invitationValid(ss.InviteID)
 }

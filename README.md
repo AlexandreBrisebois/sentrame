@@ -1,5 +1,7 @@
 # Sentrame
 
+See [App workspaces](docs/MULTI-APP.md) for greenfield registration, connection settings, isolation and coordinated backup/restore. No legacy credential import is performed.
+
 **Find the meaning between events.** Pronounced “sen-tram,” inspired by *sens* and *trame*: meaning, direction, and the thread connecting events.
 
 Sentrame is a self-hosted OpenTelemetry journey explorer. It helps you see how application activity connects: which paths reach a goal, where visits stop, how often steps repeat, and what happens before and after an error.
@@ -36,7 +38,7 @@ Choose [compose.yaml](compose.yaml) for direct local access, or [compose.cloudfl
 - `SENTRAME_IMAGE`: a published tag or immutable image digest.
 - `SENTRAME_DATA_DIR`: the existing local filesystem folder to bind into `/data`, writable by UID/GID `10001`.
 - `SENTRAME_ORIGIN`: the exact browser origin, without a trailing path, such as `https://sentrame.example.com`.
-- A fresh owner passphrase and distinct browser/server producer tokens. The example contains no working credentials; keep `.env` private.
+- A fresh owner passphrase. Register apps through the owner UI; generated browser/server credentials persist in private `apps.json`. Keep `.env` and the data directory private.
 
 After preparing the folder and configuration:
 
@@ -99,6 +101,8 @@ The [canonical specifications](openspec/specs/) define the baseline; the [archiv
 
 ### Start with ordinary OpenTelemetry
 
-Export standard logs/spans, discover the received evidence, and open **Traces**. The local trace explorer needs native trace/span IDs and no `stage.name`, session or occurrence attributes. Tree/timeline/table views preserve parents, events, log context and bounded links; inclusive operation duration comes from native start/end. **Journeys** remains a separate chronological business view requiring owner mappings and explicit correlation. A request duration does not measure page dwell or prove a vote persisted.
+Register an app in the owner UI and configure its existing standard exporter with the generated settings. **Journeys** is the first and default navigation option, including on app switches. Choose **Traces** explicitly to inspect standard logs/spans. The local trace explorer needs native trace/span IDs and no `stage.name`, session or occurrence attributes. Tree/timeline/table views preserve parents, events, log context and bounded links; inclusive operation duration comes from native start/end. **Journeys** is the default chronological business view requiring owner mappings and explicit correlation. A request duration does not measure page dwell or prove a vote persisted.
 
 Use the [progressive voting fixture](docs/integration/synthetic-demo.md#standard-otel-voting-operations) and [trace controls](docs/USER-GUIDE.md#trace-exploration). Service/carrier business mapping and native trace business occurrences are qualified locally. Optional hint suggestions require explicit owner acceptance. Span-backed occurrences are also available for explicitly scoped journeys, with separate native, paired and presence distributions. [Qualification](docs/verification/standard-otel.md) separates local wire evidence from unrun .NET/Next/browser exporters and deployment routes. Existing synthetic databases require an explicitly selected fresh data directory for this greenfield model; startup never resets old data.
+
+[Multi-app qualification](docs/verification/multi-app-workspaces.md)

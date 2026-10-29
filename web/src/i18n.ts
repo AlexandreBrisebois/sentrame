@@ -356,3 +356,24 @@ Object.assign(fr,{
 });
 
 Object.assign(fr,{"Trace references":"Références de traces","No reference":"Aucune référence","Reference name":"Nom de la référence","Save trace reference":"Enregistrer la référence de trace","reference capture-time definitions":"Définitions de capture de la référence","reference pinned definition preview":"Aperçu de la définition enregistrée par la référence"});
+Object.assign(fr,{
+ 'Add app':'Ajouter une application','Choose an app':'Choisir une application','App settings':'Paramètres de l’application','App name':'Nom de l’application','Rename app':'Renommer l’application','Connection settings':'Paramètres de connexion','Register app':'Enregistrer l’application','Reveal credential':'Afficher le jeton','Copy Authorization header':'Copier l’en-tête Authorization','Rotate credential':'Renouveler le jeton','Confirm rotation':'Confirmer le renouvellement','Remove app':'Supprimer l’application','Close':'Fermer','Access unavailable':'Accès indisponible','App unavailable. Choose an app.':'Application indisponible. Choisissez une application.',
+ 'Configure your existing standard OTLP/HTTP exporter. No Sentrame SDK, app-ID attribute or instrumentation changes are required.':'Configurez votre exportateur OTLP/HTTP standard existant. Aucun SDK Sentrame, attribut d’application ou changement d’instrumentation n’est requis.',
+ 'Use the reachable base URL for your sender. Signal URLs end in /v1/logs, /v1/traces or /v1/metrics. A base endpoint exporter adds these paths; a signal endpoint uses the full path.':'Utilisez l’URL de base accessible depuis votre émetteur. Les URL des signaux se terminent par /v1/logs, /v1/traces ou /v1/metrics. Un exportateur avec un point de terminaison de base ajoute ces chemins ; un point de terminaison de signal utilise le chemin complet.',
+ 'Server credentials belong only in server secret configuration. Browser credentials are untrusted; use the supported app-origin forwarder. Direct cross-origin browser export is not qualified.':'Les jetons serveur restent dans la configuration secrète du serveur. Les jetons navigateur ne sont pas fiables ; utilisez le relais pris en charge sur l’origine de l’application. L’exportation directe entre origines n’est pas qualifiée.',
+ 'Credential rotated. Update the sender configuration.':'Jeton renouvelé. Mettez à jour la configuration de l’émetteur.',
+ 'Rotation immediately rejects the old credential. Update every sender using this role afterward.':'Le renouvellement rejette immédiatement l’ancien jeton. Mettez ensuite à jour chaque émetteur utilisant ce rôle.',
+ 'This permanently removes this app and its telemetry, mappings, references and viewer access. Type the exact app name to confirm.':'Cette action supprime définitivement l’application, sa télémétrie, ses correspondances, ses références et ses accès invités. Saisissez son nom exact pour confirmer.',
+ 'Register your app, then connect its existing OpenTelemetry exporter using the generated settings.':'Enregistrez votre application, puis connectez son exportateur OpenTelemetry existant avec les paramètres générés.',
+ 'Use a unique name of 1–80 characters. Up to 32 apps per installation.':'Utilisez un nom unique de 1 à 80 caractères. Maximum de 32 applications par installation.',
+ 'Connect your exporter in App settings, then map meaningful events and supply safe correlation for journeys. Traces remain available.':'Connectez votre exportateur dans les paramètres de l’application, puis définissez des correspondances et une corrélation sûre pour les parcours. Les traces restent disponibles.',
+ 'use a unique app name of 1–80 characters; maximum 32 apps':'Utilisez un nom unique de 1 à 80 caractères ; maximum de 32 applications.',
+ 'app registry unavailable; restore a coordinated private backup and restart':'Registre indisponible ; restaurez une sauvegarde privée coordonnée et redémarrez.',
+ 'Removal pending. Retry removal or restart to resume.':'Suppression en attente. Réessayez ou redémarrez pour la reprendre.','Retry removal':'Réessayer la suppression'
+});
+
+Object.assign(fr,{'Copy base endpoint':'Copier le point de terminaison de base','Copy signal endpoint':'Copier le point de terminaison du signal'});
+
+Object.assign(fr,{'App registration unavailable':'Cette inscription de l’application n’est plus disponible.'});
+
+Object.assign(fr,{'secure randomness unavailable':'La génération sécurisée est indisponible.','confirm the exact app name':'Confirmez le nom exact de l’application.'});

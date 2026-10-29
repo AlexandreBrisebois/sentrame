@@ -1,10 +1,11 @@
+# App scope: fixture tools register/select Sentrame demonstration through owner APIs; appId and generated sender credentials come from private rest/.env.
 # Sentrame local synthetic demonstration. Generate binary files first:
 # task fixtures
-# REST Client environment: rest/.env (ignored; generated from local environment).
+# REST Client environment: rest/.env (ignored; generated from owner API settings).
 # Re-run one POST to replay its exact source IDs. Re-run task fixtures for new scopes.
 # @expect 401
 # @no-cookie-jar
-GET {{baseUrl}}/api/snapshot
+GET {{baseUrl}}/api/apps/{{appId}}/snapshot
 
 ### Owner login
 # @expect 200
@@ -17,7 +18,7 @@ Origin: {{baseUrl}}
 
 ### Protected empty/current snapshot
 # @expect 200
-GET {{baseUrl}}/api/snapshot
+GET {{baseUrl}}/api/apps/{{appId}}/snapshot
 
 ### Healthy browser stage, visibility and screen observation
 # @expect 200
@@ -117,7 +118,7 @@ Content-Type: application/x-protobuf
 
 ### Measured stage samples, count and supported p90 through protected read
 # @expect 200
-GET {{baseUrl}}/api/snapshot?scope={{timingScope}}
+GET {{baseUrl}}/api/apps/{{appId}}/snapshot?scope={{timingScope}}
 
 ### Begin a live journey
 # @expect 200
@@ -145,14 +146,14 @@ Content-Type: application/x-protobuf
 
 ### Ordered healthy evidence and map; the server authenticates this read
 # @expect 200
-GET {{baseUrl}}/api/snapshot?scope={{healthyScope}}
+GET {{baseUrl}}/api/apps/{{appId}}/snapshot?scope={{healthyScope}}
 
 ### Fixed app-wide baseline behind isolated live scope
 # @expect 200
-GET {{baseUrl}}/api/snapshot?mode=live&scope={{liveScope}}&liveStart={{liveStart}}&baseline=1
+GET {{baseUrl}}/api/apps/{{appId}}/snapshot?mode=live&scope={{liveScope}}&liveStart={{liveStart}}&baseline=1
 
 ### Authenticated streaming invalidations; stop this request to disconnect
 # @expect 200
 # @stream true
-GET {{baseUrl}}/api/events
+GET {{baseUrl}}/api/apps/{{appId}}/events
 Accept: text/event-stream

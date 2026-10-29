@@ -37,27 +37,13 @@ Use your deployed Sentrame origin, for example `https://sentrame.your-domain.exa
 
 Send `Authorization: Bearer <producer-token>`. Do not put tokens in URLs or use the owner's viewer passphrase as an ingestion credential. Metrics are currently receipt-only; they do not create individual journey steps or supported application-metric arithmetic.
 
-### Generate the producer tokens
+### Obtain generated connection settings
 
-Sentrame checks the received bearer token against its configured value; there is no special token format or signing algorithm. The two configured producer tokens must be nonempty and different. Use cryptographically random values rather than chosen words.
+Sign into Sentrame as the owner, register/select the named app and open **App settings**. Reveal/copy the appropriate generated browser/server Authorization header. Sentrame stores credentials in private JSON, never SQLite; do not generate tokens manually or put producer tokens into Sentrame's deployment environment. This is greenfield setup with no legacy import. [App workspaces and recovery](MULTI-APP.md).
 
-Run this command twice on your own machine, once for each token:
+Configure each sender's existing exporter or secret store with these values. Keep the server credential server-only; the browser forwarder uses the browser role. No Sentrame SDK, app-ID attribute or instrumentation rewrite is required. The custom variable names in the examples below belong to the **external sender's configuration**, not the Sentrame server. Reuse existing .NET and Next.js providers. A shared Collector must separate each app/role into credential-bound exports.
 
-```sh
-openssl rand -hex 32
-openssl rand -hex 32
-```
-
-Each command produces 32 random bytes encoded as 64 hexadecimal characters. Put the first value in Sentrame’s private deployment `.env` as `SENTRAME_BROWSER_TOKEN` and the second as `SENTRAME_SERVER_TOKEN`:
-
-```dotenv
-SENTRAME_BROWSER_TOKEN=REPLACE_WITH_FIRST_GENERATED_VALUE
-SENTRAME_SERVER_TOKEN=REPLACE_WITH_SECOND_GENERATED_VALUE
-```
-
-The placeholders above are not working credentials. Configure trusted .NET/Next.js servers with the **same server-token value** and send it in `Authorization: Bearer <server-token>`. A browser-forwarding route uses the browser-token value, preserving untrusted browser authority. Keep the server token and viewer passphrase out of browser bundles, Git and URLs.
-
-Restart Sentrame after changing its environment, and update the affected exporters to match. If rotating a token, exporters still using the old value will be denied. The owner passphrase and temporary-viewer invitations are separate from these ingestion credentials.
+Rotate roles explicitly in App settings and update affected senders afterward. Restart and app registration do not rotate existing credentials. Owner passphrases and viewer invitations are separate.
 
 ### Configure the exporter
 
@@ -83,6 +69,25 @@ SERVICE_VERSION=1.0.0
 ```
 
 Those `SENTRAME_*` names are convenient configuration for the example application, **not required telemetry attributes or a proprietary SDK**. The code turns them into ordinary OTLP exporter options. Do not add a `NEXT_PUBLIC_` prefix to server credentials. Next.js documents that prefix as browser-exposed configuration. [Next.js environment-variable guidance](https://nextjs.org/docs/app/guides/environment-variables).
+
+### Send your app version
+
+Send the release/build version of the application being instrumented as the **OTel resource attribute `service.version`**. Sentrame reads this resource attribute into its version field. Set it on the resource shared by your logs and traces; adding it only to an individual log or span's attributes does not populate that field. This is your application's version, not the Sentrame server version or the OpenTelemetry SDK version.
+
+Choose a stable value identifying the deployed code, such as `1.4.2` or a Git commit SHA, and supply it from your CI/CD release metadata when building or deploying the sender. Keep the value unchanged for that build; do not generate a new version per request or process start.
+
+Use the configuration path that matches your sender:
+
+| Sender setup | How to send the version |
+| --- | --- |
+| SDK using standard environment configuration | Set `OTEL_RESOURCE_ATTRIBUTES=service.version=1.4.2`. If you already set other resource attributes, append `,service.version=1.4.2` to that list. |
+| .NET example below | Set `SERVICE_VERSION=1.4.2`; the example passes it to `AddService(service, serviceVersion: version)` for both tracing and logging resources. |
+| Next.js Node example below | Set `SERVICE_VERSION=1.4.2`; the example explicitly sets `'service.version'` on its SDK resource. |
+| Browser SDK | Set `'service.version'` on the browser SDK resource using a public build-time release value. Server environment settings do not automatically configure browser telemetry. |
+
+`SERVICE_VERSION` is a variable read by these examples, not a standard OTel environment variable. In particular, the Next.js example disables resource auto-detection and reads this value explicitly, so configure `SERVICE_VERSION` when following that example. Both programmatic examples fall back to the literal `unknown` when it is missing; set a real value to distinguish releases.
+
+For frontend/backend components released together, use the same app release value and distinct `service.name` values. If components release independently, use each component's actual version; do not label different builds as the same release just to make their telemetry match. App selection and producer authority still come from the ingestion credential, not `service.version`.
 
 ## 3. .NET: collect logs, exceptions and request traces
 

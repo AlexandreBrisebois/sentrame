@@ -1,5 +1,7 @@
 # Multi-architecture container and NAS launch
 
+Current multi-app source uses greenfield registration in a fresh directory. Follow [App workspaces](MULTI-APP.md) for exact registry persistence, permissions, pending-removal recovery, coordinated backup/restore and rollback limitations. Existing singleton files are never imported. Historical published images listed below do not include this implementation.
+
 The container package targets **linux/amd64 and linux/arm64** under the same Docker Hub tag: `brisebois/sentrame`. Docker selects the matching platform when the NAS pulls it. The browser assets, Go service, maintained OTLP receiver and SQLite run in one non-root container; there is no separate frontend server or public database port.
 
 Release candidate `brisebois/sentrame:v0.1.0-rc.1` is published. Its [GitHub workflow](https://github.com/AlexandreBrisebois/sentrame/actions/runs/40808148393) passed checks, both platform smoke jobs, publication and the final manifest-platform check. It does not establish Home Server capacity, Cloudflare Tunnel behavior, browser SDK compatibility, power-loss durability or a WFS integration.
@@ -55,9 +57,9 @@ chmod 600 .env
 Edit `.env` locally:
 
 - Set `SENTRAME_IMAGE` to the published tag or, preferably, index digest.
-- Keep `.env` alongside the selected Compose file; Compose uses it for substitutions and passes its application settings into the container. Fill every credential before starting; configuration syntax validation does not validate credential strength.
+- Keep `.env` alongside the selected Compose file; Compose uses it for substitutions and passes its application settings into the container. Set the owner passphrase before starting. Register apps afterward in the UI; configuration syntax validation does not validate credential strength.
 - For the standard example, use `SENTRAME_ORIGIN=http://127.0.0.1:8096` (adjust its port if changing `SENTRAME_PORT`). For the Cloudflare example, set `SENTRAME_ORIGIN` to your exact public HTTPS origin, such as `https://sentrame.your-domain.example`. It controls same-origin mutation checks and secure cookies; do not use a wildcard or a URL path.
-- Set a fresh owner passphrase of at least 12 characters and two distinct random producer tokens. Use `openssl rand -hex 32` locally for each token. Never reuse the synthetic Mac credentials for deployment.
+- Set a fresh owner passphrase of at least 12 characters. Register apps through the UI to generate producer credentials; do not set producer token environment variables.
 - Keep these secrets on the NAS and in authorized exporter configuration. Container environment variables are visible to administrators with Docker access.
 
 Compose binds the **specific local folder** in `SENTRAME_DATA_DIR` to `/data`. For example, choose a new dedicated directory `/srv/sentrame/data` and set:
@@ -74,7 +76,7 @@ sudo chown 10001:10001 /srv/sentrame/data
 sudo chmod 700 /srv/sentrame/data
 ```
 
-Replace the example with the folder actually selected for this deployment. Do not run these commands against an unrelated or shared folder. Compose requires the bind folder to exist; it does not create a root-owned replacement silently. The folder holds `sentrame.db`, its WAL, and the process lease across container replacement.
+Replace the example with the folder actually selected for this deployment. Do not run these commands against an unrelated or shared folder. Compose requires the bind folder to exist; it does not create a root-owned replacement silently. The folder holds private `apps.json`, `.apps-initialized`, app stores under `apps/<id>/telemetry.db`, WAL/SHM files and leases across container replacement.
 
 Then:
 

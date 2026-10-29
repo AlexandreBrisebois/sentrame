@@ -217,7 +217,7 @@ func generate() error {
 	if e = os.WriteFile("rest/generated/login.json", login, 0600); e != nil {
 		return e
 	}
-	values := map[string]string{"baseUrl": baseURL(), "browserToken": browser, "serverToken": server, "healthyScope": g.Scopes["healthy"], "timingScope": g.Scopes["timing-samples"], "liveScope": g.Scopes["live"], "liveStart": url.QueryEscape(g.LiveStart)}
+	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "browserToken": browser, "serverToken": server, "healthyScope": g.Scopes["healthy"], "timingScope": g.Scopes["timing-samples"], "liveScope": g.Scopes["live"], "liveStart": url.QueryEscape(g.LiveStart)}
 	var env strings.Builder
 	env.WriteString("# Generated local synthetic credentials; do not commit.\n")
 	keys := []string{}
@@ -266,6 +266,9 @@ func parseREST(path string, v map[string]string) ([]restRequest, error) {
 	b, e := os.ReadFile(path)
 	if e != nil {
 		return nil, e
+	}
+	if v["appId"] == "" {
+		v["appId"] = os.Getenv("SENTRAME_APP_ID")
 	}
 	text, e := substitute(string(b), v)
 	if e != nil {
@@ -358,7 +361,7 @@ func variables(g Generated) (map[string]string, error) {
 	if e != nil {
 		return nil, e
 	}
-	return map[string]string{"baseUrl": baseURL(), "browserToken": browser, "serverToken": server, "healthyScope": g.Scopes["healthy"], "timingScope": g.Scopes["timing-samples"], "liveScope": g.Scopes["live"], "liveStart": url.QueryEscape(g.LiveStart)}, nil
+	return map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "browserToken": browser, "serverToken": server, "healthyScope": g.Scopes["healthy"], "timingScope": g.Scopes["timing-samples"], "liveScope": g.Scopes["live"], "liveStart": url.QueryEscape(g.LiveStart)}, nil
 }
 func manifest() (Generated, error) {
 	var g Generated
@@ -473,7 +476,7 @@ func checkSnapshots(client *http.Client, g Generated) error {
 	}
 	expected := map[string]int{"healthy": 16, "recovery": 6, "initial": 1, "server-only": 3, "forged": 1, "inactive": 1, "baseline": 2, "live": 2, "atomic": 0, "timing-samples": 42}
 	for scope, n := range expected {
-		resp, e := client.Get(baseURL() + "/api/snapshot?scope=" + url.QueryEscape(g.Scopes[scope]))
+		resp, e := client.Get(baseURL() + appAPI("snapshot") + "?scope=" + url.QueryEscape(g.Scopes[scope]))
 		if e != nil {
 			return e
 		}
@@ -613,6 +616,9 @@ func run() error {
 	}
 	if len(os.Args) < 2 {
 		return errors.New("usage: fixtures generate|verify|demo|live|replay|followup|workspace|workspace-generate|workspace-verify|diagnostics|diagnostics-generate|diagnostics-verify")
+	}
+	if e := prepareDemo(); e != nil {
+		return e
 	}
 	switch os.Args[1] {
 	case "standard-verify":

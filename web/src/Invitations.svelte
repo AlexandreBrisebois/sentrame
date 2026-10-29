@@ -4,7 +4,7 @@
  import {invitationIsLoopback} from './invitation';
  import {translate,type Language} from './i18n';
  type Invite={id:number;label:string;created:string;expires:string;redeemed:boolean;revoked:boolean};
- let {language='en',request}:{language?:Language;request:(path:string,body?:unknown)=>Promise<any>}=$props();
+ let {appName='',language='en',request}:{appName?:string;language?:Language;request:(path:string,body?:unknown)=>Promise<any>}=$props();
  const t=(key:string)=>translate(key,language);
  let label=$state(''),hours=$state(24),invites=$state<Invite[]>([]),url=$state(''),busy=$state(false),error=$state(''),copied=$state(false),now=$state(Date.now());
  let alive=true;
@@ -16,6 +16,7 @@
  onMount(()=>{alive=true;void refresh();const poll=setInterval(()=>{now=Date.now();void refresh()},5000);return()=>{alive=false;url='';clearInterval(poll)}});
 </script>
 <section class="invitations" aria-label={t('Temporary viewers')}>
+ <h3>{appName}</h3>
  <p class="section-description">{t('Invite someone to browse the whole application in read-only mode. They can view retained historical and live journeys, references, errors and sanitized diagnostic details. They cannot configure, save, delete or invite anyone.')}</p>
  <form class="panel" onsubmit={e=>{e.preventDefault();void create()}}>
   <div class="form-grid"><label>{t('Viewer label (optional)')}<input bind:value={label} maxlength="100" placeholder={t('For example: Product review')}/></label><label>{t('Access expires after')}<select bind:value={hours}><option value={1}>{t('1 hour')}</option><option value={24}>{t('24 hours')}</option><option value={168}>{t('7 days')}</option></select></label></div>

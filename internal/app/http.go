@@ -66,6 +66,10 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request) {
 		s.redeemInvitation(w, r)
 		return
 	}
+	if s.Registry != nil && s.selected == nil && strings.HasPrefix(r.URL.Path, "/api/") && r.URL.Path != "/api/session" && r.URL.Path != "/api/logout" {
+		s.managedAPI(w, r)
+		return
+	}
 	if strings.HasPrefix(r.URL.Path, "/api/") {
 		sessionKey, ss, ok := s.authorize(r)
 		if !ok {
@@ -219,7 +223,7 @@ func (s *Service) authorize(r *http.Request) (string, session, bool) {
 			return key, ss, true
 		}
 		s.Mu.Unlock()
-		if !s.Store.Now().Before(ss.Expires) || !s.invitationValid(ss.InviteID) {
+		if !s.validViewer(ss) {
 			s.Mu.Lock()
 			delete(s.sessions, key)
 			s.Mu.Unlock()
@@ -305,6 +309,13 @@ func (s *Service) events(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Stream limit; retry", 503)
 		return
 	}
+	if s.selected != nil {
+		cursor := r.Header.Get("Last-Event-ID")
+		if cursor != "" && !strings.HasPrefix(cursor, s.selected.ID+":"+s.selected.Generation+":") {
+			http.Error(w, "Cursor belongs to another app", 400)
+			return
+		}
+	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("X-Accel-Buffering", "no")
 	fl, ok := w.(http.Flusher)
@@ -317,8 +328,20 @@ func (s *Service) events(w http.ResponseWriter, r *http.Request) {
 		if _, _, ok := s.authorize(r); !ok {
 			return
 		}
+		if s.Registry != nil {
+			s.Registry.mu.RLock()
+			a, ok := s.Registry.entry(s.selected.ID)
+			if !ok || a.Generation != s.selected.Generation {
+				s.Registry.mu.RUnlock()
+				return
+			}
+		}
 		var rev string
 		s.Store.DB.QueryRow(`SELECT value FROM settings WHERE key='revision'`).Scan(&rev)
+		if s.Registry != nil {
+			rev = s.selected.ID + ":" + s.selected.Generation + ":" + rev
+			s.Registry.mu.RUnlock()
+		}
 		http.NewResponseController(w).SetWriteDeadline(time.Now().Add(5 * time.Second))
 		if _, e := fmt.Fprintf(w, "event: reset\nid: %s\ndata: {\"revision\":%q}\n\n", rev, rev); e != nil {
 			return

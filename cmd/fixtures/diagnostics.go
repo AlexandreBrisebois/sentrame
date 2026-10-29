@@ -112,7 +112,7 @@ func generateDiagnostics() error {
 			return err
 		}
 	}
-	values := map[string]string{"baseUrl": baseURL(), "serverToken": token, "diagnosticsTag": g.Tag}
+	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "serverToken": token, "diagnosticsTag": g.Tag}
 	existing, err := os.ReadFile("rest/.env")
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -232,7 +232,7 @@ func verifyDiagnostics() error {
 			return errors.New("prepared diagnostic body changed; regenerate rather than changing replay identity")
 		}
 	}
-	requests, err := parseREST("rest/diagnostics.http", map[string]string{"baseUrl": baseURL(), "serverToken": token, "diagnosticsTag": g.Tag})
+	requests, err := parseREST("rest/diagnostics.http", map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "serverToken": token, "diagnosticsTag": g.Tag})
 	if err != nil {
 		return err
 	}
@@ -256,9 +256,9 @@ func verifyDiagnostics() error {
 			return readErr
 		}
 		if resp.StatusCode != r.Expected {
-			return fmt.Errorf("diagnostic request%d %s %s status%d,expected%d", i+1, r.Method, req.URL.Path, resp.StatusCode, r.Expected)
+			return fmt.Errorf("diagnostic request%d %s %s status%d,expected%d", i+1, r.Method, fixtureAPIPath(req.URL.Path), resp.StatusCode, r.Expected)
 		}
-		if r.Method == "GET" && req.URL.Path == "/api/errors" {
+		if r.Method == "GET" && fixtureAPIPath(req.URL.Path) == "/api/errors" {
 			ids, err := checkDiagnostics(body, g)
 			if err != nil {
 				return err
@@ -270,7 +270,7 @@ func verifyDiagnostics() error {
 			}
 			reads++
 		}
-		fmt.Printf("PASS diagnostics %02d %s %s → %d\n", i+1, r.Method, req.URL.Path, resp.StatusCode)
+		fmt.Printf("PASS diagnostics %02d %s %s → %d\n", i+1, r.Method, fixtureAPIPath(req.URL.Path), resp.StatusCode)
 	}
 	if reads != 2 {
 		return errors.New("literal diagnostic requests omitted replay comparison")

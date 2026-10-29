@@ -2,7 +2,7 @@ version: '3'
 
 tasks:
   setup:
-    desc: Resolve pinned dependencies, create local synthetic credentials, and build
+    desc: Resolve pinned dependencies, create a local owner passphrase, and build
     cmds:
       - python3 scripts/local-env.py
       - go mod download
@@ -41,7 +41,7 @@ tasks:
     cmds:
       - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures replay'
   reset:
-    desc: Reset only stopped local synthetic state and rotate its credentials
+    desc: Reset only stopped disposable local workspace state
     cmds:
       - python3 scripts/reset-local.py
       - python3 scripts/local-env.py
@@ -87,7 +87,7 @@ tasks:
     desc: Run workspace review on its separate synthetic database, preserving the original database
     deps: [build]
     cmds:
-      - 'set -a; . ./.sentrame/local.env; set +a; export SENTRAME_DB=.sentrame/workspace-review.db; exec ./bin/sentrame'
+      - 'set -a; . ./.sentrame/local.env; set +a; export SENTRAME_DB=.sentrame/workspace-review/telemetry.db; exec ./bin/sentrame'
 
   demo:diagnostics:
     desc: Verify synthetic .NET-like trace exceptions, Next-like stacks, and custom error messages
@@ -111,6 +111,7 @@ tasks:
     desc: Verify runtime origin configuration and container readiness behavior
     cmds:
       - python3 scripts/test_container_smoke.py
+      - python3 scripts/test_local_workspace.py
       - go test ./cmd/sentrame ./cmd/healthcheck -count=1
       - go test ./internal/app -run '^TestReadiness' -count=1
 

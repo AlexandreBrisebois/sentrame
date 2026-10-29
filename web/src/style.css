@@ -74,3 +74,8 @@ label>input[type=checkbox]{flex-shrink:0;margin:3px 0}
 .event-fields .form-grid{align-items:end}
 .node-inspector>.text-button{display:flex;width:fit-content;margin-top:8px;min-height:36px}
 @media(max-width:380px){.masthead.compact{height:auto;flex-wrap:wrap}.compact .mast-actions{flex-wrap:wrap}.workspace-main{height:auto;min-height:calc(100dvh - 54px)}.workspace-canvas{min-height:360px}}
+
+.app-selector { display:flex; flex-direction:column; gap:.2rem; font-size:.75rem; min-width:0; }
+.app-selector select { max-width: min(18rem, 55vw); }
+.credential { display:block; overflow-wrap:anywhere; white-space:normal; margin-bottom:.8rem; }
+@media(max-width:600px) { .mast-actions { flex-wrap:wrap; gap:.5rem; } .app-selector { flex:1 1 100%; } }

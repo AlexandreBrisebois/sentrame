@@ -16,6 +16,14 @@ Open [http://127.0.0.1:8096](http://127.0.0.1:8096). Use the exact configured ad
 
 A restart requires a new sign-in. For first-time installation, synthetic demonstrations and REST Client requests, use the [local setup and review guide](LOCAL-REVIEW.md). For container configuration, storage and network access, use the [NAS launch guide](NAS.md). Preparing a container does not establish that a particular NAS or external network route has been qualified.
 
+## Choose your application
+
+Sign in, choose **Add app**, enter a unique name and register. Connection settings open with generated browser/server credentials, masked until reveal or copy. Configure your existing standard exporter; no Sentrame SDK or app-ID field is needed. Server credentials stay server-side. New apps have empty mappings.
+
+Use the app selector for separate products and **App settings** to rename, rotate a role or remove an app after typing its name. Each app has its own history, mappings, references, lifecycle and invitations. App URLs and tabs keep their own selection; switching closes old editors/streams and clears old app data. Journeys is first and opens by default for owners and viewers, including after switching from Traces. Explicit trace links and saved trace references open Traces. A journey empty state stays in Journeys with connection/mapping/correlation guidance.
+
+Temporary invitations name the selected app and its read-only whole-app scope and lifetime. They do not grant app administration, other apps or credentials. See [storage, recovery and limits](MULTI-APP.md). This release is greenfield: register apps again in a fresh directory; old single-app data and credentials are not imported.
+
 ## Start with the graph
 
 The workspace keeps the graph in the foreground. Select a node or connection for details; use **☰** for less frequent tools.

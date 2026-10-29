@@ -1,3 +1,4 @@
+# App scope: fixture tools register/select Sentrame demonstration through owner APIs; appId and generated sender credentials come from private rest/.env.
 # Quiet workspace review cohort: 20 common paths, one uncommon path, one unmapped event.
 # Generate fresh real protobufs with task demo:workspace or:
 # go run ./cmd/fixtures workspace-generate (with .sentrame/local.env exported).
@@ -30,8 +31,8 @@ Authorization: Bearer {{browserToken}}
 
 ### Same protected read path used by the graph workspace
 # @expect 200
-GET {{baseUrl}}/api/snapshot?scope={{workspaceScope}}
+GET {{baseUrl}}/api/apps/{{appId}}/snapshot?scope={{workspaceScope}}
 
 ### Independent occurrence-time histogram context for the same fresh scope
 # @expect 200
-GET {{baseUrl}}/api/timeline?window=1h&scope={{workspaceScope}}
+GET {{baseUrl}}/api/apps/{{appId}}/timeline?window=1h&scope={{workspaceScope}}

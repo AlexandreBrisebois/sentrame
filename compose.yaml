@@ -1,4 +1,4 @@
-# New structural model: choose a reviewed supporting image and fresh schema3 data folder.
+# Multi-app source: choose a reviewed supporting image and fresh private data folder.
 # Preserve existing folders; startup never migrates or resets unsupported schemas.
 services:
   sentrame:

@@ -1,5 +1,7 @@
 # Sentrame integration instructions for coding agents
 
+Current multi-app setup: register/select the app in the owner UI, obtain generated connection settings, and configure the existing standard exporter/provider. Credentials route the app; no Sentrame SDK, app-ID attribute or instrumentation rewrite is required. Keep server credentials out of browser recipes. Journeys is the default; explicit Traces remains available. Greenfield installation does not import legacy data/credentials. See [app workspace guidance](../MULTI-APP.md). Synthetic fixture tools register/select only their demonstration app through owner APIs and seed synthetic mappings only there; a running service and owner passphrase are required.
+
 Use these instructions when a developer asks you to prepare or add Sentrame journey evidence to **their application**. They are separate from Sentrame's own [engineering harness proposal](../proposals/sentrame-engineering-harness.md). Sentrame stays deterministic; discovery assistance runs in the developer's coding agent, not a new AI runtime service.
 
 This guide is a planning deliverable. It has not instrumented any application or installed a package. Examples are semantic plans, not tested runnable SDK recipes. Read the application's own instructions and current SDK documentation before choosing real APIs.

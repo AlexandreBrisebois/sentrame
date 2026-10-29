@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sentrame/internal/app"
+	"strings"
 	"testing"
 	"time"
 
@@ -76,6 +77,7 @@ func TestWorkspaceFixtureCreatesComparableClosedCohortAndUnmappedDiscovery(t *te
 }
 
 func TestWorkspaceGenerationPreservesExistingDemoReplayAndRESTVariables(t *testing.T) {
+	t.Setenv("SENTRAME_APP_ID", strings.Repeat("a", 64))
 	raw, err := os.ReadFile("../../rest/fixtures/workspace.json")
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +128,7 @@ func TestWorkspaceGenerationPreservesExistingDemoReplayAndRESTVariables(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(requests) != 5 || !bytes.Equal(requests[1].Body, body) || !bytes.Equal(requests[2].Body, body) || requests[3].URL != baseURL()+"/api/snapshot?scope="+g.Scopes["workspace"] || requests[4].URL != baseURL()+"/api/timeline?window=1h&scope="+g.Scopes["workspace"] {
+	if len(requests) != 5 || !bytes.Equal(requests[1].Body, body) || !bytes.Equal(requests[2].Body, body) || requests[3].URL != baseURL()+appAPI("snapshot")+"?scope="+g.Scopes["workspace"] || requests[4].URL != baseURL()+appAPI("timeline")+"?window=1h&scope="+g.Scopes["workspace"] {
 		t.Fatal("versioncontrolled workspace REST requests did not preserve ingestion/replay/scoped read")
 	}
 	if g.Scopes["workspace"] == "" {

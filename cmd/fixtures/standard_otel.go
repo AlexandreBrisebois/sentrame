@@ -207,7 +207,7 @@ func generateStandard() error {
 	if err != nil {
 		return err
 	}
-	values := map[string]string{"baseUrl": baseURL(), "serverToken": token, "browserToken": browser, "standardTrace": g.Trace, "enrichedTrace": g.EnrichedTrace, "futureTrace": g.FutureTrace, "journeyScope": g.JourneyScope, "journeyTrace": g.JourneyTrace}
+	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "serverToken": token, "browserToken": browser, "standardTrace": g.Trace, "enrichedTrace": g.EnrichedTrace, "futureTrace": g.FutureTrace, "journeyScope": g.JourneyScope, "journeyTrace": g.JourneyTrace}
 	existing, err := os.ReadFile("rest/.env")
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -256,7 +256,7 @@ func verifyStandard() error {
 	if err != nil {
 		return err
 	}
-	requests, err := parseREST("rest/standard-otel.http", map[string]string{"baseUrl": baseURL(), "serverToken": token, "browserToken": browser, "standardTrace": g.Trace, "enrichedTrace": g.EnrichedTrace, "futureTrace": g.FutureTrace, "journeyScope": g.JourneyScope, "journeyTrace": g.JourneyTrace, "csrf": "__standard_csrf__", "standardDefinition": "__standard_definition__", "traceReference": "__trace_reference__"})
+	requests, err := parseREST("rest/standard-otel.http", map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "serverToken": token, "browserToken": browser, "standardTrace": g.Trace, "enrichedTrace": g.EnrichedTrace, "futureTrace": g.FutureTrace, "journeyScope": g.JourneyScope, "journeyTrace": g.JourneyTrace, "csrf": "__standard_csrf__", "standardDefinition": "__standard_definition__", "traceReference": "__trace_reference__"})
 	if err != nil {
 		return err
 	}
@@ -301,9 +301,9 @@ func verifyStandard() error {
 			return err
 		}
 		if resp.StatusCode != r.Expected {
-			return fmt.Errorf("standard request%d %s status%d expected%d", i+1, req.URL.Path, resp.StatusCode, r.Expected)
+			return fmt.Errorf("standard request%d %s status%d expected%d", i+1, fixtureAPIPath(req.URL.Path), resp.StatusCode, r.Expected)
 		}
-		if req.URL.Path == "/api/views" && r.Method == "POST" && r.Expected == 200 {
+		if fixtureAPIPath(req.URL.Path) == "/api/views" && r.Method == "POST" && r.Expected == 200 {
 			var v struct {
 				ID   int64  `json:"id"`
 				Mode string `json:"mode"`
@@ -315,12 +315,12 @@ func verifyStandard() error {
 				traceReference = fmt.Sprint(v.ID)
 			}
 		}
-		if req.URL.Path == "/api/login" && r.Expected == 200 {
+		if fixtureAPIPath(req.URL.Path) == "/api/login" && r.Expected == 200 {
 			var v map[string]string
 			json.Unmarshal(body, &v)
 			csrf = v["csrf"]
 		}
-		if req.URL.Path == "/api/definitions" && r.Method == "POST" && r.Expected == 200 {
+		if fixtureAPIPath(req.URL.Path) == "/api/definitions" && r.Method == "POST" && r.Expected == 200 {
 			var v struct {
 				Version int64 `json:"version"`
 			}
@@ -333,7 +333,7 @@ func verifyStandard() error {
 				capturedDefinition = definition
 			}
 		}
-		if req.URL.Path == "/api/preview" && r.Expected == 200 {
+		if fixtureAPIPath(req.URL.Path) == "/api/preview" && r.Expected == 200 {
 			var v struct {
 				Conflict string         `json:"conflict"`
 				Matches  map[string]int `json:"matches"`
@@ -345,7 +345,7 @@ func verifyStandard() error {
 				return errors.New("owner meaning preview is not one carrier-specific trusted commitment")
 			}
 		}
-		if req.URL.Path == "/api/traces/"+g.JourneyTrace && r.Expected == 200 {
+		if fixtureAPIPath(req.URL.Path) == "/api/traces/"+g.JourneyTrace && r.Expected == 200 {
 			var d struct {
 				Mode, Interpretation string
 				Operations           []struct {
@@ -367,7 +367,7 @@ func verifyStandard() error {
 				}
 			}
 		}
-		if req.URL.Path == "/api/snapshot" && r.Method == "GET" {
+		if fixtureAPIPath(req.URL.Path) == "/api/snapshot" && r.Method == "GET" {
 			if err := checkStandardJourney(body, journeyDefinition, r.Name == "Completed scoped voting journey"); err != nil {
 				return err
 			}
@@ -376,7 +376,7 @@ func verifyStandard() error {
 		if bytes.Contains(body, []byte("STRUCTURAL-PRIVATE-SENTINEL")) {
 			return errors.New("standard privacy sentinel leaked")
 		}
-		if r.Method == "GET" && strings.HasPrefix(req.URL.Path, "/api/traces/") && r.Expected == 200 && !strings.HasSuffix(req.URL.Path, g.JourneyTrace) {
+		if r.Method == "GET" && strings.HasPrefix(fixtureAPIPath(req.URL.Path), "/api/traces/") && r.Expected == 200 && !strings.HasSuffix(fixtureAPIPath(req.URL.Path), g.JourneyTrace) {
 			var d map[string]any
 			if err = json.Unmarshal(body, &d); err != nil {
 				return err
@@ -386,7 +386,7 @@ func verifyStandard() error {
 				return errors.New("standard trace native model missing")
 			}
 			wantLogs := 2
-			if strings.TrimPrefix(req.URL.Path, "/api/traces/") != g.Trace {
+			if strings.TrimPrefix(fixtureAPIPath(req.URL.Path), "/api/traces/") != g.Trace {
 				wantLogs = 0
 			}
 			if len(d["events"].([]any)) != 2 || len(d["logs"].([]any)) != wantLogs {
@@ -431,9 +431,9 @@ func verifyStandard() error {
 				fmt.Println("PASS explicit meaning preview: one trusted Vote saved, native operation timings separate; no history rewrite")
 				continue
 			}
-			if trace := strings.TrimPrefix(req.URL.Path, "/api/traces/"); trace == g.EnrichedTrace || trace == g.FutureTrace {
+			if trace := strings.TrimPrefix(fixtureAPIPath(req.URL.Path), "/api/traces/"); trace == g.EnrichedTrace || trace == g.FutureTrace {
 				if trace == g.EnrichedTrace {
-					if _, seen := firstByTrace[req.URL.Path]; !seen {
+					if _, seen := firstByTrace[fixtureAPIPath(req.URL.Path)]; !seen {
 						found := false
 						for _, v := range d["suggestions"].([]any) {
 							if v.(map[string]any)["label"] == "voting.retry" {
@@ -466,7 +466,7 @@ func verifyStandard() error {
 			}
 			delete(d, "revision")
 			delete(d, "suggestions")
-			key := req.URL.Path
+			key := fixtureAPIPath(req.URL.Path)
 			if prior, ok := firstByTrace[key]; !ok {
 				firstByTrace[key] = d
 			} else if !reflect.DeepEqual(prior, d) {
@@ -474,7 +474,7 @@ func verifyStandard() error {
 			}
 			reads++
 		}
-		if req.URL.Path == "/api/views" && r.Method == "GET" {
+		if fixtureAPIPath(req.URL.Path) == "/api/views" && r.Method == "GET" {
 			var views []struct {
 				Definition int64  `json:"definition"`
 				Name       string `json:"name"`
@@ -488,7 +488,7 @@ func verifyStandard() error {
 				}
 			}
 		}
-		fmt.Printf("PASS standard %02d %s %s → %d\n", i+1, r.Method, req.URL.Path, resp.StatusCode)
+		fmt.Printf("PASS standard %02d %s %s → %d\n", i+1, r.Method, fixtureAPIPath(req.URL.Path), resp.StatusCode)
 	}
 	if journeyReads < 2 {
 		return errors.New("scoped journey durable reads not exercised")

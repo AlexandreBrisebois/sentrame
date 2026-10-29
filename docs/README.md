@@ -30,3 +30,5 @@
 - [Research](research/sentrame-feasibility.md), [stack/resource analysis](research/sentrame-stack-and-resources.md), [engineering harness proposal](proposals/sentrame-engineering-harness.md), and [original Home Server deployment contract](proposals/home-server-deployment-contract.md): historical rationale and proposals. Statements that no app or Compose files exist describe their original planning phase, not current repository contents.
 
 A requirement, a code path and a passed qualification are different things. Operational guides describe current behavior; verification reports state what was actually exercised and where support remains unqualified.
+
+[App workspaces](MULTI-APP.md) · [Multi-app qualification](verification/multi-app-workspaces.md)

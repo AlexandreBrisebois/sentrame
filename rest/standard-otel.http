@@ -1,3 +1,4 @@
+# App scope: fixture tools register/select Sentrame demonstration through owner APIs; appId and generated sender credentials come from private rest/.env.
 # Ordinary standard OTel only. Generate fresh bytes with fixtures standard-generate.
 # Export SENTRAME_URL/PASSPHRASE/SERVER_TOKEN for the verifier; REST Client also
 # needs baseUrl,serverToken,standardTrace in its private rest/.env.
@@ -5,7 +6,7 @@
 ### Trace detail is protected even with a known native trace ID
 # @no-cookie-jar
 # @expect 401
-GET {{baseUrl}}/api/traces/{{standardTrace}}
+GET {{baseUrl}}/api/apps/{{appId}}/traces/{{standardTrace}}
 
 ### Owner login
 POST {{baseUrl}}/api/login
@@ -29,10 +30,10 @@ Authorization: Bearer {{serverToken}}
 < ./generated/standard-logs.bin
 
 ### Protected trace discovery
-GET {{baseUrl}}/api/traces
+GET {{baseUrl}}/api/apps/{{appId}}/traces
 
 ### Native structure/timing and typed contextual reads
-GET {{baseUrl}}/api/traces/{{standardTrace}}
+GET {{baseUrl}}/api/apps/{{appId}}/traces/{{standardTrace}}
 
 ### Exact native replay
 POST {{baseUrl}}/v1/traces
@@ -57,11 +58,11 @@ Authorization: Bearer {{serverToken}}
 < ./generated/standard-traces.bin.gz
 
 ### Replay preserves native identity, structure and inclusive timing
-GET {{baseUrl}}/api/traces/{{standardTrace}}
+GET {{baseUrl}}/api/apps/{{appId}}/traces/{{standardTrace}}
 
 ### Preview ordinary-name mappings (no stage.name)
 # For manual REST Client use, copy csrf from login into private rest/.env.
-POST {{baseUrl}}/api/preview
+POST {{baseUrl}}/api/apps/{{appId}}/preview
 Content-Type: application/json
 Origin: {{baseUrl}}
 X-CSRF-Token: {{csrf}}
@@ -69,7 +70,7 @@ X-CSRF-Token: {{csrf}}
 < ./fixtures/standard-mapping.json
 
 ### Activate prospective owner definition
-POST {{baseUrl}}/api/definitions
+POST {{baseUrl}}/api/apps/{{appId}}/definitions
 Content-Type: application/json
 Origin: {{baseUrl}}
 X-CSRF-Token: {{csrf}}
@@ -78,10 +79,10 @@ X-CSRF-Token: {{csrf}}
 
 ### Explicit non-persisting preview of retained trace under new meaning
 # For manual REST Client use, standardDefinition is the returned version.
-GET {{baseUrl}}/api/traces/{{standardTrace}}?previewDefinition={{standardDefinition}}
+GET {{baseUrl}}/api/apps/{{appId}}/traces/{{standardTrace}}?previewDefinition={{standardDefinition}}
 
 ### Default still uses receipt-time definitions
-GET {{baseUrl}}/api/traces/{{standardTrace}}
+GET {{baseUrl}}/api/apps/{{appId}}/traces/{{standardTrace}}
 
 ### Enriched future capture: owner Vote saved overrides emitted voting
 POST {{baseUrl}}/v1/traces
@@ -91,11 +92,11 @@ Authorization: Bearer {{serverToken}}
 < ./generated/standard-enriched.bin
 
 ### Unmapped retry has a suggestion; owner commitment remains literal
-GET {{baseUrl}}/api/traces/{{enrichedTrace}}
+GET {{baseUrl}}/api/apps/{{appId}}/traces/{{enrichedTrace}}
 
 ### Conflicting generic rule is rejected without activation
 # @expect 400
-POST {{baseUrl}}/api/definitions
+POST {{baseUrl}}/api/apps/{{appId}}/definitions
 Content-Type: application/json
 Origin: {{baseUrl}}
 X-CSRF-Token: {{csrf}}
@@ -103,7 +104,7 @@ X-CSRF-Token: {{csrf}}
 < ./fixtures/standard-conflict.json
 
 ### Save the captured definition context, without retaining raw evidence
-POST {{baseUrl}}/api/views
+POST {{baseUrl}}/api/apps/{{appId}}/views
 Content-Type: application/json
 Origin: {{baseUrl}}
 X-CSRF-Token: {{csrf}}
@@ -111,7 +112,7 @@ X-CSRF-Token: {{csrf}}
 {"name":"Standard voting capture","mode":"overview","definition":{{standardDefinition}},"startOccurrence":"first","endOccurrence":"last"}
 
 ### Owner explicitly accepts voting.retry as a literal supporting-activity mapping
-POST {{baseUrl}}/api/definitions
+POST {{baseUrl}}/api/apps/{{appId}}/definitions
 Content-Type: application/json
 Origin: {{baseUrl}}
 X-CSRF-Token: {{csrf}}
@@ -119,7 +120,7 @@ X-CSRF-Token: {{csrf}}
 < ./fixtures/standard-accepted-hint.json
 
 ### New tag values cannot rename earlier captured meaning
-GET {{baseUrl}}/api/traces/{{enrichedTrace}}
+GET {{baseUrl}}/api/apps/{{appId}}/traces/{{enrichedTrace}}
 
 ### Replay enriched native bytes after definition activation
 POST {{baseUrl}}/v1/traces
@@ -129,7 +130,7 @@ Authorization: Bearer {{serverToken}}
 < ./generated/standard-enriched.bin
 
 ### Replay keeps native structure and timing unchanged
-GET {{baseUrl}}/api/traces/{{enrichedTrace}}
+GET {{baseUrl}}/api/apps/{{appId}}/traces/{{enrichedTrace}}
 
 ### Future capture emits changed.retry while owner literal stays voting.retry
 POST {{baseUrl}}/v1/traces
@@ -139,13 +140,13 @@ Authorization: Bearer {{serverToken}}
 < ./generated/standard-future.bin
 
 ### Accepted literal mapping applies prospectively
-GET {{baseUrl}}/api/traces/{{futureTrace}}
+GET {{baseUrl}}/api/apps/{{appId}}/traces/{{futureTrace}}
 
 ### Reference still pins its original definition
-GET {{baseUrl}}/api/views
+GET {{baseUrl}}/api/apps/{{appId}}/views
 
 ### Activate scoped voting definition
-POST {{baseUrl}}/api/definitions
+POST {{baseUrl}}/api/apps/{{appId}}/definitions
 Content-Type: application/json
 Origin: {{baseUrl}}
 X-CSRF-Token: {{csrf}}
@@ -174,10 +175,10 @@ Authorization: Bearer {{serverToken}}
 < ./generated/standard-journey-server.bin
 
 ### Persistence and HTTP success do not invent the separately configured screen goal
-GET {{baseUrl}}/api/snapshot?scope={{journeyScope}}
+GET {{baseUrl}}/api/apps/{{appId}}/snapshot?scope={{journeyScope}}
 
 ### Save a trace-mode reference distinct from chronological journey references
-POST {{baseUrl}}/api/views
+POST {{baseUrl}}/api/apps/{{appId}}/views
 Content-Type: application/json
 Origin: {{baseUrl}}
 X-CSRF-Token: {{csrf}}
@@ -185,7 +186,7 @@ X-CSRF-Token: {{csrf}}
 {"name":"Native voting request","mode":"trace","trace":"{{journeyTrace}}","definition":{{standardDefinition}},"layout":"tree"}
 
 ### Activate another prospective definition while the existing journey is active
-POST {{baseUrl}}/api/definitions
+POST {{baseUrl}}/api/apps/{{appId}}/definitions
 Content-Type: application/json
 Origin: {{baseUrl}}
 X-CSRF-Token: {{csrf}}
@@ -200,7 +201,7 @@ Authorization: Bearer {{browserToken}}
 < ./generated/standard-journey-goal.bin
 
 ### Completed scoped voting journey
-GET {{baseUrl}}/api/snapshot?scope={{journeyScope}}
+GET {{baseUrl}}/api/apps/{{appId}}/snapshot?scope={{journeyScope}}
 
 ### Exact goal replay cannot start another journey
 POST {{baseUrl}}/v1/logs
@@ -210,7 +211,7 @@ Authorization: Bearer {{browserToken}}
 < ./generated/standard-journey-goal.bin
 
 ### Completed scoped voting journey
-GET {{baseUrl}}/api/snapshot?scope={{journeyScope}}
+GET {{baseUrl}}/api/apps/{{appId}}/snapshot?scope={{journeyScope}}
 
 ### Trace reference pins its explicit mode and original definition
-GET {{baseUrl}}/api/traces/{{journeyTrace}}?reference={{traceReference}}
+GET {{baseUrl}}/api/apps/{{appId}}/traces/{{journeyTrace}}?reference={{traceReference}}

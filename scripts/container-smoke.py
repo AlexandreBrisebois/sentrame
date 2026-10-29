@@ -68,12 +68,17 @@ def main():
         listener.bind(("127.0.0.1", 0))
         port = listener.getsockname()[1]
     origin = f"http://127.0.0.1:{port}"
-    owner, browser, server = (secrets.token_hex(24) for _ in range(3))
+    owner=secrets.token_hex(24)
+    csrf=""
+    app_id=""
+    demo_id=""
+    volume=name+"-data"
+    docker("volume","create",volume)
     jar = http.cookiejar.CookieJar()
     client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 
     def request(path, body=None, bearer=None):
-        headers = {"Origin": origin}
+        headers = {"Origin": origin,"X-CSRF-Token":csrf}
         if body is not None:
             headers["Content-Type"] = "application/json"
         if bearer:
@@ -83,11 +88,13 @@ def main():
         return client.open(req, timeout=10)
 
     def login():
+        nonlocal csrf
         with request("/api/login", {"passphrase": owner}) as response:
             assert response.status == 200
+            csrf=json.load(response)["csrf"]
 
     def snapshot_has_record():
-        with request("/api/snapshot") as response:
+        with request("/api/apps/"+app_id+"/snapshot") as response:
             data = json.load(response)
         matching = [e for e in data["discovered"] if e["name"] == "container.smoke." + suffix]
         assert len(matching) == 1 and matching[0]["count"] == 1, "Committed evidence missing or duplicated"
@@ -98,13 +105,12 @@ def main():
             env_file = Path(temporary) / "runtime.env"
             env_file.write_text("\n".join([
                 "SENTRAME_ORIGIN=" + origin, "SENTRAME_PASSPHRASE=" + owner,
-                "SENTRAME_BROWSER_TOKEN=" + browser, "SENTRAME_SERVER_TOKEN=" + server,
             ]) + "\n")
             env_file.chmod(0o600)
             docker("run", "--detach", "--name", name, "--platform", platform,
                    "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
                    "--pids-limit", "256", "--tmpfs", "/tmp:size=16m,mode=1777",
-                   "--publish", f"127.0.0.1:{port}:8096", "--mount", "type=bind,source=" + str(data_folder) + ",target=/data",
+                   "--publish", f"127.0.0.1:{port}:8096", "--mount", "type=volume,source=" + volume + ",target=/data",
                    "--env-file", str(env_file), image)
         wait_for_ready(request)
         assert docker("image", "inspect", "--format", "{{.Config.User}}", image) == "10001:10001", "Image must default to the non-root service user"
@@ -113,12 +119,17 @@ def main():
         with request("/") as response:
             assert b'<div id="app">' in response.read(), "Static frontend missing from image"
         try:
-            request("/api/snapshot")
+            request("/api/apps")
             raise AssertionError("Anonymous protected read was accepted")
         except urllib.error.HTTPError as error:
             assert error.code == 401
         login()
-        with request("/api/snapshot") as response:
+        with request("/api/apps",{"name":"Container smoke"}) as response:
+            app_id=json.load(response)["id"]
+        with request("/api/apps/"+app_id+"/connection") as response:
+            credentials=json.load(response)
+        server=credentials["server"]
+        with request("/api/apps/"+app_id+"/snapshot") as response:
             server_now = json.load(response)["now"]
         payload = smoke_payload(suffix, server_now)
         with request("/v1/logs", payload, server) as response:
@@ -127,20 +138,21 @@ def main():
         # Reuse the maintained literal REST fixture generator/verifier against
         # this container's fresh database; successful receipt alone is not enough.
         fixture_env = dict(os.environ, SENTRAME_URL=origin, SENTRAME_ORIGIN=origin,
-                           SENTRAME_PASSPHRASE=owner, SENTRAME_BROWSER_TOKEN=browser,
-                           SENTRAME_SERVER_TOKEN=server)
+                           SENTRAME_PASSPHRASE=owner)
         repository = Path(__file__).resolve().parent.parent
         subprocess.run(["go", "run", "./cmd/fixtures", "standard"], cwd=repository,
                        env=fixture_env, check=True)
         manifest = json.loads((repository / "rest/generated/standard-manifest.json").read_text())
-        trace_path = "/api/traces/" + manifest["trace"]
+        with request("/api/apps") as response:
+            demo_id=next(a["id"] for a in json.load(response) if a["name"]=="Sentrame demonstration")
+        trace_path = "/api/apps/"+demo_id+"/traces/" + manifest["trace"]
         # The verifier has its own cookie jar; this owner cookie remains valid.
         with request(trace_path) as response:
             trace_before = json.load(response)
         trace_before.pop("revision", None)
         assert trace_before["mode"] == "trace" and trace_before["operations"]
         print("Fixture hashes:", json.dumps(manifest["hashes"], sort_keys=True))
-        with request("/api/events") as response:
+        with request("/api/apps/"+app_id+"/events") as response:
             assert response.headers.get_content_type() == "text/event-stream"
             assert response.readline().startswith(b"event: reset")
         docker("restart", "--time", "30", name)
@@ -151,8 +163,28 @@ def main():
         with request(trace_path) as response:
             trace_after = json.load(response)
         trace_after.pop("revision", None)
-        assert trace_before == trace_after, "Native trace changed after bind-storage restart"
-        print(f"PASS {platform}: non-root read-only image, readiness, static UI, protected read, standard OTLP/HTTP JSON log, 37-step native-model REST verifier, protected trace relationships, SSE and exact bind-storage trace evidence after restart")
+        assert trace_before == trace_after, "Native trace changed after persistent-volume restart"
+        with request("/api/apps/"+app_id+"/connection") as response:
+            assert json.load(response)==credentials,"Generated settings changed after restart"
+        # A stopped coordinated archive preserves JSON, marker, every SQLite store
+        # and numeric ownership. Round-trip the exact archive through the mount.
+        docker("stop","--time","30",name)
+        backup=Path(data_temporary.name)/"private-backup.tar"
+        with backup.open("wb") as output:
+            subprocess.run(["docker","cp","-a",name+":/data/.","-"],stdout=output,check=True)
+        backup.chmod(0o600)
+        broken=Path(data_temporary.name)/"broken-registry.json"
+        broken.write_text("{");broken.chmod(0o600)
+        docker("cp",str(broken),name+":/data/apps.json")
+        docker("start",name)
+        exit_code=subprocess.check_output(["docker","wait",name],text=True,timeout=20).strip()
+        assert exit_code!="0","Damaged registry did not fail closed"
+        with backup.open("rb") as source:
+            subprocess.run(["docker","cp","-a","-",name+":/data"],stdin=source,check=True)
+        docker("start",name);wait_for_ready(request);jar.clear();login();snapshot_has_record()
+        with request("/api/apps/"+app_id+"/connection") as response:
+            assert json.load(response)==credentials,"Coordinated restore changed authority"
+        print(f"PASS {platform}: non-root read-only image, readiness, static UI, protected read, standard OTLP/HTTP JSON log, 37-step native-model REST verifier, protected trace relationships, SSE and exact persistent-volume trace evidence after restart; damaged-registry rejection and private coordinated backup/restore")
     except Exception:
         # This container contains only disposable synthetic data. Print bounded
         # startup diagnostics, never its environment or generated credentials.
@@ -164,6 +196,7 @@ def main():
         raise
     finally:
         subprocess.run(["docker", "rm", "--force", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        subprocess.run(["docker","volume","rm",volume],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=False)
         data_temporary.cleanup()
 
 

@@ -4,9 +4,13 @@ Use this guide to run the working application from source, load repeatable synth
 
 The scenarios here use synthetic data and the actual ingestion/storage/read paths. They do not instrument WFS or establish real SDK/network-route qualification. [Current workspace verification](verification/workspace-design.md) extends the [initial Release A report](verification/release-a-local.md).
 
+## App registration
+
+Use a fresh data directory and register apps in the owner UI. No producer environment credentials or legacy import are needed. Journeys opens first; select Traces explicitly. [App workspaces](MULTI-APP.md) describes connection settings and recovery. Fixture commands now contact the running service to register/select their demonstration app even when only preparing files.
+
 ## Canvas workspace update
 
-The owner-approved workspace is implemented with hierarchy, force and Sankey views. The original `.sentrame/local.db` was already empty and intake-disabled when this work began; it is preserved. The current review uses `.sentrame/workspace-review.db`. To resume this exact workspace after stopping the service:
+The owner-approved workspace is implemented with hierarchy, force and Sankey views. The original `.sentrame/local.db` was already empty and intake-disabled when this work began; it is preserved. The old review file is preserved. Multi-app review uses `.sentrame/workspace-review/telemetry.db` as its fresh-directory guard. To resume this exact workspace after stopping the service:
 
 ```sh
 task start:workspace
@@ -40,11 +44,11 @@ task setup
 task start
 ```
 
-Open [http://127.0.0.1:8096](http://127.0.0.1:8096). Use that exact origin, not `localhost`, because mutations enforce the configured Origin. `task setup` creates ignored `.sentrame/local.env` with a random owner passphrase and separate browser/server producer credentials. Open that local file to obtain `SENTRAME_PASSPHRASE`; keep it private. No default credential is embedded in source or browser assets. The current review tab may already be signed in. Restart/logout invalidates its cookie and requires login again.
+Open [http://127.0.0.1:8096](http://127.0.0.1:8096). Use that exact origin, not `localhost`, because mutations enforce the configured Origin. `task setup` creates ignored `.sentrame/local.env` with a random owner passphrase. Open that local file to obtain `SENTRAME_PASSPHRASE`; keep it private. No default credential is embedded in source or browser assets. The current review tab may already be signed in. Restart/logout invalidates its cookie and requires login again.
 
 Prerequisites used here: Go 1.27.3, Node 26.12.0/npm, Task and OpenSpec 1.14.3. Exact Go modules/checksums are in `go.mod`/`go.sum`; frontend dependencies resolve from `web/package-lock.json` through `npm ci`. Go serves built Svelte/Vite assets and viewer/API/OTLP HTTP on loopback port 8096. A private ephemeral loopback listener hosts the maintained Collector receiver; its consumers independently validate producer credentials. gRPC is not exposed.
 
-Configuration inputs: `SENTRAME_PASSPHRASE` (at least 12 characters), distinct nonempty `SENTRAME_BROWSER_TOKEN` and `SENTRAME_SERVER_TOKEN`, optional `SENTRAME_ADDR`, `SENTRAME_ORIGIN`, `SENTRAME_DB`. Defaults are loopback `127.0.0.1:8096`, origin `http://127.0.0.1:8096` and `.sentrame/local.db`. For a container deployment, use the separate Compose/environment contract in [container deployment](NAS.md); this local command does not qualify an external HTTPS/proxy route.
+Configuration inputs: `SENTRAME_PASSPHRASE` (at least 12 characters), optional `SENTRAME_ADDR`, `SENTRAME_ORIGIN`, `SENTRAME_DB`. Defaults are loopback `127.0.0.1:8096`, origin `http://127.0.0.1:8096` and `.sentrame/workspaces/telemetry.db`. For a container deployment, use the separate Compose/environment contract in [container deployment](NAS.md); this local command does not qualify an external HTTPS/proxy route.
 
 ## Repeatable demonstration
 
@@ -55,7 +59,7 @@ task demo
 task demo:replay
 ```
 
-The tool generates real official protobuf bodies from `rest/fixtures/scenarios.json`, then executes the version-controlled [REST Client requests](../rest/demo.http) literally. It verifies protected snapshots, not a parallel database preload. Fresh generation creates new synthetic scopes; replay preserves original IDs/bytes. Existing demonstration generations remain visible until retention or explicit reset.
+The tool authenticates as owner, explicitly registers/selects **Sentrame demonstration**, obtains generated sender credentials and seeds synthetic mappings only there. The service must already be running. It then generates real official protobuf bodies from `rest/fixtures/scenarios.json`, then executes the version-controlled [REST Client requests](../rest/demo.http) literally. It verifies protected snapshots, not a parallel database preload. Fresh generation creates new synthetic scopes; replay preserves original IDs/bytes. Existing demonstration generations remain visible until retention or explicit reset.
 
 1. **Explore:** inspect the map, map/timing table and ordered sequences. The healthy case has ten trusted Vote commitments and nine Vote→Vote transitions. Intent and completion-screen observation are separate facts.
 2. **Recovery:** expand Discovery→Intent→Vote→Publication error→Recovered→Completion. The earlier error remains; it never undoes the persisted vote or proves an exit cause. Copy exposes only the retained sanitized projection.

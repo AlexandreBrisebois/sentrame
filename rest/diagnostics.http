@@ -1,3 +1,4 @@
+# App scope: fixture tools register/select Sentrame demonstration through owner APIs; appId and generated sender credentials come from private rest/.env.
 # Synthetic official-wire OTLP examples, not real .NET/Next.js exporter qualification.
 # Generate with task demo:diagnostics (or diagnostics-generate with local.env exported).
 # Send in order. Exact files retain IDs/times for replay; generation creates a new tag.
@@ -28,7 +29,7 @@ Authorization: Bearer {{serverToken}}
 
 ### App-wide error discovery does not require selecting an anonymous visit
 # @expect 200
-GET {{baseUrl}}/api/errors?q={{diagnosticsTag}}
+GET {{baseUrl}}/api/apps/{{appId}}/errors?q={{diagnosticsTag}}
 
 ### Identical span replay retains exact trace/span identity
 # @expect 200
@@ -48,4 +49,4 @@ Authorization: Bearer {{serverToken}}
 
 ### Same protected read after replay: record counts and identities must remain stable
 # @expect 200
-GET {{baseUrl}}/api/errors?q={{diagnosticsTag}}
+GET {{baseUrl}}/api/apps/{{appId}}/errors?q={{diagnosticsTag}}

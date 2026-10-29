@@ -148,8 +148,8 @@
         "attributes": {
           "exception.type": "SyntheticPublicationFailure",
           "exception.occurrence.id": "publication1",
-          "exception.message": "SHOULD-NOT-PERSIST credential=synthetic-secret",
-          "exception.stacktrace": "SHOULD-NOT-PERSIST raw-stack",
+          "exception.message": "Synthetic diagnostic password=SHOULD-NOT-PERSIST",
+          "exception.stacktrace": "at SyntheticDemo.Run (password=SHOULD-NOT-PERSIST)",
           "private.household": "SHOULD-NOT-PERSIST"
         }
       },

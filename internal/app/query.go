@@ -69,6 +69,9 @@ func (s *Service) definitions(w http.ResponseWriter, r *http.Request) {
 	write(w, d)
 }
 func validateDefinition(d Definition) string {
+	if d.Goal == "" && len(d.Mappings) == 0 && d.GoalSelector == nil {
+		return ""
+	}
 	if d.Goal == "" || len(d.Mappings) == 0 || len(d.Mappings) > 100 {
 		return "Choose a mapped goal and 1–100 mappings"
 	}

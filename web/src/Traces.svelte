@@ -1,19 +1,20 @@
 <script lang="ts">
  import {onMount} from 'svelte';
  import type {TraceDetail,Evidence,Definition,SavedView} from './types';
+ import {appURL} from './apps';
  import {traceRows,operationBar} from './trace';
  import {translate,type Language} from './i18n';
- let {request,revision,language='en',readOnly=false,onconfigure}:{request:(path:string,body?:unknown)=>Promise<any>;revision:string|number;language?:Language;readOnly?:boolean;onconfigure?:(e:Evidence,suggestion?:string)=>void}=$props();
+ let {appID,generation:appGeneration,request,revision,language='en',readOnly=false,onconfigure}:{appID:string;generation:string;request:(path:string,body?:unknown)=>Promise<any>;revision:string|number;language?:Language;readOnly?:boolean;onconfigure?:(e:Evidence,suggestion?:string)=>void}=$props();
  const t=(s:string)=>translate(s,language);
- let list=$state<{trace:string;spans:number;records:number;services:string[]}[]>([]), selected=$state(''),detail=$state<TraceDetail|null>(null),error=$state(''),loading=$state(false),view=$state('tree'),truncated=$state(false);
+ let list=$state<{trace:string;spans:number;records:number;services:string[]}[]>([]), selected=$state(new URLSearchParams(location.search).get('trace')??''),detail=$state<TraceDetail|null>(null),error=$state(''),loading=$state(false),view=$state('tree'),truncated=$state(false);
  let definitions=$state<Definition[]>([]),previewDefinition=$state('');
- let references=$state<SavedView[]>([]),selectedReference=$state(''),referenceName=$state('');
+ let references=$state<SavedView[]>([]),selectedReference=$state(new URLSearchParams(location.search).get('reference')??''),referenceName=$state('');
  let generation=0;
  let autoRefresh=$state(true);
- onMount(()=>{const stream=new EventSource('/api/events');stream.addEventListener('reset',()=>{if(autoRefresh)void load(selected)});stream.onerror=()=>{if(autoRefresh)void load(selected)};return()=>{generation++;stream.close()}});
- async function load(id:string){const current=++generation;loading=true;error='';try{const response=await request('traces');if(current!==generation)return;list=response.traces;truncated=response.truncated;const defs=await request('definitions');if(current!==generation)return;definitions=defs;const refs=await request('views');if(current!==generation)return;references=refs.filter((v:SavedView)=>v.mode==='trace');if(id){const d=await request('traces/'+encodeURIComponent(id)+(selectedReference?'?reference='+selectedReference:previewDefinition?'?previewDefinition='+previewDefinition:''));if(current===generation)detail=d}else detail=null}catch(e){if(current===generation){detail=null;error=e instanceof Error?e.message:t('Trace unavailable')}}finally{if(current===generation)loading=false}}
+ onMount(()=>{const stream=new EventSource('/api/apps/'+encodeURIComponent(appID)+'/events?generation='+encodeURIComponent(appGeneration));stream.addEventListener('reset',()=>{if(autoRefresh)void load(selected)});stream.onerror=()=>{if(autoRefresh)void load(selected)};return()=>{generation++;stream.close()}});
+ async function load(id:string){const current=++generation;loading=true;error='';try{const response=await request('traces');if(current!==generation)return;list=response.traces;truncated=response.truncated;const defs=await request('definitions');if(current!==generation)return;definitions=defs;const refs=await request('views');if(current!==generation)return;references=refs.filter((v:SavedView)=>v.mode==='trace');if(selectedReference&&!id){const ref=references.find(v=>String(v.id)===selectedReference);if(ref?.trace){id=ref.trace;selected=id}else throw new Error(t('Trace reference unavailable'))};if(id){const d=await request('traces/'+encodeURIComponent(id)+(selectedReference?'?reference='+selectedReference:previewDefinition?'?previewDefinition='+previewDefinition:''));if(current===generation)detail=d}else detail=null}catch(e){if(current===generation){detail=null;error=e instanceof Error?e.message:t('Trace unavailable')}}finally{if(current===generation)loading=false}}
  $effect(()=>{revision;previewDefinition;selectedReference;void load(selected);return()=>{generation++}});
- function openReference(id:string){const ref=references.find(v=>String(v.id)===id);selectedReference=id;if(ref?.trace){selected=ref.trace;previewDefinition=String(ref.definition||'');if(ref.layout&&['tree','timeline','table'].includes(ref.layout))view=ref.layout}}
+ function openReference(id:string){const ref=references.find(v=>String(v.id)===id);selectedReference=id;if(ref?.trace){selected=ref.trace;previewDefinition=String(ref.definition||'');if(ref.layout&&['tree','timeline','table'].includes(ref.layout))view=ref.layout;history.replaceState(null,'',appURL(appID,{generation:appGeneration,trace:ref.trace,reference:id}))}}
  async function saveReference(){if(readOnly||!selected||!referenceName.trim())return;try{const ref=await request('views',{name:referenceName.trim(),mode:'trace',trace:selected,layout:view,definition:Number(previewDefinition||0)});referenceName='';await load(selected);openReference(String(ref.id))}catch(e){error=e instanceof Error?e.message:t('Trace unavailable')}}
  const rows=$derived(detail?traceRows(detail.operations,detail.relationships):[]);
  async function copy(){if(detail){try{await navigator.clipboard.writeText(JSON.stringify(detail,null,2))}catch{error=t('Copy unavailable. Select the displayed sanitized text.')}}}
@@ -21,13 +22,13 @@
 <section class="trace-workspace" aria-label={t('Trace exploration')}>
  <header><h2>{t('Trace exploration')}</h2><label class="toggle"><input type="checkbox" bind:checked={autoRefresh}/>{t('Automatic refresh')}</label><button onclick={()=>load(selected)} disabled={loading}>{t('Refresh')}</button></header>
  <p>{t('Observed operations and relationships. A trace is not a business journey; inclusive durations are not page dwell or unique total time.')}</p>
- <label>{t('Observed trace')}<select bind:value={selected} onchange={()=>selectedReference=''}><option value="">{t('Choose a trace')}</option>{#each list as item}<option value={item.trace}>{item.services.join(', ')} · {item.trace.slice(0,12)} · {item.spans} {t('spans')}</option>{/each}</select></label>
+ <label>{t('Observed trace')}<select bind:value={selected} onchange={()=>{selectedReference='';history.replaceState(null,'',appURL(appID,{generation:appGeneration,trace:selected||undefined}))}}><option value="">{t('Choose a trace')}</option>{#each list as item}<option value={item.trace}>{item.services.join(', ')} · {item.trace.slice(0,12)} · {item.spans} {t('spans')}</option>{/each}</select></label>
  <label>{t('Trace references')}<select value={selectedReference} onchange={e=>openReference(e.currentTarget.value)}><option value="">{t('No reference')}</option>{#each references as ref}<option value={String(ref.id)}>{ref.name}</option>{/each}</select></label>
  {#if loading}<p role="status">{t('Loading…')}</p>{/if}{#if error}<p role="alert">{error}</p>{/if}
  {#if truncated}<p>{t('Bounded results: narrow collection or inspect a recent trace. Some evidence is omitted.')}</p>{/if}
  {#if !loading&&!list.length}<p>{t('No retained traces. Export ordinary spans with valid trace/span IDs; no stage or session attributes are required.')}</p>{/if}
  {#if detail}
- <label>{t('Business interpretation')}<select bind:value={previewDefinition} onchange={()=>selectedReference=''}><option value="">{t('Capture-time definitions')}</option>{#each definitions as def}<option value={String(def.version)}>{t('Non-persisting preview')} v{def.version}</option>{/each}</select></label>
+ <label>{t('Business interpretation')}<select bind:value={previewDefinition} onchange={()=>{selectedReference='';history.replaceState(null,'',appURL(appID,{generation:appGeneration,trace:selected||undefined}))}}><option value="">{t('Capture-time definitions')}</option>{#each definitions as def}<option value={String(def.version)}>{t('Non-persisting preview')} v{def.version}</option>{/each}</select></label>
  <p>{t(detail.interpretation)}</p>
  {#if !readOnly}<form onsubmit={e=>{e.preventDefault();void saveReference()}}><label>{t('Reference name')}<input bind:value={referenceName} maxlength="160" required/></label><button disabled={!referenceName.trim()||loading}>{t('Save trace reference')}</button></form>{/if}
  <p class="mono">{detail.trace} · {t('Revision')} {detail.revision}</p>

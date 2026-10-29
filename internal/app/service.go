@@ -21,16 +21,22 @@ import (
 )
 
 type session struct {
-	CSRF          string
-	Created, Last time.Time
-	InviteID      int64
-	Expires       time.Time
+	CSRF              string
+	Created, Last     time.Time
+	AppID, Generation string
+	InviteID          int64
+	Expires           time.Time
 }
 type Service struct {
 	Store                             *Store
 	BrowserToken, ServerToken, Origin string
 	password                          []byte
-	Mu                                sync.Mutex
+	Mu                                *sync.Mutex
+	Registry                          *Registry
+	selected                          *AppEntry
+	redemptionReserved                bool
+	credentials                       []string
+	queries                           chan struct{}
 	sessions                          map[string]session
 	failures                          []time.Time
 	slots                             chan struct{}
@@ -51,7 +57,7 @@ func New(s *Store, pass, browser, server, origin string) (*Service, error) {
 	if e != nil {
 		return nil, e
 	}
-	return &Service{Store: s, BrowserToken: browser, ServerToken: server, Origin: origin, password: hash, sessions: map[string]session{}, slots: make(chan struct{}, 8), streams: make(chan struct{}, 8), logins: make(chan struct{}, 2)}, nil
+	return &Service{Mu: &sync.Mutex{}, queries: make(chan struct{}, 8), Store: s, BrowserToken: browser, ServerToken: server, Origin: origin, password: hash, sessions: map[string]session{}, slots: make(chan struct{}, 8), streams: make(chan struct{}, 8), logins: make(chan struct{}, 2)}, nil
 }
 func (s *Service) StartReceiver() error {
 	ln, e := net.Listen("tcp", "127.0.0.1:0")
@@ -104,4 +110,23 @@ func (s *Service) Close() {
 		s.closeReceiver()
 		s.closeReceiver = nil
 	}
+}
+
+// NewManaged shares one instance authority and receiver across bounded app stores.
+func NewManaged(registry *Registry, pass, origin string) (*Service, error) {
+	s, e := New(nil, pass, "unused-browser", "unused-server", origin)
+	if e != nil {
+		return nil, e
+	}
+	s.BrowserToken = ""
+	s.ServerToken = ""
+	s.Registry = registry
+	return s, nil
+}
+func (s *Service) forApp(a AppEntry) *Service {
+	secrets := []string{}
+	for _, entry := range s.Registry.current.Apps {
+		secrets = append(secrets, entry.Browser, entry.Server)
+	}
+	return &Service{credentials: secrets, Store: s.Registry.stores[a.ID], BrowserToken: a.Browser, ServerToken: a.Server, Origin: s.Origin, password: s.password, Mu: s.Mu, sessions: s.sessions, slots: s.slots, streams: s.streams, logins: s.logins, queries: s.queries, Registry: s.Registry, selected: &a}
 }

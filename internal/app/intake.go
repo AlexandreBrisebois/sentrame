@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -44,6 +45,16 @@ func (s *Service) source(ctx context.Context) (string, error) {
 	return s.producer(hs[0])
 }
 func (s *Service) producer(h string) (string, error) {
+	if s.Registry != nil && s.selected == nil {
+		s.Registry.mu.RLock()
+		defer s.Registry.mu.RUnlock()
+		_, role, ok := s.Registry.credential(h)
+		if ok {
+			return role, nil
+		}
+		return "", status.Error(codes.Unauthenticated, "invalid producer credential")
+	}
+
 	if s.BrowserToken != "" && h == "Bearer "+s.BrowserToken {
 		return "browser", nil
 	}
@@ -111,6 +122,14 @@ func (s *Service) accept(es []Evidence) error {
 	if len(es) > 2000 {
 		return status.Error(codes.InvalidArgument, "record limit")
 	}
+	if len(s.credentials) > 0 {
+		raw, _ := json.Marshal(es)
+		for _, secret := range s.credentials {
+			if secret != "" && strings.Contains(string(raw), secret) {
+				return status.Error(codes.InvalidArgument, "ingestion credentials must not appear in telemetry")
+			}
+		}
+	}
 	now := s.Store.Now()
 	for _, x := range es {
 		if x.Time < now.Add(-30*24*time.Hour).UnixNano() || x.Time > now.Add(5*time.Minute).UnixNano() {
@@ -129,6 +148,20 @@ func (s *Service) accept(es []Evidence) error {
 	return nil
 }
 func (s *Service) consumeLogs(ctx context.Context, ls plog.Logs) error {
+	if s.Registry != nil && s.selected == nil {
+		s.Registry.mu.RLock()
+		defer s.Registry.mu.RUnlock()
+		hs := client.FromContext(ctx).Metadata.Get("authorization")
+		if len(hs) != 1 {
+			return status.Error(codes.Unauthenticated, "producer credential required")
+		}
+		a, _, ok := s.Registry.credential(hs[0])
+		if !ok {
+			return status.Error(codes.Unauthenticated, "invalid producer credential")
+		}
+		return s.forApp(a).consumeLogs(ctx, ls)
+	}
+
 	source, e := s.source(ctx)
 	if e != nil {
 		return e
@@ -179,6 +212,20 @@ func (s *Service) consumeLogs(ctx context.Context, ls plog.Logs) error {
 	return s.accept(es)
 }
 func (s *Service) consumeTraces(ctx context.Context, ts ptrace.Traces) error {
+	if s.Registry != nil && s.selected == nil {
+		s.Registry.mu.RLock()
+		defer s.Registry.mu.RUnlock()
+		hs := client.FromContext(ctx).Metadata.Get("authorization")
+		if len(hs) != 1 {
+			return status.Error(codes.Unauthenticated, "producer credential required")
+		}
+		a, _, ok := s.Registry.credential(hs[0])
+		if !ok {
+			return status.Error(codes.Unauthenticated, "invalid producer credential")
+		}
+		return s.forApp(a).consumeTraces(ctx, ts)
+	}
+
 	source, e := s.source(ctx)
 	if e != nil {
 		return e
@@ -268,6 +315,20 @@ func (s *Service) consumeTraces(ctx context.Context, ts ptrace.Traces) error {
 	return s.accept(es)
 }
 func (s *Service) consumeMetrics(ctx context.Context, ms pmetric.Metrics) error {
+	if s.Registry != nil && s.selected == nil {
+		s.Registry.mu.RLock()
+		defer s.Registry.mu.RUnlock()
+		hs := client.FromContext(ctx).Metadata.Get("authorization")
+		if len(hs) != 1 {
+			return status.Error(codes.Unauthenticated, "producer credential required")
+		}
+		a, _, ok := s.Registry.credential(hs[0])
+		if !ok {
+			return status.Error(codes.Unauthenticated, "invalid producer credential")
+		}
+		return s.forApp(a).consumeMetrics(ctx, ms)
+	}
+
 	source, e := s.source(ctx)
 	if e != nil {
 		return e

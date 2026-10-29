@@ -78,6 +78,7 @@ func TestDiagnosticFixturesUseStandardWireIdentityStacksAndUnscopedBody(t *testi
 	}
 }
 func TestDiagnosticGenerationPreservesReplayStateAndLiteralRESTBodies(t *testing.T) {
+	t.Setenv("SENTRAME_APP_ID", strings.Repeat("a", 64))
 	specRaw, err := os.ReadFile("../../rest/fixtures/diagnostics.json")
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +112,7 @@ func TestDiagnosticGenerationPreservesReplayStateAndLiteralRESTBodies(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(reqs) != 7 || !bytes.Equal(reqs[1].Body, reqs[4].Body) || !bytes.Equal(reqs[2].Body, reqs[5].Body) || !strings.Contains(reqs[3].URL, "/api/errors?q="+manifest.Tag) {
+	if len(reqs) != 7 || !bytes.Equal(reqs[1].Body, reqs[4].Body) || !bytes.Equal(reqs[2].Body, reqs[5].Body) || !strings.Contains(reqs[3].URL, appAPI("errors")+"?q="+manifest.Tag) {
 		t.Fatal("literal requests must use exact prepared protobuf and appwide error discovery")
 	}
 }

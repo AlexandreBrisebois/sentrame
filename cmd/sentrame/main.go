@@ -24,7 +24,7 @@ func validOrigin(value string) bool {
 	return err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https") && parsed.Hostname() != "" && parsed.User == nil && value == parsed.Scheme+"://"+parsed.Host
 }
 func main() {
-	dbPath := env("SENTRAME_DB", ".sentrame/local.db")
+	dbPath := env("SENTRAME_DB", ".sentrame/workspaces/telemetry.db")
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0700); err != nil {
 		log.Fatal("Cannot create database directory")
 	}
@@ -33,23 +33,12 @@ func main() {
 		log.Fatal("SENTRAME_ORIGIN must be an absolute HTTP(S) origin without a path, credentials, query or fragment")
 	}
 
-	lease, e := os.OpenFile(dbPath+".lock", os.O_CREATE|os.O_RDWR, 0600)
-	if e != nil {
-		log.Fatal("Cannot open local database lease")
-	}
-	defer lease.Close()
-	if e = syscall.Flock(int(lease.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); e != nil {
-		log.Fatal("Database already owned by a running local service or reset")
-	}
-	s, e := app.Open(dbPath)
+	registry, e := app.OpenRegistry(dbPath)
 	if e != nil {
 		log.Fatal(e)
 	}
-	defer s.DB.Close()
-	if e = s.Cleanup(); e != nil {
-		log.Fatal(e)
-	}
-	svc, e := app.New(s, os.Getenv("SENTRAME_PASSPHRASE"), os.Getenv("SENTRAME_BROWSER_TOKEN"), os.Getenv("SENTRAME_SERVER_TOKEN"), origin)
+	defer registry.Close()
+	svc, e := app.NewManaged(registry, os.Getenv("SENTRAME_PASSPHRASE"), origin)
 	if e != nil {
 		log.Fatal(e)
 	}
@@ -68,7 +57,7 @@ func main() {
 			case <-ctx.Done():
 				return
 			case <-tick.C:
-				if err := s.Cleanup(); err != nil {
+				if err := registry.Cleanup(); err != nil {
 					log.Print("Lifecycle cleanup unavailable")
 				}
 			}

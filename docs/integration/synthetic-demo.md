@@ -1,5 +1,7 @@
 # Local synthetic demonstration
 
+Current multi-app setup: register/select the app in the owner UI, obtain generated connection settings, and configure the existing standard exporter/provider. Credentials route the app; no Sentrame SDK, app-ID attribute or instrumentation rewrite is required. Keep server credentials out of browser recipes. Journeys is the default; explicit Traces remains available. Greenfield installation does not import legacy data/credentials. See [app workspace guidance](../MULTI-APP.md). Synthetic fixture tools register/select only their demonstration app through owner APIs and seed synthetic mappings only there; a running service and owner passphrase are required.
+
 These demonstrations use the same authenticated standard OTLP ingestion, SQLite commit, derivation and protected read paths as other local producers. They do not instrument or contact WFS. Readable source cases are in `rest/fixtures/scenarios.json`; they are semantic fixture descriptions, not a proprietary telemetry protocol. The generator translates them to official OTLP Protobuf messages using the pinned `go.opentelemetry.io/proto/otlp` schema and `google.golang.org/protobuf` runtime.
 
 Run from the repository root after starting the local service with the same environment:

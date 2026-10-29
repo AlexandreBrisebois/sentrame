@@ -59,7 +59,7 @@ func generateWorkspace() error {
 	}
 	// Keep the existing demonstration's variables and overwrite only shared local
 	// endpoint/token values plus this new scope. Never print credentials.
-	values := map[string]string{"baseUrl": baseURL(), "browserToken": token, "workspaceScope": g.Scopes["workspace"]}
+	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "browserToken": token, "workspaceScope": g.Scopes["workspace"]}
 	existing, err := os.ReadFile("rest/.env")
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -102,7 +102,7 @@ func verifyWorkspace() error {
 	if err != nil {
 		return err
 	}
-	requests, err := parseREST("rest/workspace.http", map[string]string{"baseUrl": baseURL(), "browserToken": token, "workspaceScope": g.Scopes["workspace"]})
+	requests, err := parseREST("rest/workspace.http", map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "browserToken": token, "workspaceScope": g.Scopes["workspace"]})
 	if err != nil {
 		return err
 	}
@@ -125,15 +125,15 @@ func verifyWorkspace() error {
 			return readErr
 		}
 		if resp.StatusCode != r.Expected {
-			return fmt.Errorf("workspace request%d %s %s status%d, expected%d", i+1, r.Method, req.URL.Path, resp.StatusCode, r.Expected)
+			return fmt.Errorf("workspace request%d %s %s status%d, expected%d", i+1, r.Method, fixtureAPIPath(req.URL.Path), resp.StatusCode, r.Expected)
 		}
-		if r.Method == "GET" && req.URL.Path == "/api/snapshot" {
+		if r.Method == "GET" && fixtureAPIPath(req.URL.Path) == "/api/snapshot" {
 			snapshot = body
 		}
-		if r.Method == "GET" && req.URL.Path == "/api/timeline" {
+		if r.Method == "GET" && fixtureAPIPath(req.URL.Path) == "/api/timeline" {
 			timeline = body
 		}
-		fmt.Printf("PASS workspace %02d %s %s → %d\n", i+1, r.Method, req.URL.Path, resp.StatusCode)
+		fmt.Printf("PASS workspace %02d %s %s → %d\n", i+1, r.Method, fixtureAPIPath(req.URL.Path), resp.StatusCode)
 	}
 	if err = checkWorkspaceSnapshot(snapshot, g); err != nil {
 		return err

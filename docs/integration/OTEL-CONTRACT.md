@@ -1,5 +1,7 @@
 # Standard OpenTelemetry and optional Sentrame journey conventions
 
+Current multi-app setup: register/select the app in the owner UI, obtain generated connection settings, and configure the existing standard exporter/provider. Credentials route the app; no Sentrame SDK, app-ID attribute or instrumentation rewrite is required. Keep server credentials out of browser recipes. Journeys is the default; explicit Traces remains available. Greenfield installation does not import legacy data/credentials. See [app workspace guidance](../MULTI-APP.md). Synthetic fixture tools register/select only their demonstration app through owner APIs and seed synthetic mappings only there; a running service and owner passphrase are required.
+
 Use this reference to choose what to emit. The [developer guide](../DEVELOPER-GUIDE.md) explains SDK/exporter setup and authentication; the [user guide](../USER-GUIDE.md) explains mapping received records in Sentrame.
 
 ## What is standard, and what is Sentrame-specific?
