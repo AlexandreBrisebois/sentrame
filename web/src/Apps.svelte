@@ -6,7 +6,7 @@
  let name=$state(''),rename=$state(''),confirmation=$state(''),rotation=$state(''),error=$state(''),notice=$state(''),busy=$state(false);
  let secrets=$state<{browser:string;server:string;endpoint:string}|null>(null),showBrowser=$state(false),showServer=$state(false);
  const current=$derived(apps.find(a=>a.id===selected));
- let loadedID='';$effect(()=>{if(current&&current.id!==loadedID){rename=current.name;loadedID=current.id}});
+ let loadedID='';$effect(()=>{if(current&&current.id!==loadedID){rename=current.name;loadedID=current.id;secrets=null;showBrowser=false;showServer=false;rotation='';confirmation=''}});
  async function action(fn:()=>Promise<void>){busy=true;error='';notice='';try{await fn()}catch(e){error=e instanceof Error?t(e.message):t('Request failed. Try again.')}finally{busy=false}}
  async function register(e:SubmitEvent){e.preventDefault();await action(async()=>{const a=await request('apps',{name:name.trim()});onselect(a.id,true)})}
  async function reveal(role:string){await action(async()=>{secrets=await request('apps/'+selected+'/connection');if(role==='browser')showBrowser=true;else showServer=true})}
@@ -14,25 +14,31 @@
  async function rotate(){await action(async()=>{await request('apps/'+selected+'/rotate',{role:rotation});secrets=null;showBrowser=false;showServer=false;rotation='';notice=t('Credential rotated. Update the sender configuration.')})}
  async function remove(){await action(async()=>{await request('apps/'+selected+'/remove',{confirmation});onselect('')})}
 </script>
-<section aria-label={t('App settings')}>
+<section class="app-settings" aria-label={t('App settings')}>
  {#if current}
- <h2>{current.name}</h2>
+ <div class="app-heading"><span class="app-mark" aria-hidden="true">↗</span><div><span class="eyebrow">{t('Selected app')}</span><h2>{current.name}</h2></div></div>
+ <div class="settings-section">
  <form onsubmit={e=>{e.preventDefault();void action(async()=>{await request('apps/'+selected+'/rename',{name:rename});onselect(selected)})}}><label>{t('App name')}<input bind:value={rename} required maxlength="80"/></label><button disabled={busy||!rename.trim()}>{t('Rename app')}</button></form>
- <h3>{t('Connection settings')}</h3>
+ </div><div class="settings-section"><h3>{t('Connection settings')}</h3>
  <p>{t('Configure your existing standard OTLP/HTTP exporter. No Sentrame SDK, app-ID attribute or instrumentation changes are required.')}</p>
  <p>{t('Use the reachable base URL for your sender. Signal URLs end in /v1/logs, /v1/traces or /v1/metrics. A base endpoint exporter adds these paths; a signal endpoint uses the full path.')}</p>
- <code>{window.location.origin}</code><button class="secondary" onclick={()=>action(async()=>{await navigator.clipboard.writeText(window.location.origin);notice=t('Copied')})}>{t('Copy base endpoint')}</button>
- {#each ['logs','traces','metrics'] as signal}<div><code>{window.location.origin}/v1/{signal}</code><button class="text-button" onclick={()=>action(async()=>{await navigator.clipboard.writeText(window.location.origin+'/v1/'+signal);notice=t('Copied')})}>{t('Copy signal endpoint')} · {signal}</button></div>{/each}
- <p>{t('Server credentials belong only in server secret configuration. Browser credentials are untrusted; use the supported app-origin forwarder. Direct cross-origin browser export is not qualified.')}</p>
- {#each ['browser','server'] as role}
+ <div class="endpoint"><code>{window.location.origin}</code><button class="secondary" onclick={()=>action(async()=>{await navigator.clipboard.writeText(window.location.origin);notice=t('Copied')})}>{t('Copy base endpoint')}</button></div><details class="signal-details"><summary>{t('Copy signal endpoint')}</summary>
+ {#each ['logs','traces','metrics'] as signal}<div><code>{window.location.origin}/v1/{signal}</code><button class="text-button" onclick={()=>action(async()=>{await navigator.clipboard.writeText(window.location.origin+'/v1/'+signal);notice=t('Copied')})}>{t('Copy signal endpoint')} · {signal}</button></div>{/each}</details></div><div class="settings-section">
+ <p class="security-note">{t('Server credentials belong only in server secret configuration. Browser credentials are untrusted; use the supported app-origin forwarder. Direct cross-origin browser export is not qualified.')}</p>
+ <div class="credential-grid">{#each ['browser','server'] as role}
  <fieldset><legend>{t(role==='browser'?'Browser':'Server')}</legend><code class="credential">{role==='browser'&&showBrowser?secrets?.browser:role==='server'&&showServer?secrets?.server:'••••••••••••••••'}</code>
  <div class="button-row"><button disabled={busy} onclick={()=>reveal(role)}>{t('Reveal credential')}</button><button disabled={busy} onclick={()=>copy(role)}>{t('Copy Authorization header')}</button><button class="secondary" disabled={busy} onclick={()=>rotation=role}>{t('Rotate credential')}</button></div></fieldset>
- {/each}
+ {/each}</div>
  {#if rotation}<div role="group" aria-label={t('Confirm rotation')}><p>{t('Rotation immediately rejects the old credential. Update every sender using this role afterward.')} {t(rotation==='browser'?'Browser':'Server')}</p><button disabled={busy} onclick={rotate}>{t('Confirm rotation')}</button><button class="secondary" onclick={()=>rotation=''}>{t('Cancel')}</button></div>{/if}
- <details><summary>{t('Remove app')}</summary><p>{t('This permanently removes this app and its telemetry, mappings, references and viewer access. Type the exact app name to confirm.')}</p><label>{t('Confirmation')}<input bind:value={confirmation} autocomplete="off"/></label><button disabled={busy||confirmation!==current.name} onclick={remove}>{t('Remove app')}</button></details>
- {:else}<h2>{t('Add app')}</h2><p>{t('Register your app, then connect its existing OpenTelemetry exporter using the generated settings.')}</p>{/if}
+ </div><details class="settings-section danger-zone"><summary>{t('Remove app')}</summary><p>{t('This permanently removes this app and its telemetry, mappings, references and viewer access. Type the exact app name to confirm.')}</p><label>{t('Confirmation')}<input bind:value={confirmation} autocomplete="off"/></label><button disabled={busy||confirmation!==current.name} onclick={remove}>{t('Remove app')}</button></details>
+ {:else}<div class="register-intro"><span class="app-mark" aria-hidden="true">↗</span><p>{t('Register your app, then connect its existing OpenTelemetry exporter using the generated settings.')}</p></div>{/if}
  {#each apps.filter(a=>a.state==='deleting') as pending}<div role="status"><strong>{pending.name}</strong><p>{t('Removal pending. Retry removal or restart to resume.')}</p><button disabled={busy} onclick={()=>action(async()=>{await request('apps/'+pending.id+'/remove',{confirmation:pending.name});onselect('')})}>{t('Retry removal')}</button></div>{/each}
- <form onsubmit={register}><h3>{t('Add app')}</h3><label>{t('App name')}<input bind:value={name} required maxlength="80" autocomplete="off"/></label><p>{t('Use a unique name of 1–80 characters. Up to 32 apps per installation.')}</p><button disabled={busy||!name.trim()}>{t('Register app')}</button></form>
+ {#snippet registration()}<form class="register-form" onsubmit={register}><label>{t('App name')}<input bind:value={name} required maxlength="80" autocomplete="off"/></label><p>{t('Use a unique name of 1–80 characters. Up to 32 apps per installation.')}</p><button disabled={busy||!name.trim()}>{t('Register app')}</button></form>{/snippet}
+ {#if current}<details class="settings-section add-another"><summary>{t('Add app')}</summary>{@render registration()}</details>{:else}{@render registration()}{/if}
  {#if error}<p class="error" role="alert">{error}</p>{/if}{#if notice}<p role="status">{notice}</p>{/if}
- <button class="secondary" onclick={()=>{secrets=null;onclose()}}>{t('Close')}</button>
+
 </section>
+
+<style>
+.app-settings{min-width:0}.app-heading{display:flex;align-items:center;gap:14px;margin-bottom:24px}.app-heading h2{font-size:25px;overflow-wrap:anywhere}.app-heading .eyebrow{display:block;margin:0 0 4px}.app-mark{display:inline-grid;place-items:center;flex:none;width:44px;height:44px;border:1px solid #cbd9c5;border-radius:10px;background:#edf3e8;color:#3c7056;font-size:23px}.settings-section{border-top:1px solid var(--line);padding:20px 0}.settings-section h3{margin-bottom:10px}.app-settings p{color:var(--muted);font-size:12px;line-height:1.7}.settings-section form label{max-width:420px;margin-bottom:10px}.endpoint{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#f2f5ed;border:1px solid #dfe7d9;border-radius:7px;padding:13px 14px}.endpoint code,.signal-details code{font-size:11px;overflow-wrap:anywhere}.signal-details{margin-top:8px}.signal-details summary{font-size:11px;color:var(--green)}.signal-details>div{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);padding:7px 0}.signal-details button{font-size:10px}.security-note{background:#f6f3e9;border-left:3px solid #bba174;padding:12px 14px}.credential-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.credential-grid fieldset{border:1px solid var(--line);border-radius:7px;padding:12px 14px 14px;margin:0}.credential-grid legend{font-weight:650;font-size:12px;padding:0 5px}.credential{display:block;min-height:30px;font-size:11px;overflow-wrap:anywhere}.credential-grid .button-row{gap:7px;margin-top:8px}.credential-grid button{font-size:10px;min-height:36px;padding:6px 9px}.danger-zone summary{color:#87483b}.danger-zone label{max-width:420px;margin-bottom:12px}.register-intro{display:flex;gap:15px;align-items:flex-start;margin-bottom:25px}.register-intro p{font-size:13px;margin:0}.register-form{background:#f4f7ef;border:1px solid #dfe7d9;border-radius:8px;padding:20px}.register-form label{font-size:12px}.register-form p{margin:8px 0 18px}.register-form button{min-width:150px}.app-settings>.error{margin-top:16px}@media(max-width:600px){.credential-grid{grid-template-columns:1fr}.endpoint{align-items:flex-start;flex-direction:column}.register-form{padding:16px}.register-form button{width:100%}.signal-details>div{align-items:flex-start;flex-direction:column;gap:2px}}
+</style>
