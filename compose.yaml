@@ -1,33 +1,13 @@
-name: sentrame
 services:
   sentrame:
-    image: ${SENTRAME_IMAGE:?Set SENTRAME_IMAGE to a published brisebois/sentrame tag or digest}
+    image: ${SENTRAME_IMAGE:?Set SENTRAME_IMAGE in .env}
     restart: unless-stopped
-    read_only: true
-    user: "10001:10001"
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    pids_limit: 256
-    stop_grace_period: 30s
-    environment:
-      SENTRAME_ADDR: 0.0.0.0:8096
-      SENTRAME_DB: /data/sentrame.db
-      SENTRAME_ORIGIN: ${SENTRAME_ORIGIN:?Set the exact browser origin, including https and port when needed}
-      SENTRAME_PASSPHRASE: ${SENTRAME_PASSPHRASE:?Set a fresh owner passphrase of at least 12 characters}
-      SENTRAME_BROWSER_TOKEN: ${SENTRAME_BROWSER_TOKEN:?Set a fresh browser producer token}
-      SENTRAME_SERVER_TOKEN: ${SENTRAME_SERVER_TOKEN:?Set a distinct fresh server producer token}
-    ports:
-      - "127.0.0.1:${SENTRAME_PORT:-8096}:8096"
+    env_file: .env
     volumes:
       - type: bind
-        source: ${SENTRAME_DATA_DIR:?Set an existing local data folder}
+        source: ${SENTRAME_DATA_DIR:?Set SENTRAME_DATA_DIR in .env}
         target: /data
         bind:
           create_host_path: false
-    tmpfs:
-      - /tmp:size=16m,mode=1777
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: "3"
+    ports:
+      - "127.0.0.1:${SENTRAME_PORT:-8096}:8096"

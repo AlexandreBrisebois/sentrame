@@ -36,7 +36,16 @@ Version tags may be overwritten by a later authorized run; a digest identifies t
 
 The NAS needs Docker Engine/Compose with either an amd64 or arm64 Linux host and a **local** filesystem for SQLite. Do not put `/data` on an SMB/NFS mount. No NAS hardware, filesystem, resource availability or existing tunnel has been inspected here.
 
-Copy `compose.yaml` and `.env.example` into the chosen local NAS project directory, then:
+Choose one standalone Compose example:
+
+| File | Access | Start command |
+| --- | --- | --- |
+| `compose.yaml` | Host loopback port8096, configurable with `SENTRAME_PORT` | `docker compose up -d` |
+| `compose.cloudflare.yaml` | Existing external `cloudflare-proxy` network, no host port | `docker compose -f compose.cloudflare.yaml up -d` |
+
+Copy the chosen file and `.env.example` into your deployment directory. Use one Compose file per deployment; the Cloudflare example is a complete configuration, not an override layered onto the standard file.
+
+Then:
 
 ```sh
 cp .env.example .env
@@ -46,7 +55,8 @@ chmod 600 .env
 Edit `.env` locally:
 
 - Set `SENTRAME_IMAGE` to the published tag or, preferably, index digest.
-- Set `SENTRAME_ORIGIN` to the exact URL used by browsers, such as `https://sentrame.your-domain.example`. It controls same-origin mutation checks and secure cookies; do not use a wildcard or a URL path.
+- Keep `.env` alongside the selected Compose file; Compose uses it for substitutions and passes its application settings into the container. Fill every credential before starting; configuration syntax validation does not validate credential strength.
+- For the standard example, use `SENTRAME_ORIGIN=http://127.0.0.1:8096` (adjust its port if changing `SENTRAME_PORT`). For the Cloudflare example, set `SENTRAME_ORIGIN` to your exact public HTTPS origin, such as `https://sentrame.your-domain.example`. It controls same-origin mutation checks and secure cookies; do not use a wildcard or a URL path.
 - Set a fresh owner passphrase of at least 12 characters and two distinct random producer tokens. Use `openssl rand -hex 32` locally for each token. Never reuse the synthetic Mac credentials for deployment.
 - Keep these secrets on the NAS and in authorized exporter configuration. Container environment variables are visible to administrators with Docker access.
 
@@ -76,19 +86,27 @@ docker compose ps
 docker compose exec sentrame /app/healthcheck
 ```
 
-The root filesystem is read-only; `/tmp` is a bounded tmpfs. The process runs as UID/GID 10001 with dropped capabilities and a 256-PID limit. No RAM/CPU reservation or NAS fit is inferred. Retention is 30-day detail and 12-month supported summaries; capacity/disk monitoring and backups are still required.
+Both minimal Compose examples inherit the image’s non-root UID/GID10001, listening address, database path and health check. It loads the application settings from `.env` and adds the selected data bind and existing proxy network. Optional runtime isolation/resource settings are left to the deployment environment; no capability-drop setting is required by this example. Retention is30-day detail and12-month supported summaries; capacity/disk monitoring and backups are still required.
 
 Keep a coherent SQLite backup. Stopping Sentrame before copying the whole selected data folder is the simplest backup/rollback boundary. A running database must use a SQLite-aware backup including its WAL state, not an arbitrary database-file copy.
 
-## Connect the existing tunnel
+## Connect the existing proxy network
 
-The default host port is **127.0.0.1:8096**, so it is not exposed to the LAN. There is no tunnel container/token/DNS setup in this Compose project.
+`compose.cloudflare.yaml` attaches Sentrame to the existing external Docker network **cloudflare-proxy**. That network and the Cloudflare connector/proxy must already exist. This project does not create a second connector, manage its token or configure DNS.
 
-- If the existing connector runs on the NAS host, its origin can be `http://127.0.0.1:8096`.
-- If the connector runs in Docker, its `localhost` is a different container. Deliberately attach Sentrame and the connector to the existing appropriate Docker network, then use `http://sentrame:8096` as the origin. Review the actual network/connector configuration first; this package does not auto-attach to a shared network or create another tunnel.
-- A reverse proxy must preserve the browser's `Origin` header. The configured `SENTRAME_ORIGIN` must match the public HTTPS URL. Sentrame does not trust forwarded headers for authorization or app attribution.
+In the existing proxy, point the Sentrame hostname at:
 
-Verify the real HTTPS hostname, secure cookies, protected reads, CSRF rejection, live SSE flushing/reconnect and temporary-viewer expiry/revocation through that route before sharing access. HTTPS reachability alone does not qualify the route. Public-hostname Tunnel gRPC is not advertised; use the separately verified OTLP/HTTP paths.
+```text
+http://sentrame:8096
+```
+
+Start that configuration with `docker compose -f compose.cloudflare.yaml up -d`. Include `-f compose.cloudflare.yaml` in its `config`, `pull`, `ps`, `exec` and `stop` commands as well.
+
+Both the proxy and Sentrame must be attached to `cloudflare-proxy` for that container name to resolve. There is no host `ports` mapping; use the public hostname through the proxy to open Sentrame. The origin link above is HTTP within the shared network; the browser-facing hostname should use HTTPS.
+
+Set `SENTRAME_ORIGIN` in `.env` to the exact public browser origin, for example `https://sentrame.example.com`, without a trailing slash or URL path. The proxy must preserve the browser's `Origin` header. Sentrame does not use forwarded headers to grant producer or viewer authority.
+
+Check the real hostname, secure cookies, protected reads, CSRF rejection, live SSE flushing/reconnect and temporary-viewer expiry/revocation through the route before sharing access. HTTPS reachability alone does not qualify the route. Public-hostname Tunnel gRPC is not advertised; use the separately verified OTLP/HTTP paths.
 
 ## Prepare OTel senders after route verification
 

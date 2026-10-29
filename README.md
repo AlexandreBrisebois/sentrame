@@ -31,7 +31,7 @@ The workspace preserves the warm-paper background, forest-green branding and lin
 
 Image repository: [`brisebois/sentrame`](https://hub.docker.com/r/brisebois/sentrame). The first release candidate is `brisebois/sentrame:v0.1.0-rc.1`. The publishing workflow builds and smoke-tests **Linux AMD64 and ARM64** before publishing one multi-architecture tag. Check [available tags](https://hub.docker.com/r/brisebois/sentrame/tags) or the [Container workflow](https://github.com/AlexandreBrisebois/sentrame/actions/workflows/container.yml) for publication status.
 
-Copy [compose.yaml](compose.yaml) and [.env.example](.env.example) into your deployment folder. Copy `.env.example` to `.env`, then set:
+Choose [compose.yaml](compose.yaml) for direct local access, or [compose.cloudflare.yaml](compose.cloudflare.yaml) for the existing `cloudflare-proxy` network. Both are standalone examples and use [.env.example](.env.example). Copy the selected Compose file and environment example into your deployment folder. Copy `.env.example` to `.env`, then set:
 
 - `SENTRAME_IMAGE`: a published tag or immutable image digest.
 - `SENTRAME_DATA_DIR`: the existing local filesystem folder to bind into `/data`, writable by UID/GID `10001`.
@@ -46,7 +46,7 @@ docker compose pull
 docker compose up -d --wait
 ```
 
-The default published port is host loopback `127.0.0.1:8096`. Remote access needs a deliberately configured reverse proxy or network route. See the [deployment guide](docs/NAS.md) for folder ownership, HTTPS/Tunnel integration, health checks, upgrades and rollback.
+The standard example publishes host loopback `127.0.0.1:8096`. For Cloudflare, use `docker compose -f compose.cloudflare.yaml up -d --wait`; that standalone file joins the existing external `cloudflare-proxy` network and publishes no host port. Configure the proxy target as `http://sentrame:8096` and set `SENTRAME_ORIGIN` to the public HTTPS origin. See the [deployment guide](docs/NAS.md) for folder ownership, HTTPS/Tunnel integration, health checks, upgrades and rollback.
 
 ## Try it locally from source
 

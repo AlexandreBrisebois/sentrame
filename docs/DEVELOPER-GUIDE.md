@@ -37,6 +37,30 @@ Use your deployed Sentrame origin, for example `https://sentrame.your-domain.exa
 
 Send `Authorization: Bearer <producer-token>`. Do not put tokens in URLs or use the owner's viewer passphrase as an ingestion credential. Metrics are currently receipt-only; they do not create individual journey steps or supported application-metric arithmetic.
 
+### Generate the producer tokens
+
+Sentrame checks the received bearer token against its configured value; there is no special token format or signing algorithm. The two configured producer tokens must be nonempty and different. Use cryptographically random values rather than chosen words.
+
+Run this command twice on your own machine, once for each token:
+
+```sh
+openssl rand -hex 32
+openssl rand -hex 32
+```
+
+Each command produces 32 random bytes encoded as 64 hexadecimal characters. Put the first value in Sentrame’s private deployment `.env` as `SENTRAME_BROWSER_TOKEN` and the second as `SENTRAME_SERVER_TOKEN`:
+
+```dotenv
+SENTRAME_BROWSER_TOKEN=REPLACE_WITH_FIRST_GENERATED_VALUE
+SENTRAME_SERVER_TOKEN=REPLACE_WITH_SECOND_GENERATED_VALUE
+```
+
+The placeholders above are not working credentials. Configure trusted .NET/Next.js servers with the **same server-token value** and send it in `Authorization: Bearer <server-token>`. A browser-forwarding route uses the browser-token value, preserving untrusted browser authority. Keep the server token and viewer passphrase out of browser bundles, Git and URLs.
+
+Restart Sentrame after changing its environment, and update the affected exporters to match. If rotating a token, exporters still using the old value will be denied. The owner passphrase and temporary-viewer invitations are separate from these ingestion credentials.
+
+### Configure the exporter
+
 For SDKs configured through standard environment variables:
 
 ```dotenv

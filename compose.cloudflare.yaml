@@ -1,0 +1,18 @@
+services:
+  sentrame:
+    image: ${SENTRAME_IMAGE:?Set SENTRAME_IMAGE in .env}
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - type: bind
+        source: ${SENTRAME_DATA_DIR:?Set SENTRAME_DATA_DIR in .env}
+        target: /data
+        bind:
+          create_host_path: false
+    networks:
+      - cloudflare-proxy
+
+networks:
+  cloudflare-proxy:
+    external: true
+    name: cloudflare-proxy
