@@ -1,0 +1,229 @@
+[
+  {
+    "name": "workspace",
+    "scope": "workspace",
+    "producer": "browser",
+    "events": [
+      {
+        "name": "discovery.entered",
+        "record": "common-01-start",
+        "offset": "-120s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-01-goal",
+        "offset": "-118s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-02-start",
+        "offset": "-116s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-02-goal",
+        "offset": "-114s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-03-start",
+        "offset": "-112s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-03-goal",
+        "offset": "-110s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-04-start",
+        "offset": "-108s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-04-goal",
+        "offset": "-106s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-05-start",
+        "offset": "-104s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-05-goal",
+        "offset": "-102s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-06-start",
+        "offset": "-100s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-06-goal",
+        "offset": "-98s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-07-start",
+        "offset": "-96s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-07-goal",
+        "offset": "-94s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-08-start",
+        "offset": "-92s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-08-goal",
+        "offset": "-90s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-09-start",
+        "offset": "-88s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-09-goal",
+        "offset": "-86s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-10-start",
+        "offset": "-84s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-10-goal",
+        "offset": "-82s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-11-start",
+        "offset": "-80s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-11-goal",
+        "offset": "-78s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-12-start",
+        "offset": "-76s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-12-goal",
+        "offset": "-74s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-13-start",
+        "offset": "-72s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-13-goal",
+        "offset": "-70s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-14-start",
+        "offset": "-68s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-14-goal",
+        "offset": "-66s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-15-start",
+        "offset": "-64s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-15-goal",
+        "offset": "-62s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-16-start",
+        "offset": "-60s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-16-goal",
+        "offset": "-58s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-17-start",
+        "offset": "-56s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-17-goal",
+        "offset": "-54s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-18-start",
+        "offset": "-52s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-18-goal",
+        "offset": "-50s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-19-start",
+        "offset": "-48s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-19-goal",
+        "offset": "-46s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "common-20-start",
+        "offset": "-44s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "common-20-goal",
+        "offset": "-42s"
+      },
+      {
+        "name": "discovery.entered",
+        "record": "rare-start",
+        "offset": "-25s"
+      },
+      {
+        "name": "vote.requested",
+        "record": "rare-intent",
+        "offset": "-23s"
+      },
+      {
+        "name": "completion.entered",
+        "record": "rare-goal",
+        "offset": "-21s"
+      },
+      {
+        "name": "workspace.hint.shown",
+        "record": "rare-unmapped",
+        "offset": "-125s"
+      }
+    ]
+  }
+]

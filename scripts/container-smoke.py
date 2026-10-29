@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""Exercise a disposable image through its public HTTP/OTLP and local volume.
+
+Requires a working Docker daemon. Creates and removes only uniquely named test
+containers/bind folders. It never uses the repository's review database or credentials.
+"""
+import http.client
+import http.cookiejar
+import json
+import os
+import secrets
+import socket
+import subprocess
+import tempfile
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+
+def docker(*args):
+    return subprocess.check_output(["docker", *args], text=True).strip()
+
+
+def wait_for_ready(request, timeout=90, pause=time.sleep, clock=time.monotonic):
+    deadline = clock() + timeout
+    while clock() < deadline:
+        try:
+            with request("/ready") as response:
+                if response.status == 200:
+                    return
+        except urllib.error.HTTPError as error:
+            # A wrong route/auth response is not a startup race.
+            if error.code != 503:
+                raise
+            error.close()
+        except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.RemoteDisconnected):
+            pass
+        pause(1)
+    raise RuntimeError("Container readiness did not pass within 90 seconds")
+
+
+def smoke_payload(suffix, server_now):
+    # Keep the synthetic occurrence inside the receiver's event-time window.
+    # Host/VM clocks are independent; future source time is correctly excluded
+    # from a historical query ending at the receiver's current time.
+    return {"resourceLogs": [{"resource": {"attributes": [
+            {"key": "service.name", "value": {"stringValue": "sentrame-container-smoke"}}
+        ]}, "scopeLogs": [{"logRecords": [{"timeUnixNano": str(int(server_now) - 1_000_000_000),
+            "eventName": "container.smoke." + suffix, "severityNumber": 9}]}]}]}
+
+
+def main():
+    image = os.environ.get("IMAGE_UNDER_TEST", "sentrame:review")
+    platform = os.environ.get("PLATFORM_UNDER_TEST", "linux/arm64")
+    if platform not in ("linux/amd64", "linux/arm64"):
+        raise SystemExit("Choose linux/amd64 or linux/arm64")
+    suffix = secrets.token_hex(6)
+    name = "sentrame-smoke-" + suffix
+    data_temporary = tempfile.TemporaryDirectory(prefix="sentrame-smoke-data-")
+    data_folder = Path(data_temporary.name) / "data"
+    data_folder.mkdir()
+    # Only this disposable, synthetic test mount is world-writable. Its parent
+    # stays mode0700. Deployment uses the chosen UID/GID10001-owned mode0700 folder.
+    # Container UID10001 can write; the host test user can unlink files at cleanup.
+    data_folder.chmod(0o777)
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        port = listener.getsockname()[1]
+    origin = f"http://127.0.0.1:{port}"
+    owner, browser, server = (secrets.token_hex(24) for _ in range(3))
+    jar = http.cookiejar.CookieJar()
+    client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    def request(path, body=None, bearer=None):
+        headers = {"Origin": origin}
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+        if bearer:
+            headers["Authorization"] = "Bearer " + bearer
+        req = urllib.request.Request(origin + path, headers=headers,
+                                     data=None if body is None else json.dumps(body).encode())
+        return client.open(req, timeout=10)
+
+    def login():
+        with request("/api/login", {"passphrase": owner}) as response:
+            assert response.status == 200
+
+    def snapshot_has_record():
+        with request("/api/snapshot") as response:
+            data = json.load(response)
+        matching = [e for e in data["discovered"] if e["name"] == "container.smoke." + suffix]
+        assert len(matching) == 1 and matching[0]["count"] == 1, "Committed evidence missing or duplicated"
+        assert any(e["name"] == "container.smoke." + suffix for e in data["model"]["unassigned"]), "Standard record must remain accepted-unassigned"
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="sentrame-container-env-") as temporary:
+            env_file = Path(temporary) / "runtime.env"
+            env_file.write_text("\n".join([
+                "SENTRAME_ORIGIN=" + origin, "SENTRAME_PASSPHRASE=" + owner,
+                "SENTRAME_BROWSER_TOKEN=" + browser, "SENTRAME_SERVER_TOKEN=" + server,
+            ]) + "\n")
+            env_file.chmod(0o600)
+            docker("run", "--detach", "--name", name, "--platform", platform,
+                   "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
+                   "--pids-limit", "256", "--tmpfs", "/tmp:size=16m,mode=1777",
+                   "--publish", f"127.0.0.1:{port}:8096", "--mount", "type=bind,source=" + str(data_folder) + ",target=/data",
+                   "--env-file", str(env_file), image)
+        wait_for_ready(request)
+        assert docker("image", "inspect", "--format", "{{.Config.User}}", image) == "10001:10001", "Image must default to the non-root service user"
+        assert docker("image", "inspect", "--format", "{{.Architecture}}", image) == platform.split("/")[1], "Image platform metadata is wrong"
+        docker("exec", name, "/app/healthcheck")
+        with request("/") as response:
+            assert b'<div id="app">' in response.read(), "Static frontend missing from image"
+        try:
+            request("/api/snapshot")
+            raise AssertionError("Anonymous protected read was accepted")
+        except urllib.error.HTTPError as error:
+            assert error.code == 401
+        login()
+        with request("/api/snapshot") as response:
+            server_now = json.load(response)["now"]
+        payload = smoke_payload(suffix, server_now)
+        with request("/v1/logs", payload, server) as response:
+            assert response.status == 200
+        snapshot_has_record()
+        with request("/api/events") as response:
+            assert response.headers.get_content_type() == "text/event-stream"
+            assert response.readline().startswith(b"event: reset")
+        docker("restart", "--time", "30", name)
+        wait_for_ready(request)
+        jar.clear()
+        login()
+        snapshot_has_record()
+        print(f"PASS {platform}: non-root read-only image, readiness, static UI, protected read, standard OTLP/HTTP JSON log, SSE and persisted evidence after restart")
+    except Exception:
+        # This container contains only disposable synthetic data. Print bounded
+        # startup diagnostics, never its environment or generated credentials.
+        try:
+            print("Container state:", docker("inspect", "--format", "{{.State.Status}} exit={{.State.ExitCode}}", name), flush=True)
+            print(docker("logs", "--tail", "20", name), flush=True)
+        except subprocess.CalledProcessError:
+            pass
+        raise
+    finally:
+        subprocess.run(["docker", "rm", "--force", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        data_temporary.cleanup()
+
+
+if __name__ == "__main__":
+    main()

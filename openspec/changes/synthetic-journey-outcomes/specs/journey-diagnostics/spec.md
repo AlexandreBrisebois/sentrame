@@ -18,7 +18,11 @@ The system SHALL associate client/server exceptions with a journey point only th
 - **THEN** the system does not attach it as that journey's cause
 
 ### Requirement: Inspectable scrubbed diagnostic detail
-The system SHALL show available exception type, sanitized message, stack, runtime, app version, service and deployment context. Missing fields SHALL remain unavailable. Detail and copy actions SHALL use the same privacy and permission policy and SHALL NOT expose secrets, household/person identifiers or unsanitized request content.
+The system SHALL show available exception type, scrubbed message/stack, runtime, version, service and deployment context. Missing fields SHALL remain unavailable. Detail and copy SHALL use the same permissions and versioned privacy projection, redacting known credentials and personal identifiers before storage. Raw request content SHALL remain excluded; the interface SHALL disclose limits of text scrubbing.
+
+#### Scenario: Controlled diagnostic text
+- **WHEN** a producer emits diagnostic text
+- **THEN** guidance requires controlled technical messages rather than customer content and the interface discloses that pattern-based scrubbing cannot guarantee removal of every sensitive value
 
 #### Scenario: Copy context for a developer or coding agent
 - **WHEN** an authorized viewer copies an exception's diagnostic context
@@ -57,3 +61,22 @@ The system SHALL preserve activity after exceptions, show later goal evidence an
 #### Scenario: Nothing observed afterward
 - **WHEN** no further events follow a linked exception within the observation window
 - **THEN** the view says no further activity observed and includes collection/window limitations without claiming a causal exit
+
+### Requirement: Bounded application-wide diagnostic discovery
+The owner SHALL discover retained errors and exceptions independently of visit correlation through protected search. Standard exception attributes, failed-span status descriptions and error-log string bodies SHALL use a versioned scrubbed projection before persistence. Messages SHALL be limited to 2048 UTF-8 bytes; stacks to 8192 bytes and forty lines, processing at most 64 KiB per field. Ordinary informational bodies and unknown attributes SHALL remain omitted.
+
+#### Scenario: Background error without a visit
+- **WHEN** a standard error log arrives without a visit identifier
+- **THEN** its permitted message remains searchable in application-wide errors without inventing a journey or person
+
+#### Scenario: Exception message and stack
+- **WHEN** a standard exception carries a message or stack, with or without an exception type
+- **THEN** supported fields are bounded and scrubbed, unavailable fields remain explicit, source maps are not fabricated and metrics remain receipt-only
+
+#### Scenario: Error details expire
+- **WHEN** detailed evidence expires after thirty days or is deleted
+- **THEN** diagnostic search excludes it immediately and twelve-month summaries retain no diagnostic free text
+
+#### Scenario: Projection upgrade and replay
+- **WHEN** identified evidence accepted under the earlier projection is retransmitted after diagnostic-detail activation
+- **THEN** comparison uses the original receipt policy without overwriting or backfilling old rows; conflicts in fields retained by that policy still reject

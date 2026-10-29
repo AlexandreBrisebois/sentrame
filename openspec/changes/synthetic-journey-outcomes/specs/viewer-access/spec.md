@@ -4,7 +4,7 @@
 
 Allow a small team to view journey evidence and invite another viewer while keeping access credentials and permissions separate from tracked application sessions. This is a proposed contract.
 
-Release A includes owner passphrase access. Invitations are deferred from that release, with the narrow invitation design below already selected. Broader read-only app-workspace access remains retained roadmap B, not an implicit expansion of these grants.
+Release A originally included owner passphrase access only. On 2026-10-28 the owner explicitly authorized the additional app-wide temporary read-only invitation mode below. The narrower visit-only mode remains deferred; an app-wide grant is a separate explicit choice, not a silent widening of a visit grant.
 
 ## ADDED Requirements
 
@@ -70,3 +70,28 @@ The system SHALL avoid exposing passphrases, invitation bearers or viewer cookie
 #### Scenario: Unsafe redirect
 - **WHEN** an invitation requests an unapproved external redirect
 - **THEN** redemption does not navigate to it or disclose the bearer there
+
+### Requirement: Explicit app-wide temporary viewer access
+The owner SHALL be able to create and revoke one-use invitations for read-only access to the current application. Grants SHALL include retained history, live views, references and sanitized diagnostics. Expiry SHALL be absolute from creation, with one-hour, default24-hour and seven-day options. Grants SHALL bind to stable app identity and registration generation. They SHALL NOT authorize configuration, saved-view mutations, deletion or further invitations.
+
+#### Scenario: Redeem and browse
+- **WHEN** a viewer explicitly accepts an unused, unexpired app-wide invitation
+- **THEN** atomic redemption creates a distinct HttpOnly cookie session, and the viewer may filter and inspect retained historical/live evidence and references
+- **AND** server authorization rejects every operation outside the read-only allowlist even if the viewer forges API requests
+
+#### Scenario: Expiry, revocation and restart
+- **WHEN** the grant expires, is revoked, the app is disabled or its registration changes
+- **THEN** new reads are denied and open SSE streams close within five seconds
+- **AND** the interface clears retained workspace content after the next session check, including in historical and paused views
+- **AND** service restart invalidates sessions without making consumed invitation links reusable
+
+#### Scenario: Invitation administration and bearer handling
+- **WHEN** the owner creates an invitation
+- **THEN** the link carries its bearer in a URL fragment, the frontend removes it before API calls and redemption requires an explicit user action and same-origin POST
+- **AND** only a digest is stored, listings reveal no bearer, and invite administration requires owner access with origin/CSRF proof for mutations
+- **AND** at most100 active grants,100 inactive audit records and128 in-memory sessions are retained under the declared pruning rules
+
+#### Scenario: Clear scope and limits
+- **WHEN** the owner prepares a link or a viewer accepts it
+- **THEN** the interface explains whole-app read access, expiry, one-use redemption, revocation and that already copied material cannot be recalled
+- **AND** local loopback links do not imply access from another machine or deployment qualification

@@ -1,0 +1,172 @@
+name: Container
+
+on:
+  pull_request:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the tested multi-architecture image to Docker Hub
+        type: boolean
+        default: false
+      image_tag:
+        description: Docker tag for a manual publication (no latest tag is generated)
+        type: string
+        default: review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: brisebois/sentrame
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      go_image: ${{ steps.builders.outputs.go_image }}
+      node_image: ${{ steps.builders.outputs.node_image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.13.0
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Resolve immutable builder manifests for all jobs
+        id: builders
+        run: python3 scripts/resolve-builder-images.py
+      - name: Container probe regression checks
+        run: python3 scripts/test_container_smoke.py
+      - name: Backend behavior and static checks
+        run: |
+          go test ./... -count=1
+          go vet ./...
+      - name: Frontend behavior and production build
+        run: |
+          npm --prefix web ci
+          npm --prefix web test
+          npm --prefix web run build
+
+  smoke:
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build one architecture for local execution
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          build-args: |
+            GO_IMAGE=${{ needs.checks.outputs.go_image }}
+            NODE_IMAGE=${{ needs.checks.outputs.node_image }}
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          push: false
+          tags: sentrame:smoke-${{ matrix.arch }}
+          cache-from: type=gha,scope=container-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=container-${{ matrix.arch }}
+      - name: Verify readiness, static app, OTLP durability and restart
+        env:
+          IMAGE_UNDER_TEST: sentrame:smoke-${{ matrix.arch }}
+          PLATFORM_UNDER_TEST: linux/${{ matrix.arch }}
+        run: python3 scripts/container-smoke.py
+
+  publish:
+    needs: [checks, smoke]
+    if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # Optional GitHub environment protection can require a human approval here.
+    environment: dockerhub
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate publication settings
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          REQUESTED_TAG: ${{ inputs.image_tag }}
+          REGISTRY_USER: ${{ vars.DOCKERHUB_USERNAME || 'brisebois' }}
+          REGISTRY_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          tag = os.environ['REF_NAME'] if os.environ['EVENT_NAME'] == 'push' else os.environ['REQUESTED_TAG']
+          if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}', tag) or tag == 'latest':
+              raise SystemExit('Choose an explicit release/review tag; latest is not published.')
+          if not os.environ['REGISTRY_USER'] or not os.environ['REGISTRY_TOKEN']:
+              raise SystemExit('Configure DOCKERHUB_USERNAME and secret DOCKERHUB_TOKEN.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('tag=' + tag + '\n')
+              output.write('sha_tag=sha-' + os.environ['GITHUB_SHA'][:12] + '\n')
+          PY
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME || 'brisebois' }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Publish one tag with both platform manifests
+        id: image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          build-args: |
+            GO_IMAGE=${{ needs.checks.outputs.go_image }}
+            NODE_IMAGE=${{ needs.checks.outputs.node_image }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            brisebois/sentrame:${{ steps.release.outputs.tag }}
+            brisebois/sentrame:${{ steps.release.outputs.sha_tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/AlexandreBrisebois/sentrame
+            org.opencontainers.image.revision=${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+          cache-from: |
+            type=gha,scope=container-amd64
+            type=gha,scope=container-arm64
+      - name: Verify the published platforms
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          docker buildx imagetools inspect "$IMAGE@$IMAGE_DIGEST" --raw > manifest.json
+          python3 - <<'PY'
+          import json, os
+          with open('manifest.json') as f:
+              document = json.load(f)
+          platforms = {(m.get('platform', {}).get('os'), m.get('platform', {}).get('architecture')) for m in document.get('manifests', [])}
+          if not {('linux', 'amd64'), ('linux', 'arm64')} <= platforms:
+              raise SystemExit('Published index is missing an expected architecture')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write('Published `' + os.environ['IMAGE'] + '@' + os.environ['IMAGE_DIGEST'] + '` for linux/amd64 and linux/arm64.\n')
+          PY

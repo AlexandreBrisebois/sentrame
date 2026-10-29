@@ -1,0 +1,15 @@
+{
+  "description": "Synthetic standard OTLP wire examples resembling .NET and Next.js exception formatting. These do not qualify real .NET/Next.js exporters.",
+  "dotnet": {
+    "type": "System.InvalidOperationException",
+    "message": "Cannot persist synthetic checkout; state remains pending. contact=fixture.person@example.invalid Authorization: Bearer SYNTHETIC-BEARER-DO-NOT-RETAIN password=SYNTHETIC-PASSWORD-DO-NOT-RETAIN endpoint=https://example.invalid/commit?token=SYNTHETIC-QUERY-DO-NOT-RETAIN",
+    "stack": "System.InvalidOperationException: Cannot persist synthetic checkout\n   at Sentrame.Demo.OrderService.CommitAsync() in /Users/fixture-mac-user/Code/demo/OrderService.cs:line 42\n   at Sentrame.Demo.CheckoutController.Post() in /Users/fixture-mac-user/Code/demo/CheckoutController.cs:line 18\n   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.Execute()"
+  },
+  "next": {
+    "type": "TypeError",
+    "message": "Cannot read properties of undefined (reading 'total'); contact=fixture.person@example.invalid password=SYNTHETIC-PASSWORD-DO-NOT-RETAIN",
+    "stack": "TypeError: Cannot read properties of undefined (reading 'total')\n    at CheckoutPage (/Users/fixture-mac-user/Code/demo/app/checkout/page.tsx:18:11)\n    at renderToReadableStream (/Users/fixture-mac-user/Code/demo/node_modules/next/dist/server/app-render.js:140:7)\n    at async handleRequest (https://example.invalid/api/render?token=SYNTHETIC-QUERY-DO-NOT-RETAIN:24:3)"
+  },
+  "customBody": "Synthetic custom error: payment adapter refused a request; pending state was preserved. Authorization: Bearer SYNTHETIC-BEARER-DO-NOT-RETAIN contact=fixture.person@example.invalid password=SYNTHETIC-PASSWORD-DO-NOT-RETAIN endpoint=https://example.invalid/pay?token=SYNTHETIC-QUERY-DO-NOT-RETAIN",
+  "sentinels": ["fixture.person@example.invalid", "SYNTHETIC-BEARER-DO-NOT-RETAIN", "SYNTHETIC-PASSWORD-DO-NOT-RETAIN", "SYNTHETIC-QUERY-DO-NOT-RETAIN", "fixture-mac-user"]
+}

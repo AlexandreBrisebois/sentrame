@@ -1,0 +1,51 @@
+# Synthetic official-wire OTLP examples, not real .NET/Next.js exporter qualification.
+# Generate with task demo:diagnostics (or diagnostics-generate with local.env exported).
+# Send in order. Exact files retain IDs/times for replay; generation creates a new tag.
+
+### Owner login
+# @expect 200
+POST {{baseUrl}}/api/login
+Content-Type: application/json
+Origin: {{baseUrl}}
+
+< ./generated/diagnostics-login.json
+
+### .NET-like Error-status span and exception event using standard OTLP protobuf
+# @expect 200
+POST {{baseUrl}}/v1/traces
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/diagnostics-traces.bin
+
+### Next-like exception and custom error body, including one error without session context
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/diagnostics-logs.bin
+
+### App-wide error discovery does not require selecting an anonymous visit
+# @expect 200
+GET {{baseUrl}}/api/errors?q={{diagnosticsTag}}
+
+### Identical span replay retains exact trace/span identity
+# @expect 200
+POST {{baseUrl}}/v1/traces
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/diagnostics-traces.bin
+
+### Identical log replay retains exact event IDs
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/diagnostics-logs.bin
+
+### Same protected read after replay: record counts and identities must remain stable
+# @expect 200
+GET {{baseUrl}}/api/errors?q={{diagnosticsTag}}

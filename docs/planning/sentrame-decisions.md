@@ -33,6 +33,7 @@ Status: review draft, 2026-10-27. User intent below is trusted conversation cont
 | D25 | Stack A: Svelte/Vite + Go + SQLite with maintained OTLP components. RAM is reported sufficient and CPU options available. | Selected architecture, not a new ballot. Resource use remains bounded and unmeasured; no exact hardware/unlimited budget inferred. |
 | D26 | External integration-agent guide must inspect the app, question developers, propose points of interest and missing warning/error/recovery instrumentation, with developer review before edits. | Separate public integration guide/capability, not internal harness or AI runtime. Explain question/value, evidence, minimal emitter boundary, standard carrier, authority, privacy/noise and synthetic validation. |
 | D27 | Client-only, server-only and combined logical journeys are supported when properly emitted; combined evidence uses the same app-scoped correlation ID. | Correlation is not trace/record identity, authority, order or causality. Preserve sources, bounded lifetime and no cross-app/person/cross-visit joins. No side/tab prerequisite for basic intake. |
+| D28 | On 2026-10-28, correct the implementation base to `docs/journey-capability-plan-2026-10-27` while retaining the first MVP’s visual theme and icon. | Preserve warm-paper/forest-green visual language and linked-thread mark in docs/design/visual-theme; the earlier exploratory purple direction is superseded. The prior MVP is recovery evidence, not implementation of the evolved plan. |
 
 ## Remaining technical defaults — main choices are settled
 
@@ -65,3 +66,16 @@ The baseline is settled as selected-app accumulated seven-day traffic with a liv
 ## Planning publication boundary
 
 The original planning-file reconciliation and a documentation-only draft PR are approved. This covers the evolved proposal/design/tasks, retirement of the two obsolete deltas and the capability set including integration guidance. It does not authorize application/harness implementation, canonical spec sync/archive, merge, deployment or production tests. The historical narrow defaults are superseded, not a competing product design.
+
+### 2026-10-28 — Graph workspace revision approved for local implementation
+
+The owner selected a quiet full-canvas workspace with three switchable views: horizontal left-to-right hierarchy, directed force-based layout, and Sankey. Sankey bars/ribbons represent traffic volume; time-at-stage moves to the inspector and accessible tables, superseding duration-sized nodes. Keep the warm-paper/forest-green theme, linked-thread mark, small independently capped arrows and explicit healthy loops/return paths. Configure events through contextual node popups with preview and prospective activation. Explore and save reference views from stages, stage pairs or the full workspace; retain captured boundaries and filters. Show rare paths, endings, warnings/exceptions and recovery through graph lenses with support/evidence context. Clear selected journey/visit scope with a visible X without deleting data. This authorizes local synthetic implementation only; retained roadmap B and external qualification boundaries do not change.
+
+### 2026-10-28 — Useful app-wide error diagnostics approved
+
+The owner requested standard .NET/Next-like exceptions, stacks and custom error messages to debug the application without being the user. Local synthetic implementation now includes bounded `scrubbed-v1` diagnostic detail, protected app-wide error search, valid trace/context links and sanitized copy. Raw request collection, person joins, automatic root cause, real application integration and exporter qualification remain excluded. Text scrubbing is imperfect and controlled producer messages remain necessary; 30-day detail/12-month text-free summaries are unchanged.
+
+### Explicit scope extensions — 2026-10-28
+
+- The owner authorized app-wide temporary read-only viewers, including retained history/live/reference/diagnostic browsing, with expiry and revocation. This explicitly adds a broader mode; it does not widen an existing visit-only grant. Technical defaults: one-use redemption;1h/24h(default)/7d absolute expiry; separate viewer cookie; server read allowlist; active SSE and historical-session revocation checks.
+- The owner requested DockerHub delivery through GitHub Actions, image `brisebois/sentrame`, multi-architecture `linux/amd64,linux/arm64`, and repository Compose/`.env.example` files for NAS deployment. Publishing/actual NAS qualification remain separately evidenced; initial no-commit/no-push instructions have not been withdrawn. WFS changes are not part of this packaging work.

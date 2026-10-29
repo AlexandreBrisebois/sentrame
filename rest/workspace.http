@@ -1,0 +1,37 @@
+# Quiet workspace review cohort: 20 common paths, one uncommon path, one unmapped event.
+# Generate fresh real protobufs with task demo:workspace or:
+# go run ./cmd/fixtures workspace-generate (with .sentrame/local.env exported).
+# REST Client variables use rest/.env. Bodies/credentials stay ignored in generated/.
+# Send requests in order; repeating either ingestion preserves exact IDs/bytes.
+
+### Owner login
+# @expect 200
+POST {{baseUrl}}/api/login
+Content-Type: application/json
+Origin: {{baseUrl}}
+
+< ./generated/workspace-login.json
+
+### Standard browser OTLP ingestion: 21 closed journeys and one unmapped event
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Content-Type: application/x-protobuf
+Authorization: Bearer {{browserToken}}
+
+< ./generated/workspace.bin
+
+### Identical replay: counts must remain 20 common paths and one rare path
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Content-Type: application/x-protobuf
+Authorization: Bearer {{browserToken}}
+
+< ./generated/workspace.bin
+
+### Same protected read path used by the graph workspace
+# @expect 200
+GET {{baseUrl}}/api/snapshot?scope={{workspaceScope}}
+
+### Independent occurrence-time histogram context for the same fresh scope
+# @expect 200
+GET {{baseUrl}}/api/timeline?window=1h&scope={{workspaceScope}}

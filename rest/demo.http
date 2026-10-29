@@ -1,0 +1,158 @@
+# Sentrame local synthetic demonstration. Generate binary files first:
+# task fixtures
+# REST Client environment: rest/.env (ignored; generated from local environment).
+# Re-run one POST to replay its exact source IDs. Re-run task fixtures for new scopes.
+# @expect 401
+# @no-cookie-jar
+GET {{baseUrl}}/api/snapshot
+
+### Owner login
+# @expect 200
+# @name login
+POST {{baseUrl}}/api/login
+Content-Type: application/json
+Origin: {{baseUrl}}
+
+< ./generated/login.json
+
+### Protected empty/current snapshot
+# @expect 200
+GET {{baseUrl}}/api/snapshot
+
+### Healthy browser stage, visibility and screen observation
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{browserToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/healthy-browser.bin
+
+### Ten genuine server commitments in the same logical/tab scope
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{serverToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/healthy-server.bin
+
+### Identical replay cannot add votes
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{serverToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/healthy-server.bin
+
+### Intent, eventual screen observation and server persistence remain different facts
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{browserToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/recovery-browser.bin
+
+### Post-commit failure then recovery; unsafe diagnostic content omitted
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{serverToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/recovery-server.bin
+
+### Already-converged screen with zero votes
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{browserToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/initial-convergence.bin
+
+### Server-only journey requires no fictitious browser tab
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{serverToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/server-only.bin
+
+### Ordinary telemetry without Sentrame identity or logical context
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{browserToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/accepted-unassigned.bin
+
+### Self-asserted server authority remains browser evidence
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{browserToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/forged-authority.bin
+
+### Silence closes inactive, not failed
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{browserToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/inactive.bin
+
+### App baseline is historical app traffic, separate from one live visit
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{browserToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/baseline-browser.bin
+
+### Twenty explicit stage occurrences: supported median and slower cases
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{browserToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/timing-samples.bin
+
+### Measured stage samples, count and supported p90 through protected read
+# @expect 200
+GET {{baseUrl}}/api/snapshot?scope={{timingScope}}
+
+### Begin a live journey
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{browserToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/live-start.bin
+
+### Follow up with the same scope and new record identity
+# @expect 200
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{browserToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/live-followup.bin
+
+### One valid plus one future-invalid record: zero records commit
+# @expect 400
+POST {{baseUrl}}/v1/logs
+Authorization: Bearer {{browserToken}}
+Content-Type: application/x-protobuf
+
+< ./generated/atomic-invalid.bin
+
+### Ordered healthy evidence and map; the server authenticates this read
+# @expect 200
+GET {{baseUrl}}/api/snapshot?scope={{healthyScope}}
+
+### Fixed app-wide baseline behind isolated live scope
+# @expect 200
+GET {{baseUrl}}/api/snapshot?mode=live&scope={{liveScope}}&liveStart={{liveStart}}&baseline=1
+
+### Authenticated streaming invalidations; stop this request to disconnect
+# @expect 200
+# @stream true
+GET {{baseUrl}}/api/events
+Accept: text/event-stream

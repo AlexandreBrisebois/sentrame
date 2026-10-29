@@ -32,3 +32,9 @@ Receiver embedding versus a maintained Collector sidecar, image pins, origin tra
 Raw ordered evidence expires at 30 days. Aggregates retain 12 months of supported counts, conversion rates and timing distributions. Do not average medians to combine periods or imply that pairwise counters reconstruct paths. Saved views retain query definitions, not raw journeys. Beyond detail retention, show supported summaries and disable individual drilldown. Declare correction/deletion horizons and summary dimensions; do not retain hidden person/visit membership merely to promise unlimited selective deletion.
 
 Selecting an operational goal changes a versioned segmentation definition. Choosing a different goal, segment or origin in a saved retrospective view queries existing boundaries; it does not silently resegment or join captured journeys. If endpoints cross a goal/timeout boundary, preserve that boundary and explain the limited result. This narrow interpretation must remain visible in the interface and integration guidance.
+
+## Owner-approved extensions on2026-10-28
+
+The owner explicitly authorized whole-app temporary read-only invitations with expiry and revocation. This separate mode includes retained historical/live data, references and sanitized diagnostics. It does not silently widen the deferred visit-only grant, and does not include shared configuration/saving/deletion rights. Multi-app and richer comparisons/configuration remain deferred.
+
+The owner also requested multi-architecture DockerHub delivery (`brisebois/sentrame`), a GitHub Actions publishing workflow, simple Compose and an environment example using a chosen local filesystem bind folder. These source/configuration artifacts do not by themselves establish publication, container runtime support, NAS fit, real application export or the shared Tunnel route. The initial no-commit/no-push constraint remains until separately changed.

@@ -1,0 +1,140 @@
+package app
+
+// referenceJourney projects a query over recorded boundaries. It never merges or derives journeys.
+func referenceJourney(j Journey, v SavedView) (Journey, bool) {
+	if v.Mode == "overview" {
+		return j, true
+	}
+	if len(j.Evidence) == 0 {
+		return j, false
+	}
+	find := func(name, choice string) int {
+		found := -1
+		for i, e := range j.Evidence {
+			if e.Name == name {
+				found = i
+				if choice != "last" {
+					break
+				}
+			}
+		}
+		return found
+	}
+	startChoice := v.StartOccurrence
+	if startChoice == "" {
+		startChoice = "first"
+	}
+	endChoice := v.EndOccurrence
+	if endChoice == "" {
+		endChoice = "last"
+	}
+	a, b := 0, len(j.Evidence)-1
+	missing := false
+	switch v.Mode {
+	case "goal-backward":
+		b = find(v.End, endChoice)
+		if b < 0 {
+			return j, false
+		}
+	case "origin-forward":
+		a = find(v.Start, startChoice)
+		if a < 0 {
+			return j, false
+		}
+	case "segment":
+		x, y := find(v.Start, startChoice), find(v.End, endChoice)
+		if x < 0 && y < 0 {
+			return j, false
+		}
+		if x >= 0 && y >= x {
+			a, b = x, y
+		} else {
+			missing = true
+			if x >= 0 {
+				a = x
+			}
+			if y >= 0 && x < 0 {
+				b = y
+			}
+		}
+	default:
+		return j, false
+	}
+	original := j
+	j.CapturedStatus = j.Status
+	j.Evidence = append([]Evidence{}, original.Evidence[a:b+1]...)
+	j.Path = []string{}
+	j.Steps = []StepOccurrence{}
+	j.Timings = []Timing{}
+	j.Warnings = append([]string{}, original.Warnings...)
+	selected := map[int64]bool{}
+	for _, e := range j.Evidence {
+		selected[e.ID] = true
+	}
+	previous := -1
+	for i, step := range original.Steps {
+		if !selected[step.EvidenceID] {
+			continue
+		}
+		if previous >= 0 && i != previous+1 {
+			step.GapBefore = true
+		}
+		j.Steps = append(j.Steps, step)
+		j.Path = append(j.Path, step.Step)
+		previous = i
+	}
+	if a > 0 || missing {
+		j.Partial = true
+	}
+	if missing {
+		j.Warnings = append(j.Warnings, "Requested endpoint is unavailable or crosses a captured boundary; showing only this recorded segment, without joining journeys.")
+	}
+	if a > 0 {
+		j.Warnings = append(j.Warnings, "Reference begins inside a captured journey; earlier evidence remains outside this projection.")
+	}
+	if b < len(original.Evidence)-1 {
+		j.RightCensored = true
+		j.Warnings = append(j.Warnings, "Reference ends before later captured evidence; operational goal and captured boundary are unchanged.")
+		if j.Status == "completed" || j.Status == "exited" {
+			j.Status = "active"
+		}
+	}
+	j.WindowFrom = j.Evidence[0].Time
+	j.WindowTo = j.Evidence[len(j.Evidence)-1].Time + 1
+	for _, t := range original.Timings {
+		overlap := false
+		all := len(t.EvidenceIDs) > 0
+		for _, id := range t.EvidenceIDs {
+			if selected[id] {
+				overlap = true
+			} else {
+				all = false
+			}
+		}
+		if !overlap {
+			continue
+		}
+		if !all {
+			t.Complete = false
+			t.Provisional = false
+			t.Quality = "unavailable: reference excludes stage boundary"
+		}
+		j.Timings = append(j.Timings, t)
+	}
+	return j, true
+}
+
+// validateReferenceQuery shares endpoint/occurrence rules between saved and
+// unsaved projections. Only saved workspace views can use overview mode.
+func validateReferenceQuery(v SavedView, allowOverview bool) string {
+	if (v.StartOccurrence != "" && v.StartOccurrence != "first" && v.StartOccurrence != "last") || (v.EndOccurrence != "" && v.EndOccurrence != "first" && v.EndOccurrence != "last") {
+		return "Choose first or last endpoint occurrence"
+	}
+	if v.Mode != "goal-backward" && v.Mode != "origin-forward" && v.Mode != "segment" && !(allowOverview && v.Mode == "overview") {
+		return "Choose a supported reference mode"
+	}
+	if v.Mode == "goal-backward" && safe(v.End) == "" || v.Mode == "origin-forward" && safe(v.Start) == "" || v.Mode == "segment" && (safe(v.Start) == "" || safe(v.End) == "") {
+		return "Select reference endpoints"
+	}
+	return ""
+}

@@ -1,0 +1,14 @@
+.sentrame/
+rest/generated/
+rest/.env
+node_modules/
+web/node_modules/
+web/dist/
+.env
+bin/
+*.test
+
+__pycache__/
+
+# Default local Compose bind directory; retained evidence is never source.
+/data/

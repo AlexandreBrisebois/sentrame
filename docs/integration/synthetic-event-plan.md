@@ -1,0 +1,17 @@
+# Reviewed synthetic application of the integration guide
+
+This applies the discovery-led guide to Sentrame's authorized local fixture producer, not WFS. The owner requested synthetic implementation and repeatable demonstrations; that authorization covers this reviewed event plan and the local emitter/fixture edits. No external developer, app or service was contacted.
+
+Source discovery: `rest/fixtures/scenarios.json` owns readable app scenarios; `cmd/fixtures` translates them into official standard OTLP messages and executes `rest/demo.http`. Actual unmodified Go SDK exporters are exercised in `internal/app/protocol_test.go`; their normal endpoint/header/compression settings are the verified SDK recipe. Fixture generation alone is not an SDK claim.
+
+The product question is whether a visit observed its configured completion screen while preserving healthy commitments, friction and recovery. Initial goal is `completion.entered`, from actual synthetic screen-entry evidence. That does not establish shared agreement or who caused it. Safe browser/server scopes are random and ephemeral; separate configured producer credentials independently establish authority. No person, household, content or device identifiers are needed.
+
+| Priority / observation | Question and smallest synthetic boundary | Authority/privacy/noise | Actual acceptance path |
+| --- | --- | --- | --- |
+| 1. Discovery/completion entries | What beginning and screen goal were observed? Emit only distinct entry occurrences. | Browser claims only; random tab/scope and optional stable event ID. No render-noise fingerprint dedup. | Official protobuf → authenticated receiver → sanitized SQLite → protected map/sequence; zero-vote convergence included. |
+| 2. Requested/committed contribution | Did intent become persistence? Keep the two emission owners separate. | Browser intent cannot assert server commitment; no recipe/content data. Ten distinct commitments are healthy. | Combined source namespaces, ten votes/nine transitions, supported replay and browser forgery tests. |
+| 3. Publication failure/recovery | Was commitment followed by downstream friction and observed recovery? | Server error type/occurrence code; arbitrary message/stack omitted. No synthetic throws, swallowed errors or altered retry behavior. | Commit → error → recovery → screen goal remains one explainable completed path. |
+| 4. Stage enter/exit and activity | Which timing is elapsed, observed active or estimated? | Random occurrence IDs, actual declared visibility changes, no attention inference. Missing ends stay censored. | Same actual intake/store/derive/read path; measured/active/estimated statistics remain separate. |
+| 5. Explicit exit reason | Was exhaustion, agreement or departure actually emitted? | Bounded reason code from owning operation; silence remains unknown/inactive. | Server-only and inactivity fixtures; no person joins or proximity-based cause. |
+
+No unresolved product question blocks these synthetic fixtures. Real instrumentation still requires source discovery in the target app, actual success/friction questions and developer approval of its concrete event plan. Existing WFS research remains illustrative; neither this document nor passing local tests establish real emitted WFS telemetry or authorize changing it. SDK/browser/.NET/route support is limited to the separately recorded qualification matrix.

@@ -1,0 +1,630 @@
+[
+  {
+    "name": "healthy-browser",
+    "scope": "healthy",
+    "producer": "browser",
+    "events": [
+      {
+        "name": "discovery.entered",
+        "offset": "-65s",
+        "record": "same-source-id"
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-64s",
+        "occurrence": "recipe",
+        "attributes": {
+          "stage.name": "Recipe viewing",
+          "activity.state": "active"
+        }
+      },
+      {
+        "name": "activity.changed",
+        "offset": "-62s",
+        "attributes": {
+          "activity.state": "hidden"
+        }
+      },
+      {
+        "name": "activity.changed",
+        "offset": "-61s",
+        "attributes": {
+          "activity.state": "active"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-60s",
+        "occurrence": "recipe",
+        "attributes": {
+          "stage.name": "Recipe viewing"
+        }
+      },
+      {
+        "name": "completion.entered",
+        "offset": "-35s",
+        "attributes": {
+          "reason": "agreed"
+        }
+      }
+    ]
+  },
+  {
+    "name": "healthy-server",
+    "scope": "healthy",
+    "producer": "server",
+    "events": [
+      {
+        "name": "vote.committed",
+        "offset": "-58s",
+        "action": "vote1",
+        "record": "same-source-id"
+      },
+      {
+        "name": "vote.committed",
+        "offset": "-56s",
+        "action": "vote2"
+      },
+      {
+        "name": "vote.committed",
+        "offset": "-54s",
+        "action": "vote3"
+      },
+      {
+        "name": "vote.committed",
+        "offset": "-52s",
+        "action": "vote4"
+      },
+      {
+        "name": "vote.committed",
+        "offset": "-50s",
+        "action": "vote5"
+      },
+      {
+        "name": "vote.committed",
+        "offset": "-48s",
+        "action": "vote6"
+      },
+      {
+        "name": "vote.committed",
+        "offset": "-46s",
+        "action": "vote7"
+      },
+      {
+        "name": "vote.committed",
+        "offset": "-44s",
+        "action": "vote8"
+      },
+      {
+        "name": "vote.committed",
+        "offset": "-42s",
+        "action": "vote9"
+      },
+      {
+        "name": "vote.committed",
+        "offset": "-40s",
+        "action": "vote10"
+      }
+    ]
+  },
+  {
+    "name": "recovery-browser",
+    "scope": "recovery",
+    "producer": "browser",
+    "events": [
+      {
+        "name": "discovery.entered",
+        "offset": "-30s"
+      },
+      {
+        "name": "vote.requested",
+        "offset": "-28s",
+        "action": "saved-vote"
+      },
+      {
+        "name": "completion.entered",
+        "offset": "-20s",
+        "attributes": {
+          "reason": "agreed"
+        }
+      }
+    ]
+  },
+  {
+    "name": "recovery-server",
+    "scope": "recovery",
+    "producer": "server",
+    "events": [
+      {
+        "name": "vote.committed",
+        "offset": "-27s",
+        "action": "saved-vote"
+      },
+      {
+        "name": "publication.failed",
+        "offset": "-26s",
+        "action": "saved-vote",
+        "severity": 17,
+        "attributes": {
+          "exception.type": "SyntheticPublicationFailure",
+          "exception.occurrence.id": "publication1",
+          "exception.message": "SHOULD-NOT-PERSIST credential=synthetic-secret",
+          "exception.stacktrace": "SHOULD-NOT-PERSIST raw-stack",
+          "private.household": "SHOULD-NOT-PERSIST"
+        }
+      },
+      {
+        "name": "publication.recovered",
+        "offset": "-22s",
+        "action": "saved-vote"
+      }
+    ]
+  },
+  {
+    "name": "initial-convergence",
+    "scope": "initial",
+    "producer": "browser",
+    "events": [
+      {
+        "name": "completion.entered",
+        "offset": "-15s",
+        "attributes": {
+          "reason": "agreed"
+        }
+      }
+    ]
+  },
+  {
+    "name": "server-only",
+    "scope": "server-only",
+    "producer": "server",
+    "noTab": true,
+    "events": [
+      {
+        "name": "discovery.entered",
+        "offset": "-12s"
+      },
+      {
+        "name": "vote.committed",
+        "offset": "-10s",
+        "action": "server-save"
+      },
+      {
+        "name": "journey.exited",
+        "offset": "-8s",
+        "attributes": {
+          "reason": "exhausted"
+        }
+      }
+    ]
+  },
+  {
+    "name": "accepted-unassigned",
+    "producer": "browser",
+    "noTab": true,
+    "noIdentity": true,
+    "events": [
+      {
+        "name": "ordinary.technical.event",
+        "offset": "-5s",
+        "attributes": {
+          "unsafe.url": "https://example.invalid/?password=SHOULD-NOT-PERSIST",
+          "producer": "server"
+        }
+      }
+    ]
+  },
+  {
+    "name": "forged-authority",
+    "scope": "forged",
+    "producer": "browser",
+    "events": [
+      {
+        "name": "vote.committed",
+        "offset": "-4s",
+        "attributes": {
+          "producer": "server",
+          "sentrame.authority": "server"
+        }
+      }
+    ]
+  },
+  {
+    "name": "inactive",
+    "scope": "inactive",
+    "producer": "browser",
+    "events": [
+      {
+        "name": "discovery.entered",
+        "offset": "-31m"
+      }
+    ]
+  },
+  {
+    "name": "baseline-browser",
+    "scope": "baseline",
+    "producer": "browser",
+    "events": [
+      {
+        "name": "discovery.entered",
+        "offset": "-24h"
+      },
+      {
+        "name": "completion.entered",
+        "offset": "-23h59m"
+      }
+    ]
+  },
+  {
+    "name": "timing-samples",
+    "scope": "timing-samples",
+    "producer": "browser",
+    "events": [
+      {
+        "name": "discovery.entered",
+        "offset": "-301s"
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-300s",
+        "occurrence": "sample01",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-299s",
+        "occurrence": "sample01",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-298s",
+        "occurrence": "sample02",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-296s",
+        "occurrence": "sample02",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-295s",
+        "occurrence": "sample03",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-292s",
+        "occurrence": "sample03",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-291s",
+        "occurrence": "sample04",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-287s",
+        "occurrence": "sample04",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-286s",
+        "occurrence": "sample05",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-281s",
+        "occurrence": "sample05",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-280s",
+        "occurrence": "sample06",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-274s",
+        "occurrence": "sample06",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-273s",
+        "occurrence": "sample07",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-266s",
+        "occurrence": "sample07",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-265s",
+        "occurrence": "sample08",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-257s",
+        "occurrence": "sample08",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-256s",
+        "occurrence": "sample09",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-247s",
+        "occurrence": "sample09",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-246s",
+        "occurrence": "sample10",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-236s",
+        "occurrence": "sample10",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-235s",
+        "occurrence": "sample11",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-224s",
+        "occurrence": "sample11",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-223s",
+        "occurrence": "sample12",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-211s",
+        "occurrence": "sample12",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-210s",
+        "occurrence": "sample13",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-197s",
+        "occurrence": "sample13",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-196s",
+        "occurrence": "sample14",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-182s",
+        "occurrence": "sample14",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-181s",
+        "occurrence": "sample15",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-166s",
+        "occurrence": "sample15",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-165s",
+        "occurrence": "sample16",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-149s",
+        "occurrence": "sample16",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-148s",
+        "occurrence": "sample17",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-131s",
+        "occurrence": "sample17",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-130s",
+        "occurrence": "sample18",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-112s",
+        "occurrence": "sample18",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-111s",
+        "occurrence": "sample19",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-92s",
+        "occurrence": "sample19",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.entered",
+        "offset": "-91s",
+        "occurrence": "sample20",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "stage.exited",
+        "offset": "-71s",
+        "occurrence": "sample20",
+        "attributes": {
+          "stage.name": "Stage"
+        }
+      },
+      {
+        "name": "completion.entered",
+        "offset": "-70s"
+      }
+    ]
+  },
+  {
+    "name": "live-start",
+    "scope": "live",
+    "producer": "browser",
+    "events": [
+      {
+        "name": "discovery.entered",
+        "offset": "-1s"
+      }
+    ]
+  },
+  {
+    "name": "live-followup",
+    "scope": "live",
+    "producer": "browser",
+    "events": [
+      {
+        "name": "completion.entered",
+        "offset": "0s"
+      }
+    ]
+  },
+  {
+    "name": "atomic-invalid",
+    "scope": "atomic",
+    "producer": "browser",
+    "events": [
+      {
+        "name": "discovery.entered",
+        "offset": "-2s"
+      },
+      {
+        "name": "completion.entered",
+        "offset": "48h"
+      }
+    ]
+  }
+]

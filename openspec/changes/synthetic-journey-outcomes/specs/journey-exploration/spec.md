@@ -102,19 +102,42 @@ The system SHALL show median time at stage, slower cases when adequately support
 - **WHEN** recipe-viewing or per-vote durations are compared across releases
 - **THEN** the view shows sample/support, follow-up and policy differences; repeated votes are occurrences within journeys rather than independent people, and unequal censoring is not hidden
 
-### Requirement: Node size represents stage time
-The graph SHALL encode the selected time-at-stage metric in relative node size while edge thickness represents traffic. It SHALL show a bounded scale legend, statistic and units, with numeric/table equivalents. Missing duration SHALL be unavailable rather than fast. Larger nodes SHALL NOT automatically be marked bad, and comparison scales SHALL remain explicit and compatible.
+### Requirement: Quiet switchable graph workspace
+The interface SHALL provide hierarchy, directed force and Sankey views preserving selection, filters and captured boundaries. Timing SHALL remain in the inspector and numeric tables. Sankey bars and ribbons SHALL use a common linear occurrence scale with baseline/live counts separate. Arrows SHALL remain small independently of weight/zoom. Loops and skipped-stage links SHALL remain explicit without implying intermediate adjacency.
 
-#### Scenario: Duration without cognitive inference
-- **WHEN** a recipe-viewing node is larger than a voting node
-- **THEN** the legend and numbers explain the measured/estimated time metric, without claiming more thinking, hesitation, failure or dissatisfaction
+#### Scenario: Switch views while inspecting a stage
+- **WHEN** the owner selects a stage and switches between hierarchy, force and Sankey
+- **THEN** the same selection, filters and incoming/outgoing evidence remain available, with timing basis, samples and exclusions in the inspector
 
-#### Scenario: Bounds and accessibility
-- **WHEN** a duration reaches the visual cap or the graph cannot be used
-- **THEN** exact values and sample/completeness remain accessible numerically in the table, clipping is disclosed and size/color is not the only way to compare
+#### Scenario: Heavy traffic and healthy loops
+- **WHEN** a heavily traversed edge or repeated stage appears
+- **THEN** its traffic remains visible without oversized arrowheads, hidden loops or invented adjacency
+
+#### Scenario: Trackpad and focus
+- **WHEN** the owner pinches or scrolls with two fingers over the canvas
+- **THEN** zoom preserves its gesture focal point and scrolling pans; pointer selection does not add a whole-canvas focus box, while keyboard focus remains visible
+
+### Requirement: Contextual event meaning and graph highlights
+The owner SHALL configure discovered events through a node popup with real-record preview and prospective activation preserving other mappings. Unmapped nodes SHALL remain unconnected absent evidence. The graph SHALL offer rare-path, endings, warning/exception and recovery lenses with evidence drilldown. Rarity SHALL use comparable full closed, non-partial, uncensored sequences; warnings SHALL NOT terminate journeys.
+
+#### Scenario: Configure one discovered event
+- **WHEN** the owner opens its popup, previews and activates a mapping
+- **THEN** all other mappings remain, captured journeys keep their definition and producer authority remains server-validated
+
+#### Scenario: Rare sequence support
+- **WHEN** a full sequence has at most ten percent share among at least twenty closed, non-partial, uncensored journeys with the same definition and initial version
+- **THEN** the rare lens may highlight it with counts/support, without implying its links occur exclusively in rare paths or that rarity proves a defect
+
+#### Scenario: Named ending states
+- **WHEN** endings are highlighted
+- **THEN** pending, inactive, explicit exit and completed outcomes remain distinguishable
+
+#### Scenario: Clear a selected visit
+- **WHEN** the owner uses the X on the selected journey/visit filter
+- **THEN** the workspace returns to all traffic under its other filters and layout without deleting evidence
 
 ### Requirement: Saved reference journey views
-The owner SHALL be able to save reusable views for goal-backward exploration, beginning/end-event segments and origin-forward exploration. Views SHALL preserve safe query filters and definition/version context without retaining raw journeys beyond lifecycle limits. They SHALL query recorded boundaries rather than change them, and SHALL expose partial evidence without fabricating direct edges.
+The owner SHALL be able to save reusable views for the current workspace, goal-backward exploration, beginning/end-event segments and origin-forward exploration. Views SHALL preserve safe query filters and definition/version context without retaining raw journeys beyond lifecycle limits. They SHALL query recorded boundaries rather than change them, and SHALL expose partial evidence without fabricating direct edges.
 
 #### Scenario: Three reusable exploration modes
 - **WHEN** the owner saves a goal event, a beginning/end pair or an origin event
@@ -127,3 +150,46 @@ The owner SHALL be able to save reusable views for goal-backward exploration, be
 #### Scenario: Detail expired or deleted
 - **WHEN** a saved view is reopened after matching raw detail expires or is deleted
 - **THEN** the definition remains reusable but cannot resurrect that detail; only supported retained aggregate queries are available, with individual/ordered drilldown disabled where unavailable
+
+#### Scenario: Explore first, save later
+- **WHEN** the owner explores into or from a selected stage, or chooses beginning/end stages
+- **THEN** the same read path previews a projection over captured journeys without saving or resegmenting; saving later retains exact time bounds, visit/version/definition filters, layout and highlight
+
+#### Scenario: Delete a saved reference
+- **WHEN** the owner confirms deletion of a saved reference
+- **THEN** only that saved query is removed, while collected evidence, captured journeys and other references remain
+- **AND** deletion requires owner authorization and origin/CSRF proof, survives restart, and offers a cancel action before removal
+
+### Requirement: Visual occurrence-time selection
+The owner SHALL select historical time ranges using retained-record histogram bars and a shared two-handle selection track. Green SHALL denote only the included interval. Keyboard controls, quick ranges and optional exact UTC inputs SHALL remain available. Histogram context SHALL be independent of graph from/to bounds, use protected bounded reads and disclose units, expiry and partial results. Opaque correlation IDs SHALL be optional advanced search, not a primary dropdown.
+
+#### Scenario: Slice observed traffic
+- **WHEN** the owner drags a range or adjusts a keyboard handle and releases it
+- **THEN** the selected UTC interval updates the same graph query while preserving other filters and captured journey boundaries
+
+#### Scenario: Discover a visit without knowing its ID
+- **WHEN** the owner selects a stage and inspects journeys by path, time and outcome
+- **THEN** Follow this visit or operation scopes the graph without typing an identifier, and the X returns to all traffic
+
+### Requirement: Local error evidence marking
+The graph SHALL mark error-related observed connections red with a text or symbol equivalent and ordered-evidence access. Error classification SHALL use emitted error severity or exception evidence, preserve gaps and keep baseline/live evidence separate. It SHALL NOT mark every connection of an affected journey as failed or change capture outcomes.
+
+#### Scenario: Error followed by recovery
+- **WHEN** an observed error stage has incoming and outgoing transitions followed by healthy recovery and goal completion
+- **THEN** error-related transitions are red, subsequent healthy connections remain distinct and the journey can remain completed
+
+### Requirement: Manual graph arrangement
+The owner SHALL be able to reposition nodes without changing evidence, counts, boundaries or mappings. Force SHALL allow both axes; hierarchy and Sankey SHALL preserve columns and volume encodings. Connections SHALL follow moved nodes. Clicks SHALL remain distinct from drags. Keyboard movement and resetting SHALL be available. Positions SHALL remain local presentation state per mounted layout, not persisted reference or capture configuration.
+
+#### Scenario: Move and inspect a node
+- **WHEN** the owner drags a node beyond the click threshold and releases it
+- **THEN** its observed connections follow its position, the evidence remains unchanged and no inspector opens from that drag
+- **AND** a subsequent ordinary click still opens the node inspector
+
+#### Scenario: Restore automatic arrangement
+- **WHEN** the owner moves nodes, switches layouts and returns, then chooses Reset layout
+- **THEN** each layout initially retains its separate manual positions, including through live updates, and resetting restores only the current layout's automatic positions
+
+#### Scenario: Keyboard arrangement
+- **WHEN** the owner focuses a node and presses Shift plus an arrow key
+- **THEN** it moves within the same bounds as dragging, with horizontal movement limited to Force view

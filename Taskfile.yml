@@ -1,0 +1,153 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: Resolve pinned dependencies, create local synthetic credentials, and build
+    cmds:
+      - python3 scripts/local-env.py
+      - go mod download
+      - npm --prefix web ci
+      - task build
+  build:
+    desc: Build the Go binary and static Svelte assets
+    cmds:
+      - go build -o bin/sentrame ./cmd/sentrame
+      - npm --prefix web run build
+  start:
+    desc: Run the loopback synthetic release; Ctrl+C stops it
+    deps: [build]
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; exec ./bin/sentrame'
+  test:
+    desc: Run Go behavior/seam tests plus frontend tests/types
+    cmds:
+      - go test ./... -count=1
+      - npm --prefix web test
+      - npm --prefix web run check
+  fixtures:
+    desc: Generate real protobuf fixtures with fresh identities
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures generate'
+  demo:
+    desc: Generate and verify the literal REST requests against the running service
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures demo'
+  demo:verify:
+    desc: Execute the existing literal REST requests
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures verify'
+  demo:replay:
+    desc: Replay the exact identified commitment fixture
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures replay'
+  reset:
+    desc: Reset only stopped local synthetic state and rotate its credentials
+    cmds:
+      - python3 scripts/reset-local.py
+      - python3 scripts/local-env.py
+  spec:validate:
+    desc: Strictly validate the active evolved OpenSpec change
+    cmds:
+      - openspec validate synthetic-journey-outcomes --strict
+  check:
+    desc: Run tests, type checks, spec validation and whitespace
+    cmds:
+      - task test
+      - task spec:validate
+      - git diff --check
+
+  demo:live:
+    desc: Generate and ingest a new synthetic live start
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures live'
+  demo:followup:
+    desc: Send the identified live follow-up, preserving exact retries
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures followup'
+  qualify:local:
+    desc: Measure an isolated synthetic Mac workload
+    deps: [build]
+    cmds:
+      - python3 scripts/qualify-local.py
+
+  demo:workspace:
+    desc: Ingest and verify 21 comparable journeys, a rare path, and an unmapped event
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures workspace'
+  fixtures:workspace:
+    desc: Generate fresh workspace OTLP fixtures for REST Client
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures workspace-generate'
+  demo:workspace:verify:
+    desc: Execute the same workspace REST requests and verify replay stability
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures workspace-verify'
+
+  start:workspace:
+    desc: Run workspace review on its separate synthetic database, preserving the original database
+    deps: [build]
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; export SENTRAME_DB=.sentrame/workspace-review.db; exec ./bin/sentrame'
+
+  demo:diagnostics:
+    desc: Verify synthetic .NET-like trace exceptions, Next-like stacks, and custom error messages
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures diagnostics'
+  fixtures:diagnostics:
+    desc: Generate fresh standard diagnostic protobufs for REST Client
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures diagnostics-generate'
+  demo:diagnostics:verify:
+    desc: Execute and replay the exact diagnostic REST requests
+    cmds:
+      - 'set -a; . ./.sentrame/local.env; set +a; go run ./cmd/fixtures diagnostics-verify'
+
+  test:viewer-access:
+    desc: Verify temporary app-wide viewer permissions, expiry, revocation and replay
+    cmds:
+      - go test ./internal/app -run '^TestInvitations' -count=1
+
+  test:delivery:
+    desc: Verify runtime origin configuration and container readiness behavior
+    cmds:
+      - python3 scripts/test_container_smoke.py
+      - go test ./cmd/sentrame ./cmd/healthcheck -count=1
+      - go test ./internal/app -run '^TestReadiness' -count=1
+
+  container:build:
+    desc: Build and load one architecture locally without publishing
+    vars:
+      PLATFORM: '{{default "linux/arm64" .PLATFORM}}'
+    cmds:
+      - docker buildx build --platform {{.PLATFORM}} --load -t sentrame:review .
+
+  container:smoke:
+    desc: Build and verify a disposable local container with synthetic data
+    vars:
+      PLATFORM: '{{default "linux/arm64" .PLATFORM}}'
+    cmds:
+      - task: container:build
+        vars: {PLATFORM: '{{.PLATFORM}}'}
+      - IMAGE_UNDER_TEST=sentrame:review PLATFORM_UNDER_TEST={{.PLATFORM}} python3 scripts/container-smoke.py
+
+  container:export:
+    desc: Export both Linux architectures to an OCI archive without publishing
+    cmds:
+      - mkdir -p .sentrame
+      - docker buildx build --platform linux/amd64,linux/arm64 --output type=oci,dest=.sentrame/sentrame.oci.tar .
+
+  container:config:
+    desc: Validate Compose using your local .env without printing credentials
+    cmds:
+      - docker compose --env-file .env config --quiet
+
+  container:up:
+    desc: Pull and start the selected published image using local .env
+    cmds:
+      - docker compose --env-file .env pull
+      - docker compose --env-file .env up -d --wait
+
+  container:stop:
+    desc: Stop the container while preserving its bind-mounted data folder
+    cmds:
+      - docker compose --env-file .env stop

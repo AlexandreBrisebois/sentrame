@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#153f39">
+  <title>Sentrame · Journey evidence</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to journey summary</a>
+<header class="masthead">
+  <div class="brand"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M6 9h10a7 7 0 0 1 0 14H6m20-14H16a7 7 0 0 0 0 14h10" stroke="currentColor" stroke-width="2.5"/><circle cx="6" cy="9" r="3" fill="currentColor"/><circle cx="26" cy="23" r="3" fill="currentColor"/></svg><span>sentrame</span></div>
+  <span class="tagline">Find the meaning between events.</span>
+  <span class="badge synthetic"><span class="dot"></span>Synthetic workspace</span>
+</header>
+<main id="main">
+  <section class="intro" aria-labelledby="question">
+    <div>
+      <p class="eyebrow">Journey 01 <span aria-hidden="true">/</span> Discovery → first persisted vote</p>
+      <h1 id="question">Did a Discovery attempt reach its first persisted vote?</h1>
+      <p class="lede">A small question. An inspectable answer.<br>Follow the evidence from an observed start to a committed action.</p>
+    </div>
+    <aside class="workspace-panel" aria-label="Workspace controls">
+      <label class="field-label" for="application">Synthetic application</label>
+      <select id="application"><option value="synthetic-demo">synthetic-demo</option><option value="synthetic-secondary">synthetic-secondary</option></select>
+      <div class="refresh-controls"><button id="refresh" type="button"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M16 8a6 6 0 1 0 .1 4M16 3v5h-5"/></svg>Refresh evidence</button><label class="auto-label"><input id="auto-refresh" type="checkbox" checked>Auto · 3s</label></div>
+      <p id="refresh-status" class="refresh-status" role="status">Connecting to local evidence…</p>
+    </aside>
+  </section>
+  <div id="error" class="error-banner" role="alert" hidden></div>
+  <div id="disabled" class="notice" hidden>This application has been deleted and disabled. Evidence cannot be recreated until it is explicitly reconfigured.</div>
+  <section class="context-strip" aria-label="Evidence context">
+    <div><span class="context-label">Interpretation</span><strong>Rule version <span id="rule-version">1</span></strong></div>
+    <div><span class="context-label">Retention</span><strong><span id="retention-days">7</span> days from occurrence</strong></div>
+    <div class="collection"><span class="context-label">Collection completeness</span><strong><span class="hollow-dot" aria-hidden="true"></span>Unknown</strong></div>
+  </section>
+  <section class="outcomes" aria-labelledby="outcomes-title">
+    <div class="section-heading"><div><p class="eyebrow">Observed outcomes</p><h2 id="outcomes-title">What the retained evidence says</h2></div><p class="denominator"><strong id="denominator">—</strong> started attempts<span>The denominator for all four counts</span></p></div>
+    <div class="count-grid">
+      <article class="count-card completed"><div class="count-heading"><span class="outcome-icon" aria-hidden="true">✓</span><h3>Completed</h3></div><p id="count-completed" class="count">—</p><p>A vote was authoritatively persisted.</p></article>
+      <article class="count-card interrupted"><div class="count-heading"><span class="outcome-icon" aria-hidden="true">Ⅱ</span><h3>Interrupted</h3></div><p id="count-interrupted" class="count">—</p><p>An explicit interruption was reported.</p></article>
+      <article class="count-card failed"><div class="count-heading"><span class="outcome-icon" aria-hidden="true">×</span><h3>Failed</h3></div><p id="count-failed" class="count">—</p><p>An authoritative terminal failure was reported.</p></article>
+      <article class="count-card unknown"><div class="count-heading"><span class="outcome-icon" aria-hidden="true">?</span><h3>Unknown</h3></div><p id="count-unknown" class="count">—</p><p>Evidence is missing or terminal observations conflict.</p></article>
+    </div>
+    <div class="outcome-footnote"><span class="small-mark" aria-hidden="true">↻</span><p>Revisable within retention. Later persistence can change an outcome to completed; earlier observations stay visible.</p></div>
+  </section>
+  <section class="evidence-section" aria-labelledby="evidence-title">
+    <div class="section-heading"><div><p class="eyebrow">Look closer</p><h2 id="evidence-title">Started attempts</h2></div><span class="section-hint">Expand an attempt to inspect its evidence</span></div>
+    <div id="started-attempts" class="attempt-list" aria-busy="true"><p class="empty-state">Loading retained evidence…</p></div>
+  </section>
+  <section class="incomplete-section" aria-labelledby="incomplete-title">
+    <div class="section-heading"><div><p class="eyebrow">Outside the denominator</p><h2 id="incomplete-title">Incomplete attempts <span id="incomplete-count" class="number-tag">—</span></h2></div></div>
+    <p class="section-description">Evidence arrived without a retained start. These attempts can have a known outcome, but are counted separately. A later start may reconcile the attempt; an earlier start may also have expired.</p>
+    <div id="incomplete-attempts" class="attempt-list" aria-busy="true"><p class="empty-state">Loading incomplete attempts…</p></div>
+  </section>
+  <aside class="reading-note"><span class="note-symbol" aria-hidden="true">i</span><div><h2>A view of observations, with room for uncertainty.</h2><p>Collection completeness is unknown. A missing observation is different from a reported request error. An observed start does not establish voting intent; silence does not establish an exit. These outcomes do not measure satisfaction or personal value.</p></div></aside>
+  <footer><span>Sentrame · Local synthetic review</span><span id="retained-range">Retained occurrence window loading…</span><span>Attempt identifiers are pseudonymous.</span></footer>
+</main>
+</body>
+</html>
