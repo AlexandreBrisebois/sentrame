@@ -146,34 +146,6 @@ func projectDiagnosticAttributes(x *Evidence, a pcommon.Map) {
 	}
 }
 
-// comparisonAtReceiptPolicy prevents a projection upgrade from turning an exact
-// replay into a conflict. It never backfills old rows or weakens comparisons for
-// fields already retained by that row's policy.
-func comparisonAtReceiptPolicy(incoming, previous Evidence) Evidence {
-	if previous.Attrs["diagnostic.policy"] != "" || incoming.Attrs["diagnostic.policy"] != diagnosticPolicy {
-		return incoming
-	}
-	attrs := make(map[string]string, len(incoming.Attrs))
-	for key, value := range incoming.Attrs {
-		attrs[key] = value
-	}
-	for _, key := range []string{"exception.message", "exception.stacktrace", "log.message", "diagnostic.policy", "diagnostic.truncated"} {
-		if _, existed := previous.Attrs[key]; !existed {
-			delete(attrs, key)
-		}
-	}
-	incoming.Attrs = attrs
-	if len(attrs) == 0 && previous.Attrs == nil {
-		incoming.Attrs = nil
-	}
-	// The former span projection did not retain Error status. Log severity was
-	// retained, so it must still participate in legacy-log conflict detection.
-	if incoming.Signal == "traces" {
-		incoming.Severity = previous.Severity
-	}
-	return incoming
-}
-
 // isErrorDiagnostic accepts standard exception text even when the producer has
 // no exception.type. Metric attributes remain receipt metadata, not errors.
 func isErrorDiagnostic(e Evidence) bool {

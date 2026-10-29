@@ -229,78 +229,34 @@ func TestDiagnosticScrubKeepsDotNetSymbolsAndRedactsQuotedCredentials(t *testing
 	}
 }
 
-func TestDiagnosticLegacyReplayKeepsOriginalProjectionAndConflicts(t *testing.T) {
+func TestDiagnosticSameModelReplayPreservesProjectionAndConflicts(t *testing.T) {
 	svc, _, _ := diagnosticFixture(t)
-	now := time.Now().UTC()
-	svc.Store.Now = func() time.Time { return now }
-	legacy := Evidence{Source: "server", Signal: "logs", Name: "legacy.error", Record: "legacy-log", Time: now.UnixNano(), Severity: 17, Attrs: map[string]string{"exception.type": "LegacyError"}}
-	if err := svc.Store.Insert([]Evidence{legacy}); err != nil {
-		t.Fatal(err)
-	}
 	logs := plog.NewLogs()
 	entry := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
-	entry.SetEventName(legacy.Name)
-	entry.SetTimestamp(pcommon.NewTimestampFromTime(now))
+	entry.SetEventName("vote.persistence.error")
+	entry.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
 	entry.SetSeverityNumber(plog.SeverityNumberError)
-	entry.Attributes().PutStr("event.id", legacy.Record)
-	entry.Attributes().PutStr("exception.type", "LegacyError")
-	entry.Attributes().PutStr("exception.message", "newly projected text")
-	entry.Body().SetStr("newly projected body")
-	if err := svc.consumeLogs(diagnosticContext(), logs); err != nil {
-		t.Fatalf("upgrade broke qualified legacy replay: %v", err)
+	entry.Attributes().PutStr("event.id", "same-model-error")
+	entry.Attributes().PutStr("exception.type", "PersistenceError")
+	entry.Attributes().PutStr("exception.message", "Vote persistence unavailable; retry permitted")
+	entry.Body().SetStr("Synthetic controlled error")
+	for i := 0; i < 2; i++ {
+		if err := svc.consumeLogs(diagnosticContext(), logs); err != nil {
+			t.Fatal(err)
+		}
 	}
 	got, err := svc.Store.Evidence()
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || len(got) != 1 || got[0].Attrs["diagnostic.policy"] != diagnosticPolicy || got[0].Attrs["exception.message"] == "" {
+		t.Fatal("same-model replay lost or duplicated projection")
 	}
-	if len(got) != 1 || got[0].Attrs["exception.message"] != "" || got[0].Attrs["diagnostic.policy"] != "" {
-		t.Fatal("legacy replay backfilled or duplicated old projection")
+	entry.Attributes().PutStr("exception.message", "Changed retained message")
+	if err := svc.consumeLogs(diagnosticContext(), logs); err == nil {
+		t.Fatal("changed message ignored")
 	}
+	entry.Attributes().PutStr("exception.message", "Vote persistence unavailable; retry permitted")
 	entry.SetSeverityNumber(plog.SeverityNumberFatal)
 	if err := svc.consumeLogs(diagnosticContext(), logs); err == nil {
-		t.Fatal("legacy replay lost log-severity conflict detection")
-	}
-	entry.SetSeverityNumber(plog.SeverityNumberError)
-	entry.Attributes().PutStr("exception.type", "DifferentError")
-	if err := svc.consumeLogs(diagnosticContext(), logs); err == nil {
-		t.Fatal("legacy replay lost existing attribute conflict detection")
-	}
-	entry.Attributes().PutStr("event.id", "new-policy-log")
-	entry.Attributes().PutStr("exception.type", "LegacyError")
-	if err := svc.consumeLogs(diagnosticContext(), logs); err != nil {
-		t.Fatal(err)
-	}
-	entry.Attributes().PutStr("exception.message", "conflicting new-policy text")
-	if err := svc.consumeLogs(diagnosticContext(), logs); err == nil {
-		t.Fatal("new privacy-policy replay ignored changed diagnostic text")
-	}
-	trace, spanID := pcommon.TraceID{3}, pcommon.SpanID{4}
-	traceText, spanText := sourceIDs(trace, spanID)
-	oldSpan := Evidence{Source: "server", Signal: "traces", Name: "legacy.span", Record: traceText + "/" + spanText, Trace: traceText, Span: spanText, Time: now.UnixNano(), Attrs: map[string]string{}}
-	if err := svc.Store.Insert([]Evidence{oldSpan}); err != nil {
-		t.Fatal(err)
-	}
-	traces := ptrace.NewTraces()
-	span := traces.ResourceSpans().AppendEmpty().ScopeSpans().AppendEmpty().Spans().AppendEmpty()
-	span.SetName(oldSpan.Name)
-	span.SetStartTimestamp(pcommon.NewTimestampFromTime(now))
-	span.SetTraceID(trace)
-	span.SetSpanID(spanID)
-	span.Status().SetCode(ptrace.StatusCodeError)
-	span.Status().SetMessage("legacy span status was not previously projected")
-	if err := svc.consumeTraces(diagnosticContext(), traces); err != nil {
-		t.Fatalf("upgrade broke legacy span replay: %v", err)
-	}
-	span.SetName("changed-original-name")
-	if err := svc.consumeTraces(diagnosticContext(), traces); err == nil {
-		t.Fatal("legacy trace replay ignored original field conflict")
-	}
-	got, err = svc.Store.Evidence()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 3 || got[2].Severity != 0 || got[2].Attrs["diagnostic.policy"] != "" {
-		t.Fatal("legacy span replay overwrote original projection")
+		t.Fatal("changed severity ignored")
 	}
 }
 

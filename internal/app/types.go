@@ -1,7 +1,35 @@
 package app
 
 // Evidence is the only retained projection. Attribute values outside this contract are never stored.
+const projectionPolicy = "structural-v2"
+const schemaVersion = 3
+
+type SpanLink struct {
+	Trace string `json:"trace"`
+	Span  string `json:"span"`
+}
+
 type Evidence struct {
+	NameState                 string `json:"nameState"`
+	OmittedAttributes         int    `json:"omittedAttributes"`
+	ResourceDroppedAttributes uint32 `json:"resourceDroppedAttributes"`
+	ScopeDroppedAttributes    uint32 `json:"scopeDroppedAttributes"`
+
+	CaptureDefinition int64      `json:"captureDefinition"`
+	Projection        string     `json:"projection"`
+	End               int64      `json:"end"`
+	Parent            string     `json:"parent"`
+	Kind              int32      `json:"kind"`
+	Status            int32      `json:"status"`
+	Flags             uint32     `json:"flags"`
+	EventIndex        int        `json:"eventIndex"`
+	EventCount        int        `json:"eventCount"`
+	Links             []SpanLink `json:"links"`
+	OmittedLinks      int        `json:"omittedLinks"`
+	DroppedLinks      uint32     `json:"droppedLinks"`
+	DroppedEvents     uint32     `json:"droppedEvents"`
+	DroppedAttributes uint32     `json:"droppedAttributes"`
+
 	ID         int64             `json:"id"`
 	Source     string            `json:"source"`
 	Signal     string            `json:"signal"`
@@ -25,6 +53,11 @@ type Evidence struct {
 	Definition int64             `json:"definition"`
 }
 type Mapping struct {
+	Service string `json:"service,omitempty"`
+	Signal  string `json:"signal,omitempty"`
+	Carrier string `json:"carrier,omitempty"`
+	Timing  string `json:"timing,omitempty"`
+
 	Event  string `json:"event"`
 	Step   string `json:"step"`
 	Source string `json:"source"`
@@ -33,12 +66,14 @@ type Mapping struct {
 	Value  string `json:"value"`
 }
 type Definition struct {
+	GoalSelector   *Mapping  `json:"goalSelector,omitempty"`
 	Version        int64     `json:"version"`
 	Goal           string    `json:"goal"`
 	Mappings       []Mapping `json:"mappings"`
 	FallbackTiming bool      `json:"fallbackTiming"`
 }
 type SavedView struct {
+	Trace           string `json:"trace,omitempty"`
 	Scope           string `json:"scope,omitempty"`
 	Layout          string `json:"layout,omitempty"`
 	Lens            string `json:"lens,omitempty"`

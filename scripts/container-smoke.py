@@ -124,6 +124,22 @@ def main():
         with request("/v1/logs", payload, server) as response:
             assert response.status == 200
         snapshot_has_record()
+        # Reuse the maintained literal REST fixture generator/verifier against
+        # this container's fresh database; successful receipt alone is not enough.
+        fixture_env = dict(os.environ, SENTRAME_URL=origin, SENTRAME_ORIGIN=origin,
+                           SENTRAME_PASSPHRASE=owner, SENTRAME_BROWSER_TOKEN=browser,
+                           SENTRAME_SERVER_TOKEN=server)
+        repository = Path(__file__).resolve().parent.parent
+        subprocess.run(["go", "run", "./cmd/fixtures", "standard"], cwd=repository,
+                       env=fixture_env, check=True)
+        manifest = json.loads((repository / "rest/generated/standard-manifest.json").read_text())
+        trace_path = "/api/traces/" + manifest["trace"]
+        # The verifier has its own cookie jar; this owner cookie remains valid.
+        with request(trace_path) as response:
+            trace_before = json.load(response)
+        trace_before.pop("revision", None)
+        assert trace_before["mode"] == "trace" and trace_before["operations"]
+        print("Fixture hashes:", json.dumps(manifest["hashes"], sort_keys=True))
         with request("/api/events") as response:
             assert response.headers.get_content_type() == "text/event-stream"
             assert response.readline().startswith(b"event: reset")
@@ -132,7 +148,11 @@ def main():
         jar.clear()
         login()
         snapshot_has_record()
-        print(f"PASS {platform}: non-root read-only image, readiness, static UI, protected read, standard OTLP/HTTP JSON log, SSE and persisted evidence after restart")
+        with request(trace_path) as response:
+            trace_after = json.load(response)
+        trace_after.pop("revision", None)
+        assert trace_before == trace_after, "Native trace changed after bind-storage restart"
+        print(f"PASS {platform}: non-root read-only image, readiness, static UI, protected read, standard OTLP/HTTP JSON log, 37-step native-model REST verifier, protected trace relationships, SSE and exact bind-storage trace evidence after restart")
     except Exception:
         # This container contains only disposable synthetic data. Print bounded
         # startup diagnostics, never its environment or generated credentials.

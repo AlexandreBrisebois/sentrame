@@ -46,9 +46,9 @@ tasks:
       - python3 scripts/reset-local.py
       - python3 scripts/local-env.py
   spec:validate:
-    desc: Strictly validate the active evolved OpenSpec change
+    desc: Strictly validate the canonical OpenSpec capabilities
     cmds:
-      - openspec validate synthetic-journey-outcomes --strict
+      - openspec validate --specs --strict
   check:
     desc: Run tests, type checks, spec validation and whitespace
     cmds:
@@ -151,3 +151,16 @@ tasks:
     desc: Stop the container while preserving its bind-mounted data folder
     cmds:
       - docker compose --env-file .env stop
+
+  fixtures:standard:
+    desc: Generate standard OTel fixtures with fresh native identities (export isolated env first)
+    cmds:
+      - go run ./cmd/fixtures standard-generate
+  demo:standard:
+    desc: Execute literal standard OTel REST requests against the isolated loopback service
+    cmds:
+      - go run ./cmd/fixtures standard
+  demo:standard:verify:
+    desc: Execute prepared standard OTel requests without regenerating replay bytes
+    cmds:
+      - go run ./cmd/fixtures standard-verify

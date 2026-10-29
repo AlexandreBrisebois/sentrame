@@ -10,7 +10,7 @@ flowchart LR
   F -->|Standard OTLP/HTTP · browser credential| S
 ```
 
-This guide is **source-checked configuration and example code**, not a claim that these .NET/Next.js exporters have been run against this release. Sentrame's current qualification covers the origin OTLP/HTTP combinations recorded in [local review](LOCAL-REVIEW.md), standard wire fixtures and the synthetic demonstrations. Actual SDK versions, browser behavior and the deployed HTTPS/tunnel route require their own checks. No WFS application was changed or contacted to write this guide.
+This guide contains **source-checked configuration and example code**, with separately scoped runtime-qualified disposable samples listed below. A passed sample does not qualify every snippet, application or deployment route. Sentrame's current qualification covers the origin OTLP/HTTP combinations recorded in [local review](LOCAL-REVIEW.md), standard wire fixtures and the synthetic demonstrations. Actual SDK versions, browser behavior and the deployed HTTPS/tunnel route require their own checks. No WFS application was changed or contacted to write this guide.
 
 ## 1. Know which process is sending
 
@@ -147,13 +147,13 @@ if (app.Environment.IsDevelopment())
     {
         try
         {
-            throw new InvalidOperationException("Synthetic inventory lookup failed");
+            throw new InvalidOperationException("Vote persistence unavailable; retry permitted");
         }
         catch (InvalidOperationException error)
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error,
-                "Synthetic inventory lookup failed");
-            logger.LogError(new EventId(0, "demo.server.error"), error,
+                "Vote persistence unavailable; retry permitted");
+            logger.LogError(new EventId(0, "vote.persistence.failed"), error,
                 "Controlled telemetry check failed");
             return Results.StatusCode(503);
         }
@@ -166,7 +166,7 @@ app.Run();
 
 The explicit .NET `Headers` option above uses a literal space after `Bearer`; its pinned parser accepts that value and also decodes URL-encoded environment-header values. [Exact 1.20.1 header parser](https://github.com/open-telemetry/opentelemetry-dotnet/blob/core-1.20.1/src/OpenTelemetry.Exporter.OpenTelemetryProtocol/OtlpExporterOptionsExtensions.cs). The Next.js example uses a plain JavaScript headers object with the same literal space.
 
-Run the development app and call its own `/internal/telemetry-demo/error` endpoint once. After the SDK's batch export, open **Sentrame → Errors** and look for `demo.server.error`, the configured service and a scrubbed exception message/stack. This tests logging; HTTP instrumentation supplies related technical spans. A server error can remain discoverable without a visit ID. Let the ASP.NET Core host shut down gracefully so its registered providers can flush queued telemetry.
+Run the development app and call its own `/internal/telemetry-demo/error` endpoint once. After the SDK's batch export, open **Sentrame → Errors** and look for `vote.persistence.failed`, the configured service and a scrubbed exception message/stack. This tests logging; HTTP instrumentation supplies related technical spans. A server error can remain discoverable without a visit ID. Let the ASP.NET Core host shut down gracefully so its registered providers can flush queued telemetry.
 
 The exporter serializes `ILogger` exceptions into standard exception fields and uses the named `EventId` as the OTLP event name. In the pinned exporter, the numeric logging-template ID is separately named `logrecord.event.id` when its experimental emission is enabled; it is not an occurrence identity. The sample's numeric zero avoids relying on that optional field. **Ordinary `ILogger` reception does not need a custom `event.id`.** [Pinned .NET log serializer](https://github.com/open-telemetry/opentelemetry-dotnet/blob/core-1.20.1/src/OpenTelemetry.Exporter.OpenTelemetryProtocol/Implementation/Serializer/ProtobufOtlpLogSerializer.cs), [pinned experimental option names](https://github.com/open-telemetry/opentelemetry-dotnet/blob/core-1.20.1/src/OpenTelemetry.Exporter.OpenTelemetryProtocol/Implementation/ExperimentalOptions.cs).
 
@@ -300,9 +300,50 @@ export async function reportServerError(caught: unknown) {
 export const shutdownTelemetry = () => sdk.shutdown();
 ```
 
-The provider is initialized once per Node server instance, before requests. Its exporters use **HTTP Protobuf** and explicit full paths. `reportBusinessEvent('checkout.opened')` in a server operation produces a standard named log; call it only where that server operation actually happens. `reportServerError(new Error('Controlled synthetic failure'))` is a simple controlled development check. The API's `eventName`, standard exception attributes and current active context are defined by the [pinned JS log record API](https://github.com/open-telemetry/opentelemetry-js/blob/v3.0.0/api/src/logs/LogRecord.ts); the [Node SDK registration implementation](https://github.com/open-telemetry/opentelemetry-js/blob/v3.0.0/experimental/packages/opentelemetry-sdk-node/src/sdk.ts) establishes its providers.
+The provider is initialized once per Node server instance, before requests. Its exporters use **HTTP Protobuf** and explicit full paths. `reportBusinessEvent('vote.committed')` in a server operation produces a standard named log; call it only where that server operation actually happens. `reportServerError(new Error('Controlled synthetic failure'))` is a simple controlled development check. The API's `eventName`, standard exception attributes and current active context are defined by the [pinned JS log record API](https://github.com/open-telemetry/opentelemetry-js/blob/v3.0.0/api/src/logs/LogRecord.ts); the [Node SDK registration implementation](https://github.com/open-telemetry/opentelemetry-js/blob/v3.0.0/experimental/packages/opentelemetry-sdk-node/src/sdk.ts) establishes its providers.
 
 This does not make `console.error` automatically become an OTLP log. Bridge the application's logging library intentionally or call a small controlled adapter such as the functions above. Batch export can be lost on abrupt/serverless termination; integrate the host's supported flush/shutdown lifecycle. Do not run this Node provider in Edge or a Client Component.
+
+### Optional label enrichment in existing emitters
+
+**Source-checked additions, actual exporters separately qualified.** First explore ordinary request/persistence spans and map a trusted `vote.committed` fact to **Vote saved** without custom attributes. Add an optional label only to reduce configuration entry. Reuse the application's current provider and active operation; these additions require no SDK replacement, extra provider or wrapper.
+
+For .NET, add to the relevant existing Activity or the existing named post-commit log:
+
+```csharp
+using System.Diagnostics;
+using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
+
+// Only if this existing span actually represents persistence:
+Activity.Current?.SetTag("stage.name", "voting.persist");
+// Alternative: within the existing post-commit emitter; IncludeScopes=true:
+using (logger.BeginScope(new Dictionary<string, object?>
+{
+    ["stage.name"] = "voting.persist"
+}))
+{
+    logger.LogInformation(new EventId(0, "vote.committed"), "Vote persisted");
+}
+```
+
+For the pinned Next.js Node/OTel API family, enrich the existing span or named log:
+
+```ts
+import { context, logs, trace, SeverityNumber } from '@opentelemetry/api';
+
+// Only on the existing persistence operation:
+trace.getActiveSpan()?.setAttribute('stage.name', 'voting.persist');
+// Alternative: in the existing trusted post-commit emitter:
+logs.getLogger('app.journeys').emit({
+  eventName: 'vote.committed',
+  severityNumber: SeverityNumber.INFO,
+  context: context.active(),
+  attributes: { 'stage.name': 'voting.persist' },
+});
+```
+
+Emit each business fact through one intentional carrier; the alternatives above are not a request to duplicate it. Use stable lowercase dot-separated values (`voting`, `voting.submit`, `voting.persist`); avoid IDs, content, routes and start/end suffixes. Preview offers a suggestion, while an explicit owner **Vote saved** mapping wins over emitted `voting`. Missing hints leave name-based mapping useful; distinct labels require review. Acceptance creates a literal prospective rule and does not rename prior captures or imply Kind, goal, authority, session or timing boundaries. See [precedence](integration/OTEL-CONTRACT.md#optional-stagename-suggestions).
 
 ## 5. Connect traces across Next.js and .NET
 
@@ -323,6 +364,10 @@ const response = await fetch(process.env.APP_API_ORIGIN + '/your-fixed-route', {
 Use a configured trusted destination, not a user-controlled URL, and add the application's normal authentication independently. Do not inject the Sentrame producer token into this business request. The .NET incoming instrumentation can continue that trace. This is technical propagation; an application must separately choose and explicitly carry permitted random business correlation when joining browser intent and server commitment. Do not put personal identity into baggage or infer a join from close timestamps. [OpenTelemetry context propagation](https://opentelemetry.io/docs/concepts/context-propagation/).
 
 ## 6. Add journey context only when you need it
+
+The fields and mapping Kinds below are Sentrame-supported application interpretation, not a universal OpenTelemetry journey schema. Standard logs/spans work without them.
+
+For concrete minimum envelopes and the distinction between .NET Activities, events and Sentrame activity/presence records, read the [OTel event/activity contract](integration/OTEL-CONTRACT.md). It also explains optional `stage.name`, native inclusive operation timing and explicit paired stage alternatives.
 
 Sentrame accepts ordinary valid standard telemetry **without** event IDs, session IDs, a custom schema or Sentrame fields. A useful exception can appear in Errors without any journey. A mapped event with insufficient journey context remains received/unassigned rather than fabricating a path.
 
@@ -345,14 +390,15 @@ An automatically recorded `GET /recipes` span is useful technical evidence. It i
 
 ## 7. First useful integration, one observation at a time
 
-1. Verify the deployed Sentrame origin and producer credentials with one controlled synthetic log through the intended route.
-2. Send one controlled error from the selected real SDK; inspect **Errors** for the service, message, stack and standard trace/span context. Check that no sensitive values travelled to the receiver.
-3. Emit one named business record at a real milestone. Find it under **Unmapped events**, select it, and choose **Configure event**.
-4. Assign a short Stage and **step** Kind; preview matches before activating a prospective definition. Configure the intended operational goal separately.
-5. Add only the random scope/tab/action context needed for the journey question, then verify ordered events, repeated actions, warnings/recovery and goal completion.
-6. Exercise retries, process restart, exporter batching/loss and the actual deployed route before advertising SDK support. Test each service independently; successful .NET export does not qualify Next.js or browser export.
+1. Verify receipt using ordinary spans/logs through the intended authenticated route. Inspect service, carrier, name and safe fields; metrics remain receipt-only.
+2. Open **Traces** for native operation timing, parents, events, log context and links. A request needs no stage/session/occurrence attributes. Errors stay useful without a journey.
+3. On an operation or named event choose **Give business meaning**. Select exact service, trusted producer, carrier and name; optionally use one retained condition. Enter Stage/Kind and preview. Existing native span identity supplies an operation occurrence and inclusive duration, without paired logs or a custom ID. Point-event duration remains unavailable unless an explicit supported alternative is chosen.
+4. Activate prospectively. The default overlay retains receipt-time definitions; **Non-persisting preview** explicitly tries another version. Choose an exact goal mapping. A span goal evaluates at its valid completion/end; an event goal at its event time. A failed or missing-end span does not establish completed goal evidence.
+5. For voting, `GET /vote` is request work, a browser press is intent, and `POST /votes` plus child `vote.persist` spans show processing/repetition. A trusted `vote.committed` observation after actual commit can establish **Vote saved**. HTTP2xx and browser intent cannot prove persistence. A publication error after commit preserves the commitment and records separate friction; retry/recovery and completion-screen observation remain distinct.
+6. Add optional label hints only to reduce configuration entry; add random scope/tab only for a path across requests. Add actual page boundaries/presence only for the unanswered page-time question. No IP, user-agent, time-proximity or cross-visit inference joins observations.
+7. Qualify the actual .NET/Next.js exporter separately, including batching, propagation and shutdown through durable protected reads. Wire fixtures and source snippets do not establish SDK or deployed-route support.
 
-Condition filters refer to retained attributes: for an event with `{"reason":"exhausted"}`, set **Condition key** to `reason` and **Equals** to `exhausted`. Leave both empty when the event name and trusted producer are sufficient. The current general safe attribute allowlist includes `reason`, `stage.name`, `stage.state`, `activity.state`, `exception.type`, `exception.occurrence.id` and bounded SDK/runtime/environment metadata. Unknown attributes are omitted by privacy projection, not rejected solely for being unfamiliar.
+Conditions use only retained fields: `reason`, `stage.name`, `stage.state`, `activity.state`, exception type/occurrence, bounded SDK/runtime/environment metadata, HTTP method, minimized route template and integer response status. For `http.route=/votes/{voteId}`, enter Condition key `http.route` and Equals `/votes/{voteId}`. Unknown fields are unavailable, never recovered from raw OTLP. Conflicting explicit rules block activation; disjoint service/carrier/source/condition selectors can coexist. See the [producer contract](integration/OTEL-CONTRACT.md) and [actual local evidence](verification/standard-otel.md).
 
 ### A manual standard wire check
 
@@ -397,4 +443,29 @@ Browser forwarding is deliberately left as a reviewed integration boundary, not 
 
 ## Qualification record
 
-Source review on 2026-10-28 checked the current receiver field projection, .NET 1.20.1 package/exporter behavior, Next.js Node-only initialization/error hooks and the coherent JS 3.0.0/0.300.0 API family. These snippets have **not** been compiled, installed or run in a real .NET/Next.js application here. Actual SDK receipt, automatic propagation, browser forwarding, exporter shutdown behavior and the NAS/tunnel route remain checks to perform against the chosen application's locked versions. A source-checked recipe is useful setup guidance, not a passed compatibility cell.
+Source review on 2026-10-28 checked the current receiver field projection, .NET 1.20.1 package/exporter behavior, Next.js Node-only initialization/error hooks and the coherent JS 3.0.0/0.300.0 API family. The main snippets remain illustrative/source-checked. A separate disposable .NET sample has been compiled and run as recorded below; Next.js Node qualification is also recorded independently below. Actual SDK receipt, automatic propagation, browser forwarding, exporter shutdown behavior and the NAS/tunnel route remain checks to perform against the chosen application's locked versions. A source-checked recipe is useful setup guidance, not a passed compatibility cell.
+
+
+## Purposeful richer voting context
+
+For one path across navigation, press, failed request, retry, commit, publication error/recovery and completion-screen observation, explicitly propagate a fresh random bounded `session.id` and browser `tab.id` onto participating records. OTel's client session convention is opt-in and Development; Sentrame also interprets that key for server workflows. SDKs do not automatically copy this scope or arbitrary baggage into logs/spans. Review propagation only across approved application boundaries. Native W3C trace context remains technical execution context; neither it nor IP/user-agent/time proximity joins visits. Do not emit `session.previous_id` or a persistent person/device identity. Server-only scopes need no invented browser tab.
+
+For page elapsed time use a real encompassing native page interval, or explicit same-occurrence page entry/exit if no such span exists. For observed-active time require actual visibility/idle observations under the disclosed60-second refresh cap. Never emit positive heartbeats while hidden/idle or infer them from HTTP duration/clicks. Native server operation latency, paired page elapsed and observed-active distributions stay separate; no overlap sum claims unique user time or attention.
+
+Captured journeys keep their definition through goal/inactivity closure. A native goal evaluates at a usable end; a late earlier prefix within the inactivity gap associates with the retained capture's definition while keeping its immutable receipt definition. New native records never mutate accepted span identities. Saved trace references pin trace mode and optional explicit definition preview, while journey references query chronological captured boundaries. Detail expires at30 days; links/references cannot resurrect it. Twelve-month aggregates retain no scope/trace IDs or diagnostic text and identify timing/computation policy.
+
+The [progressive synthetic story](integration/synthetic-demo.md#scoped-voting-story) proves local wire behavior, including configured completion-screen evidence distinct from commitment. It does not prove actual browser collection or actual .NET/Next exporter behavior.
+
+
+### Runtime-qualified .NET cell
+
+On 2026-10-29 a disposable ASP.NET Core/.NET10.0.2 sample (SDK 10.0.102, exact OpenTelemetry 1.20.1 packages and lock file) passed direct Mac OTLP/HTTP Protobuf **uncompressed** logs/traces through actual receiver commit and protected reads, including graceful batch shutdown and receiver restart. It exercised real failed/saved/post-commit-error file operations, native parent/time, EventId names, exception messages/stacks, optional span/scope hints and exact log context with one provider per signal. [Exact evidence and source hashes](verification/standard-otel.md) limit the claim. Gzip/JSON/.NET11/metrics/cross-service/browser/Tunnel/Collector and deployments remain separate unrun cells; the guide's specific demo endpoint was not the qualified sample route.
+
+
+### Runtime-qualified Next.js Node cell
+
+A disposable Next 16.4.3 App Router sample on Node 26.12.0 with React 19.2.0 and exact OTel API 1.10.0 / SDK 3.0.0 / experimental 0.300.0 passed direct Mac OTLP/HTTP Protobuf **uncompressed** logs/traces. It verified one initialization, real route/persistence/error boundaries and `onRequestError`, native parent/time, named commitment/error logs, optional hints, exact log context, explicit SDK flush/shutdown and actual receiver restart. [Exact source/lock hashes and limitations](verification/standard-otel.md) scope the claim. The main TypeScript snippets remain source-checked; this runtime sample used JavaScript. Gzip/JSON/Edge/browser/metrics/cross-service/Tunnel/Collector and deployment routes remain separate cells.
+
+### Runtime-qualified isolated browser cell
+
+Chrome 156.0.8078.49 Guest on macOS ARM64 exercised the disposable Next 16.4.3 app-origin forwarder using API 1.10.0, `@opentelemetry/sdk-trace`, logs/resources/core 3.0.0 and HTTP Protobuf exporters 0.300.0, compression none. Reuse the existing app SDK; this test sample required one browser provider per signal because none existed. Explicit opt-in, bounded Origin/content-type/stream checks, browser authority, token-free bundles, CSP/CORS, real browser→Node W3C parentage, failure/retry/commit, visibility/idle and controlled flush passed through durable protected reads. An unended span was lost on navigation as expected. The sample uses a 1.5-second idle threshold for qualification, not a recommended production threshold. Abrupt shutdown, mobile browsers, Edge, serverless delivery and production consent policy are not qualified. See [the exact evidence and source hashes](verification/standard-otel.md).

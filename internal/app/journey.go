@@ -9,6 +9,7 @@ import (
 )
 
 type Model struct {
+	Computation string       `json:"computation"`
 	Journeys    []Journey    `json:"journeys"`
 	Nodes       []Node       `json:"nodes"`
 	Edges       []Edge       `json:"edges"`
@@ -19,8 +20,8 @@ type Model struct {
 	Warnings    []string     `json:"warnings"`
 }
 type Journey struct {
-	WindowFrom     int64            `json:"windowFrom"`
-	WindowTo       int64            `json:"windowTo"`
+	WindowFrom     int64            `json:"windowFrom,string"`
+	WindowTo       int64            `json:"windowTo,string"`
 	CapturedStatus string           `json:"capturedStatus"`
 	RightCensored  bool             `json:"rightCensored"`
 	ID             string           `json:"id"`
@@ -29,9 +30,9 @@ type Journey struct {
 	Definition     int64            `json:"definition"`
 	Version        string           `json:"version"`
 	MixedVersion   bool             `json:"mixedVersion"`
-	Start          int64            `json:"start"`
-	End            int64            `json:"end"`
-	LastMapped     int64            `json:"lastMapped"`
+	Start          int64            `json:"start,string"`
+	End            int64            `json:"end,string"`
+	LastMapped     int64            `json:"lastMapped,string"`
 	Status         string           `json:"status"`
 	Reason         string           `json:"reason"`
 	Path           []string         `json:"path"`
@@ -47,7 +48,7 @@ type StepOccurrence struct {
 	Step       string `json:"step"`
 	Event      string `json:"event"`
 	EvidenceID int64  `json:"evidenceId"`
-	Time       int64  `json:"time"`
+	Time       int64  `json:"time,string"`
 	Source     string `json:"source"`
 }
 type Node struct {
@@ -68,12 +69,15 @@ type Edge struct {
 	Visits      int    `json:"visits"`
 }
 type Timing struct {
+	Service      string  `json:"service"`
+	DurationNs   *string `json:"durationNs"`
+	Computation  string  `json:"computation"`
 	Definition   int64   `json:"definition"`
 	Stage        string  `json:"stage"`
 	Occurrence   string  `json:"occurrence"`
 	Source       string  `json:"source"`
-	Start        int64   `json:"start"`
-	End          int64   `json:"end"`
+	Start        int64   `json:"start,string"`
+	End          int64   `json:"end,string"`
 	Milliseconds float64 `json:"milliseconds"`
 	Basis        string  `json:"basis"`
 	Quality      string  `json:"quality"`
@@ -82,6 +86,7 @@ type Timing struct {
 	EvidenceIDs  []int64 `json:"evidenceIds"`
 }
 type TimingSummary struct {
+	Computation  string   `json:"computation"`
 	Definition   int64    `json:"definition"`
 	Basis        string   `json:"basis"`
 	Samples      int      `json:"samples"`
@@ -129,7 +134,7 @@ const inactivityNanos = int64(30 * time.Minute)
 // Derive reads an already sanitized, app-isolated retained evidence snapshot. It never
 // infers a person, cross-tab join, or a causal relation from temporal proximity.
 func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model {
-	m := Model{Journeys: []Journey{}, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: []Evidence{}, Warnings: []string{}, Policy: "First mapped occurrence / active goal / 30-minute inactivity; event-time display is not causal order. Transition occurrences, journeys and anonymous scopes are separate units. Timings never measure attention."}
+	m := Model{Computation: "journey-native-v3", Journeys: []Journey{}, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: []Evidence{}, Warnings: []string{}, Policy: "First mapped occurrence / active goal / 30-minute inactivity; event-time display is not causal order. Transition occurrences, journeys and anonymous scopes are separate units. Timings never measure attention."}
 	defs := map[int64]Definition{}
 	for _, d := range definitions {
 		defs[d.Version] = d
@@ -184,8 +189,31 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 		})
 		var current *Journey
 		var currentDef Definition
+		var terminalAt int64
+		terminalStatus := ""
+		closeTerminal := func() {
+			if current != nil && terminalAt > 0 {
+				current.End = terminalAt
+				current.Status = terminalStatus
+				terminalAt = 0
+				terminalStatus = ""
+			}
+		}
+		scheduleTerminal := func(at int64, state string) {
+			if terminalAt == 0 || at < terminalAt {
+				terminalAt = at
+				terminalStatus = state
+			}
+		}
 		for _, e := range es {
-			candidate := defs[e.Definition]
+			if terminalAt > 0 && e.Time >= terminalAt {
+				closeTerminal()
+			}
+			candidateVersion := e.Definition
+			if e.CaptureDefinition > 0 {
+				candidateVersion = e.CaptureDefinition
+			}
+			candidate := defs[candidateVersion]
 			d := candidate
 			if current != nil && current.Status == "active" && e.Time-current.LastMapped < inactivityNanos {
 				d = currentDef
@@ -214,7 +242,12 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 					current = &m.Journeys[len(m.Journeys)-1]
 					currentDef = d
 				}
-				current.LastMapped = e.Time
+				if e.Time > current.LastMapped {
+					current.LastMapped = e.Time
+				}
+				if e.Signal == "traces" && !e.Fallback && e.End >= e.Time && e.End > current.LastMapped {
+					current.LastMapped = e.End
+				}
 				if mapping.Kind != "stage-end" && mapping.Kind != "activity" {
 					label := mapping.Step
 					if label == "" {
@@ -223,11 +256,33 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 					current.Path = append(current.Path, label)
 					current.Steps = append(current.Steps, StepOccurrence{Step: label, Event: e.Name, EvidenceID: e.ID, Time: e.Time, Source: e.Source})
 				}
-				if e.Name == currentDef.Goal {
-					current.Status = "completed"
-					current.End = e.Time
+				if isGoal(e, mapping, currentDef) {
+					if e.Signal == "traces" {
+						if _, quality := nativeDuration(e); quality == "complete" && e.Status != 2 {
+							scheduleTerminal(e.End, "completed")
+						} else {
+							current.Warnings = appendUnique(current.Warnings, "Native goal completion unavailable: failed operation or missing/incompatible end.")
+						}
+					} else {
+						current.Status = "completed"
+						current.End = e.Time
+						terminalAt = 0
+					}
 				}
-				if mapping.Kind == "exit" {
+				if mapping.Kind == "exit" && e.Signal == "traces" {
+					if _, quality := nativeDuration(e); quality == "complete" {
+						state := "exited"
+						if isGoal(e, mapping, currentDef) && e.Status != 2 {
+							state = "conflict"
+							current.Warnings = appendUnique(current.Warnings, "Goal and explicit exit match the same native operation.")
+						}
+						scheduleTerminal(e.End, state)
+						current.Reason = e.Attrs["reason"]
+					} else {
+						current.Warnings = appendUnique(current.Warnings, "Native exit boundary unavailable: missing/incompatible end.")
+					}
+				}
+				if mapping.Kind == "exit" && e.Signal != "traces" {
 					if current.Status == "completed" {
 						current.Warnings = appendUnique(current.Warnings, "Goal and explicit exit match the same evidence; configured meanings conflict.")
 						current.Status = "conflict"
@@ -263,6 +318,9 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 			} else {
 				m.Unassigned = append(m.Unassigned, e)
 			}
+		}
+		if terminalAt > 0 {
+			closeTerminal()
 		}
 		if current != nil && current.Status == "active" && nowNanos-current.LastMapped >= inactivityNanos {
 			current.Status = "inactive"
@@ -301,7 +359,7 @@ func mappingFor(e Evidence, d Definition) (Mapping, bool, bool) {
 	var found Mapping
 	count := 0
 	for _, r := range d.Mappings {
-		if r.Event != e.Name || (r.Source != "" && r.Source != e.Source) || (r.Key != "" && e.Attrs[r.Key] != r.Value) {
+		if !mappingMatches(e, r) {
 			continue
 		}
 		found = r
@@ -333,6 +391,30 @@ func deriveTimings(j Journey, d Definition, now int64) []Timing {
 		if !ok {
 			continue
 		}
+		if e.Signal == "traces" {
+			if r.Timing == "" || r.Timing == "native-span" {
+				ns, quality := nativeDuration(e)
+				t := Timing{Stage: r.Step, Source: e.Source, Service: e.Service, Occurrence: e.Source + "/" + e.Trace + "/" + e.Span, Start: e.Time, End: e.End, Basis: "native-inclusive", Computation: nativeTimingPolicy, Quality: quality, EvidenceIDs: []int64{e.ID}}
+				if ns != nil {
+					t.Complete = true
+					t.Milliseconds = float64(e.End-e.Time) / 1e6
+					t.Quality = "inclusive native operation; nested/parallel intervals are not unique time"
+				}
+				out = append(out, t)
+				if t.Complete && e.Source == "browser" && (j.End == 0 || e.End <= j.End) {
+					end := e
+					end.Time = e.End
+					if active, has := activeDuration(j.Evidence, e, end); has {
+						duration := fmt.Sprint(active)
+						out = append(out, Timing{Stage: r.Step, Occurrence: t.Occurrence, Source: e.Source, Service: e.Service, Start: e.Time, End: e.End, Milliseconds: float64(active) / 1e6, DurationNs: &duration, Basis: "observed-active", Quality: "explicit browser activity intervals; unobserved gaps unknown; 60-second heartbeat cap; not attention", Complete: true, EvidenceIDs: []int64{e.ID}})
+					}
+				}
+			}
+			continue
+		}
+		if r.Timing == "none" {
+			continue
+		}
 		if r.Kind != "stage-start" && r.Kind != "stage-end" {
 			continue
 		}
@@ -342,7 +424,7 @@ func deriveTimings(j Journey, d Definition, now int64) []Timing {
 			stage = e.Attrs["stage.name"]
 		}
 		if e.Occurrence == "" {
-			out = append(out, Timing{Stage: stage, Source: e.Source, Start: e.Time, Basis: "measured-elapsed", Quality: "unavailable: missing stage occurrence identity", EvidenceIDs: []int64{e.ID}})
+			out = append(out, Timing{Stage: stage, Source: e.Source, Service: e.Service, Start: e.Time, Basis: "measured-elapsed", Quality: "unavailable: missing stage occurrence identity", EvidenceIDs: []int64{e.ID}})
 			continue
 		}
 		if r.Kind == "stage-start" {
@@ -353,7 +435,7 @@ func deriveTimings(j Journey, d Definition, now int64) []Timing {
 			continue
 		}
 		start, exists := starts[key]
-		t := Timing{Stage: stage, Occurrence: e.Occurrence, Source: e.Source, End: e.Time, Basis: "measured-elapsed", Quality: "unavailable: missing start", EvidenceIDs: []int64{e.ID}}
+		t := Timing{Stage: stage, Occurrence: e.Occurrence, Source: e.Source, Service: e.Service, End: e.Time, Basis: "measured-elapsed", Quality: "unavailable: missing start", EvidenceIDs: []int64{e.ID}}
 		if exists {
 			t.Start = start.Time
 			t.EvidenceIDs = []int64{start.ID, e.ID}
@@ -370,7 +452,7 @@ func deriveTimings(j Journey, d Definition, now int64) []Timing {
 			delete(ambiguous, key)
 			if t.Complete {
 				if active, has := activeDuration(j.Evidence, start, e); has {
-					out = append(out, Timing{Stage: stage, Occurrence: e.Occurrence, Source: e.Source, Start: start.Time, End: e.Time, Milliseconds: float64(active) / 1e6, Basis: "observed-active", Quality: "explicit activity intervals; 60-second heartbeat cap; not attention", Complete: true, EvidenceIDs: []int64{start.ID, e.ID}})
+					out = append(out, Timing{Stage: stage, Occurrence: e.Occurrence, Source: e.Source, Service: e.Service, Start: start.Time, End: e.Time, Milliseconds: float64(active) / 1e6, Basis: "observed-active", Quality: "explicit activity intervals; 60-second heartbeat cap; not attention", Complete: true, EvidenceIDs: []int64{start.ID, e.ID}})
 				}
 			}
 		}
@@ -396,21 +478,77 @@ func deriveTimings(j Journey, d Definition, now int64) []Timing {
 		if e.Fallback || ambiguous[k] {
 			quality = "unavailable: missing clock or ambiguous start"
 		}
-		out = append(out, Timing{Stage: r.Step, Occurrence: e.Occurrence, Source: e.Source, Start: e.Time, Milliseconds: float64(end-e.Time) / 1e6, Basis: "measured-elapsed", Quality: quality, Provisional: provisional, EvidenceIDs: []int64{e.ID}})
+		out = append(out, Timing{Stage: r.Step, Occurrence: e.Occurrence, Source: e.Source, Service: e.Service, Start: e.Time, Milliseconds: float64(end-e.Time) / 1e6, Basis: "measured-elapsed", Quality: quality, Provisional: provisional, EvidenceIDs: []int64{e.ID}})
 	}
-	if d.FallbackTiming {
+	if d.FallbackTiming || hasEstimatedMapping(d) {
 		for i := 0; i+1 < len(j.Evidence); i++ {
 			a, b := j.Evidence[i], j.Evidence[i+1]
 			r, ok, _ := mappingFor(a, d)
-			if !ok || r.Kind != "step" || a.Source != b.Source || a.Service != b.Service || a.Fallback || b.Fallback || b.Time < a.Time || b.Time-a.Time > inactivityNanos {
+			if !ok || !d.FallbackTiming && r.Timing != "estimated" || a.Signal == "traces" || r.Timing == "none" || r.Timing == "paired" || r.Kind != "step" || a.Source != b.Source || a.Service != b.Service || a.Fallback || b.Fallback || b.Time < a.Time || b.Time-a.Time > inactivityNanos {
 				continue
 			}
-			out = append(out, Timing{Stage: r.Step, Occurrence: fmt.Sprintf("estimate-%d", a.ID), Source: a.Source, Start: a.Time, End: b.Time, Milliseconds: float64(b.Time-a.Time) / 1e6, Basis: "next-event-estimated", Quality: "same-source adjacent retained evidence; not measured stage end", Complete: true, EvidenceIDs: []int64{a.ID, b.ID}})
+			out = append(out, Timing{Stage: r.Step, Occurrence: fmt.Sprintf("estimate-%d", a.ID), Source: a.Source, Service: a.Service, Start: a.Time, End: b.Time, Milliseconds: float64(b.Time-a.Time) / 1e6, Basis: "next-event-estimated", Quality: "same-source adjacent retained evidence; not measured stage end", Complete: true, EvidenceIDs: []int64{a.ID, b.ID}})
+		}
+	}
+	groups := map[string][]int{}
+	for i := range out {
+		if out[i].Computation == "" {
+			out[i].Computation = timingComputation(out[i].Basis)
+		}
+		if out[i].Complete && out[i].DurationNs == nil {
+			duration := out[i].End - out[i].Start
+			if out[i].Basis == "observed-active" {
+				duration = int64(math.Round(out[i].Milliseconds * 1e6))
+			}
+			ns := fmt.Sprint(duration)
+			out[i].DurationNs = &ns
+		}
+		if out[i].Occurrence != "" && out[i].Basis != "observed-active" {
+			key := out[i].Stage + "\x00" + out[i].Source + "\x00" + out[i].Service + "\x00" + out[i].Occurrence
+			groups[key] = append(groups[key], i)
+		}
+	}
+	// Competing elapsed bases cannot silently double-pool one semantic occurrence.
+	for _, indices := range groups {
+		bases := map[string]bool{}
+		for _, i := range indices {
+			bases[out[i].Basis] = true
+		}
+		if len(bases) > 1 {
+			for _, i := range indices {
+				out[i].Complete = false
+				out[i].DurationNs = nil
+				out[i].Quality = "unavailable: conflicting occurrence timing policies"
+			}
 		}
 	}
 	return out
 }
+func hasEstimatedMapping(d Definition) bool {
+	for _, m := range d.Mappings {
+		if m.Timing == "estimated" {
+			return true
+		}
+	}
+	return false
+}
+func timingComputation(basis string) string {
+	switch basis {
+	case "native-inclusive":
+		return nativeTimingPolicy
+	case "measured-elapsed":
+		return "paired-wall-clock-v1"
+	case "observed-active":
+		return "presence-cap60-browser-v2"
+	case "next-event-estimated":
+		return "adjacent-window30m-v1"
+	}
+	return "unavailable"
+}
 func activeDuration(es []Evidence, start, end Evidence) (int64, bool) {
+	if start.Source != "browser" || end.Source != "browser" {
+		return 0, false
+	}
 	var activeAt int64
 	var sum int64
 	has := false
@@ -457,7 +595,7 @@ func activeDuration(es []Evidence, start, end Evidence) (int64, bool) {
 // Summarize recomputes map/statistic projections for a selected cohort without
 // touching captured segmentation or manufacturing adjacency across hidden events.
 func Summarize(journeys []Journey, unassigned []Evidence, nowNanos int64) Model {
-	m := Model{Journeys: journeys, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: unassigned, Warnings: []string{}, Policy: "Captured journey boundaries are preserved; cohort selection does not resegment. Counts describe observed eligible journeys; timing kinds and censoring remain separate."}
+	m := Model{Computation: "journey-native-v3", Journeys: journeys, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: unassigned, Warnings: []string{}, Policy: "Captured journey boundaries are preserved; cohort selection does not resegment. Counts describe observed eligible journeys; timing kinds and censoring remain separate."}
 	if m.Journeys == nil {
 		m.Journeys = []Journey{}
 	}
@@ -475,7 +613,7 @@ func Summarize(journeys []Journey, unassigned []Evidence, nowNanos int64) Model 
 func timingSummaries(ts []Timing) []TimingSummary {
 	by := map[string][]Timing{}
 	for _, t := range ts {
-		key := fmt.Sprintf("%d/%s", t.Definition, t.Basis)
+		key := fmt.Sprintf("%d/%s/%s", t.Definition, t.Basis, t.Computation)
 		by[key] = append(by[key], t)
 	}
 	keys := make([]string, 0, len(by))
@@ -485,7 +623,7 @@ func timingSummaries(ts []Timing) []TimingSummary {
 	sort.Strings(keys)
 	out := []TimingSummary{}
 	for _, key := range keys {
-		s := TimingSummary{Definition: by[key][0].Definition, Basis: by[key][0].Basis}
+		s := TimingSummary{Computation: by[key][0].Computation, Definition: by[key][0].Definition, Basis: by[key][0].Basis}
 		values := []float64{}
 		for _, t := range by[key] {
 			if t.Complete && !t.Provisional && t.Milliseconds >= 0 {
@@ -731,4 +869,49 @@ func ClipJourney(j Journey, from, to int64) Journey {
 		j.Timings = append(j.Timings, t)
 	}
 	return j
+}
+
+func evidenceCarrier(e Evidence) string {
+	switch e.Signal {
+	case "traces":
+		return "span"
+	case "span-events":
+		return "span-event"
+	case "logs":
+		return "log"
+	case "metrics":
+		return "metric"
+	}
+	return "unknown"
+}
+func mappingMatches(e Evidence, r Mapping) bool {
+	return e.Signal != "metrics" && r.Event == e.Name && (r.Source == "" || r.Source == e.Source) && (r.Service == "" || r.Service == e.Service) && (r.Signal == "" || r.Signal == e.Signal) && (r.Carrier == "" || r.Carrier == evidenceCarrier(e)) && (r.Key == "" || e.Attrs[r.Key] == r.Value)
+}
+func sameSelector(a, b Mapping) bool {
+	return a.Event == b.Event && a.Source == b.Source && a.Service == b.Service && a.Signal == b.Signal && a.Carrier == b.Carrier && a.Key == b.Key && a.Value == b.Value
+}
+func goalMapping(d Definition) (Mapping, bool) {
+	var found Mapping
+	count := 0
+	for _, m := range d.Mappings {
+		if m.Event == d.Goal && (d.GoalSelector == nil || sameSelector(m, *d.GoalSelector)) {
+			found = m
+			count++
+		}
+	}
+	return found, count == 1
+}
+func isGoal(e Evidence, m Mapping, d Definition) bool {
+	goal, ok := goalMapping(d)
+	return ok && sameSelector(m, goal) && mappingMatches(e, goal)
+}
+
+func mappingCarrier(m Mapping) string {
+	if m.Carrier != "" {
+		return m.Carrier
+	}
+	if m.Signal != "" {
+		return evidenceCarrier(Evidence{Signal: m.Signal})
+	}
+	return ""
 }

@@ -19,3 +19,5 @@ Images are available for Linux AMD64 and ARM64 under one Docker Hub tag. Release
 For setup, environment variables, persistent storage and supported transport boundaries, see [NAS/container delivery](NAS.md). Registry publication, a working NAS route and an application integration are separate verification steps.
 
 User documentation: [user guide](USER-GUIDE.md) · [developer integration guide](DEVELOPER-GUIDE.md).
+
+The published `v0.1.0-rc.1` is the historical baseline. Standard trace structure/native timing, contextual business mapping and optional hints are implemented in local source (schema3 / structural-v2 / journey-native-v3), with [separate qualification evidence](verification/standard-otel.md). No new image is published by that work. Preserve existing data and select a fresh dedicated directory for the greenfield cutover; unsupported older schemas fail without automatic migration or reset. Native trace trees and chronological business journeys remain distinct.

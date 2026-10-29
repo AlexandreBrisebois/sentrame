@@ -1,0 +1,216 @@
+# Ordinary standard OTel only. Generate fresh bytes with fixtures standard-generate.
+# Export SENTRAME_URL/PASSPHRASE/SERVER_TOKEN for the verifier; REST Client also
+# needs baseUrl,serverToken,standardTrace in its private rest/.env.
+
+### Trace detail is protected even with a known native trace ID
+# @no-cookie-jar
+# @expect 401
+GET {{baseUrl}}/api/traces/{{standardTrace}}
+
+### Owner login
+POST {{baseUrl}}/api/login
+Content-Type: application/json
+Origin: {{baseUrl}}
+
+< ./generated/standard-login.json
+
+### Ordinary native spans, no journey fields
+POST {{baseUrl}}/v1/traces
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/standard-traces.bin
+
+### Exact and trace-only logs; anonymous logs are sent once
+POST {{baseUrl}}/v1/logs
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/standard-logs.bin
+
+### Protected trace discovery
+GET {{baseUrl}}/api/traces
+
+### Native structure/timing and typed contextual reads
+GET {{baseUrl}}/api/traces/{{standardTrace}}
+
+### Exact native replay
+POST {{baseUrl}}/v1/traces
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/standard-traces.bin
+
+### Same span projection through standard JSON
+POST {{baseUrl}}/v1/traces
+Content-Type: application/json
+Authorization: Bearer {{serverToken}}
+
+< ./generated/standard-traces.json
+
+### Same native spans through gzip
+POST {{baseUrl}}/v1/traces
+Content-Type: application/x-protobuf
+Content-Encoding: gzip
+Authorization: Bearer {{serverToken}}
+
+< ./generated/standard-traces.bin.gz
+
+### Replay preserves native identity, structure and inclusive timing
+GET {{baseUrl}}/api/traces/{{standardTrace}}
+
+### Preview ordinary-name mappings (no stage.name)
+# For manual REST Client use, copy csrf from login into private rest/.env.
+POST {{baseUrl}}/api/preview
+Content-Type: application/json
+Origin: {{baseUrl}}
+X-CSRF-Token: {{csrf}}
+
+< ./fixtures/standard-mapping.json
+
+### Activate prospective owner definition
+POST {{baseUrl}}/api/definitions
+Content-Type: application/json
+Origin: {{baseUrl}}
+X-CSRF-Token: {{csrf}}
+
+< ./fixtures/standard-mapping.json
+
+### Explicit non-persisting preview of retained trace under new meaning
+# For manual REST Client use, standardDefinition is the returned version.
+GET {{baseUrl}}/api/traces/{{standardTrace}}?previewDefinition={{standardDefinition}}
+
+### Default still uses receipt-time definitions
+GET {{baseUrl}}/api/traces/{{standardTrace}}
+
+### Enriched future capture: owner Vote saved overrides emitted voting
+POST {{baseUrl}}/v1/traces
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/standard-enriched.bin
+
+### Unmapped retry has a suggestion; owner commitment remains literal
+GET {{baseUrl}}/api/traces/{{enrichedTrace}}
+
+### Conflicting generic rule is rejected without activation
+# @expect 400
+POST {{baseUrl}}/api/definitions
+Content-Type: application/json
+Origin: {{baseUrl}}
+X-CSRF-Token: {{csrf}}
+
+< ./fixtures/standard-conflict.json
+
+### Save the captured definition context, without retaining raw evidence
+POST {{baseUrl}}/api/views
+Content-Type: application/json
+Origin: {{baseUrl}}
+X-CSRF-Token: {{csrf}}
+
+{"name":"Standard voting capture","mode":"overview","definition":{{standardDefinition}},"startOccurrence":"first","endOccurrence":"last"}
+
+### Owner explicitly accepts voting.retry as a literal supporting-activity mapping
+POST {{baseUrl}}/api/definitions
+Content-Type: application/json
+Origin: {{baseUrl}}
+X-CSRF-Token: {{csrf}}
+
+< ./fixtures/standard-accepted-hint.json
+
+### New tag values cannot rename earlier captured meaning
+GET {{baseUrl}}/api/traces/{{enrichedTrace}}
+
+### Replay enriched native bytes after definition activation
+POST {{baseUrl}}/v1/traces
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/standard-enriched.bin
+
+### Replay keeps native structure and timing unchanged
+GET {{baseUrl}}/api/traces/{{enrichedTrace}}
+
+### Future capture emits changed.retry while owner literal stays voting.retry
+POST {{baseUrl}}/v1/traces
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/standard-future.bin
+
+### Accepted literal mapping applies prospectively
+GET {{baseUrl}}/api/traces/{{futureTrace}}
+
+### Reference still pins its original definition
+GET {{baseUrl}}/api/views
+
+### Activate scoped voting definition
+POST {{baseUrl}}/api/definitions
+Content-Type: application/json
+Origin: {{baseUrl}}
+X-CSRF-Token: {{csrf}}
+
+< ./fixtures/standard-journey-mapping.json
+
+### Explicit browser scope/tab: navigation, intent, optional synthetic presence and page pair
+POST {{baseUrl}}/v1/logs
+Content-Type: application/x-protobuf
+Authorization: Bearer {{browserToken}}
+
+< ./generated/standard-journey-browser.bin
+
+### Separate failed and retry request traces under the same explicit scope/tab
+POST {{baseUrl}}/v1/traces
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/standard-journey-traces.bin
+
+### Trusted failure, post-commit publication error and recovery facts
+POST {{baseUrl}}/v1/logs
+Content-Type: application/x-protobuf
+Authorization: Bearer {{serverToken}}
+
+< ./generated/standard-journey-server.bin
+
+### Persistence and HTTP success do not invent the separately configured screen goal
+GET {{baseUrl}}/api/snapshot?scope={{journeyScope}}
+
+### Save a trace-mode reference distinct from chronological journey references
+POST {{baseUrl}}/api/views
+Content-Type: application/json
+Origin: {{baseUrl}}
+X-CSRF-Token: {{csrf}}
+
+{"name":"Native voting request","mode":"trace","trace":"{{journeyTrace}}","definition":{{standardDefinition}},"layout":"tree"}
+
+### Activate another prospective definition while the existing journey is active
+POST {{baseUrl}}/api/definitions
+Content-Type: application/json
+Origin: {{baseUrl}}
+X-CSRF-Token: {{csrf}}
+
+< ./fixtures/standard-journey-next-mapping.json
+
+### Actual synthetic completion-screen observation arrives under the new receipt version
+POST {{baseUrl}}/v1/logs
+Content-Type: application/x-protobuf
+Authorization: Bearer {{browserToken}}
+
+< ./generated/standard-journey-goal.bin
+
+### Completed scoped voting journey
+GET {{baseUrl}}/api/snapshot?scope={{journeyScope}}
+
+### Exact goal replay cannot start another journey
+POST {{baseUrl}}/v1/logs
+Content-Type: application/x-protobuf
+Authorization: Bearer {{browserToken}}
+
+< ./generated/standard-journey-goal.bin
+
+### Completed scoped voting journey
+GET {{baseUrl}}/api/snapshot?scope={{journeyScope}}
+
+### Trace reference pins its explicit mode and original definition
+GET {{baseUrl}}/api/traces/{{journeyTrace}}?reference={{traceReference}}

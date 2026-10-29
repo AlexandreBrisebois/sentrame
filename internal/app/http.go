@@ -82,6 +82,10 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		if r.URL.Path == "/api/traces" || strings.HasPrefix(r.URL.Path, "/api/traces/") {
+			s.traces(w, r)
+			return
+		}
 		switch r.URL.Path {
 		case "/api/session":
 			write(w, sessionPayload(ss))

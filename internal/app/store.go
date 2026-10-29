@@ -25,8 +25,26 @@ func Open(path string) (*Store, error) {
 		return nil, e
 	}
 	db.SetMaxOpenConns(1)
+	var version, tables int
+	if e = db.QueryRow(`PRAGMA user_version`).Scan(&version); e != nil {
+		db.Close()
+		return nil, e
+	}
+	if e = db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&tables); e != nil {
+		db.Close()
+		return nil, e
+	}
+	if version != schemaVersion && (version != 0 || tables != 0) {
+		db.Close()
+		return nil, fmt.Errorf("unsupported database schema %d; select a fresh synthetic data directory (existing data was not reset)", version)
+	}
+
 	_, e = db.Exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=3000; PRAGMA max_page_count=200000; PRAGMA journal_size_limit=16777216; CREATE TABLE IF NOT EXISTS evidence(id INTEGER PRIMARY KEY, data TEXT NOT NULL, identity TEXT UNIQUE, at INTEGER NOT NULL, scope TEXT NOT NULL); CREATE INDEX IF NOT EXISTS evidence_time ON evidence(at); CREATE INDEX IF NOT EXISTS evidence_scope ON evidence(scope); CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL); INSERT OR IGNORE INTO settings VALUES('revision','0'); CREATE TABLE IF NOT EXISTS definitions(version INTEGER PRIMARY KEY,data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS views(id INTEGER PRIMARY KEY,data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS invitations(id INTEGER PRIMARY KEY AUTOINCREMENT,label TEXT NOT NULL,created INTEGER NOT NULL,expires INTEGER NOT NULL,token_hash TEXT NOT NULL UNIQUE,app_id TEXT NOT NULL,generation TEXT NOT NULL,redeemed INTEGER NOT NULL DEFAULT 0,revoked INTEGER NOT NULL DEFAULT 0); CREATE TABLE IF NOT EXISTS tombstones(scope TEXT PRIMARY KEY,until INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS summaries(day TEXT PRIMARY KEY,data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS boundaries(scope TEXT,tab TEXT,start INTEGER, end INTEGER,until INTEGER,PRIMARY KEY(scope,tab,start));`)
 	if e != nil {
+		db.Close()
+		return nil, e
+	}
+	if _, e = db.Exec(fmt.Sprintf("PRAGMA user_version=%d", schemaVersion)); e != nil {
 		db.Close()
 		return nil, e
 	}
@@ -63,6 +81,27 @@ func (s *Store) Insert(es []Evidence) error {
 		if used > 896*1024*1024 {
 			return fmt.Errorf("storage byte limit")
 		}
+	}
+	// Capture a late earlier prefix under a known retained journey's policy.
+	// This is detail metadata, not a durable membership or identity index.
+	captured := Model{}
+	needsCapture := false
+	for _, x := range es {
+		if x.Scope != "" {
+			needsCapture = true
+			break
+		}
+	}
+	if needsCapture {
+		existing, err := s.Evidence()
+		if err != nil {
+			return fmt.Errorf("writer unavailable")
+		}
+		defs, err := s.Definitions()
+		if err != nil {
+			return fmt.Errorf("writer unavailable")
+		}
+		captured = Derive(existing, defs, s.Now().UnixNano())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -109,6 +148,29 @@ func (s *Store) Insert(es []Evidence) error {
 		if x.Definition == 0 {
 			x.Definition = ver
 		}
+		if x.CaptureDefinition == 0 && x.Scope != "" && (x.Source != "browser" || x.Tab != "") {
+			containing := false
+			var nearest *Journey
+			for i := range captured.Journeys {
+				j := &captured.Journeys[i]
+				if j.Scope != x.Scope || j.Tab != x.Tab {
+					continue
+				}
+				end := j.End
+				if end == 0 {
+					end = j.LastMapped + inactivityNanos
+				}
+				if x.Time >= j.Start && x.Time < end {
+					containing = true
+				}
+				if x.Time < j.Start && j.Start-x.Time < inactivityNanos && (nearest == nil || j.Start < nearest.Start) {
+					nearest = j
+				}
+			}
+			if !containing && nearest != nil {
+				x.CaptureDefinition = nearest.Definition
+			}
+		}
 		key := any(nil)
 		if x.Record != "" {
 			key = x.Source + "/" + x.Signal + "/" + x.Record
@@ -126,6 +188,7 @@ func (s *Store) Insert(es []Evidence) error {
 				x.ID = prev.ID
 				x.Receipt = prev.Receipt
 				x.Definition = prev.Definition
+				x.CaptureDefinition = prev.CaptureDefinition
 				if x.Attrs == nil {
 					x.Attrs = map[string]string{}
 				}
@@ -137,7 +200,7 @@ func (s *Store) Insert(es []Evidence) error {
 				if x.Fallback {
 					x.Time = prev.Time
 				}
-				raw, _ = json.Marshal(comparisonAtReceiptPolicy(x, prev))
+				raw, _ = json.Marshal(x)
 				canonicalOld, _ := json.Marshal(prev)
 				if string(canonicalOld) != string(raw) {
 					return fmt.Errorf("identity conflict")

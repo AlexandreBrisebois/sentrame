@@ -124,7 +124,7 @@ docker compose up -d
 docker compose exec sentrame /app/healthcheck
 ```
 
-Keep the previous image digest and stopped-data backup. SQLite schema additions are not a general downgrade guarantee: roll back the corresponding database snapshot with the prior image when compatibility is unknown. Restoring old backups can restore deleted evidence or old grant metadata; treat backups as a separate retention/access boundary. Viewer sessions are in memory and end on service restart; already redeemed one-use links remain used, so an owner issues a fresh invite after restart. The selected bind folder remains on disk when the container is replaced or removed; deleting that folder or its backup is a separate destructive action.
+Keep the previous image digest and stopped-data backup. The greenfield structural model requires SQLite schema3 / structural-v2. Earlier schemas are rejected before initialization; no legacy reader, migration or automatic reset is provided. Preserve the old directory and select a fresh dedicated test directory for cutover. Rollback uses the corresponding stopped database snapshot and prior image, never a newer database under an older image. Restoring old backups can restore deleted evidence or old grant metadata; treat backups as a separate retention/access boundary. Viewer sessions are in memory and end on service restart; already redeemed one-use links remain used, so an owner issues a fresh invite after restart. The selected bind folder remains on disk when the container is replaced or removed; deleting that folder or its backup is a separate destructive action.
 
 ## Run a local container check
 
@@ -166,3 +166,9 @@ The initial implementation was committed as `5738712b7469d5ef24810f53a2af1d71c99
 - [Successful workflow and logs](https://github.com/AlexandreBrisebois/sentrame/actions/runs/40808148393).
 
 This records container and registry evidence, not a native NAS capacity test or a deployed external route. The environment example now selects this published release tag; use the index digest above when you want an immutable deployment selection.
+
+## Structural model capability boundary
+
+The published `v0.1.0-rc.1` predates standard trace exploration and is not a minimum supporting image for this change. The current local source uses schema3 / structural-v2 and journey-native-v3; no new image has been published by this implementation. Select a separately reviewed future image/build containing those identities before expecting the new trace/mapping/hint behavior. Local model qualification is recorded per architecture in [the evidence ledger](verification/standard-otel.md); previous container evidence above remains historical.
+
+A sender on the same Mac uses its loopback origin. A sender in another container uses an explicitly reachable service address such as `http://sentrame:8096`; its own `127.0.0.1` is not Sentrame. An HTTP exporter base has no signal path; a signal-specific URL uses `/v1/traces` or `/v1/logs`. Configure `http/protobuf` explicitly, never infer gRPC from an open port. HTTP JSON/gzip and metrics receipt claims are limited to their individual tested cells. Browser exporters use reviewed bounded app-origin forwarding under browser authority. Direct Mac exporter passes do not qualify the NAS, shared Tunnel, Collector or HTTPS route. Qualify each actual route before collection, using fresh disposable data and private credentials.

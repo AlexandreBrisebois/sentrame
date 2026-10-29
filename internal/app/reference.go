@@ -127,6 +127,22 @@ func referenceJourney(j Journey, v SavedView) (Journey, bool) {
 // validateReferenceQuery shares endpoint/occurrence rules between saved and
 // unsaved projections. Only saved workspace views can use overview mode.
 func validateReferenceQuery(v SavedView, allowOverview bool) string {
+	if v.Mode == "trace" {
+		if !allowOverview || !validTraceID(v.Trace) || v.Scope != "" || v.Start != "" || v.End != "" || v.Definition < 0 {
+			return "Choose one retained trace and an explicit definition context"
+		}
+		if v.Version != "" && safe(v.Version) == "" {
+			return "Invalid version filter"
+		}
+		if _, err := parseTime(v.From, 0); err != nil {
+			return "Use an ISO trace start"
+		}
+		if _, err := parseTime(v.To, 0); err != nil {
+			return "Use an ISO trace end"
+		}
+		return ""
+	}
+
 	if (v.StartOccurrence != "" && v.StartOccurrence != "first" && v.StartOccurrence != "last") || (v.EndOccurrence != "" && v.EndOccurrence != "first" && v.EndOccurrence != "last") {
 		return "Choose first or last endpoint occurrence"
 	}

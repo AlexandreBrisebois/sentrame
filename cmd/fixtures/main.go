@@ -615,6 +615,15 @@ func run() error {
 		return errors.New("usage: fixtures generate|verify|demo|live|replay|followup|workspace|workspace-generate|workspace-verify|diagnostics|diagnostics-generate|diagnostics-verify")
 	}
 	switch os.Args[1] {
+	case "standard-verify":
+		return verifyStandard()
+	case "standard":
+		if err := generateStandard(); err != nil {
+			return err
+		}
+		return verifyStandard()
+	case "standard-generate":
+		return generateStandard()
 	case "diagnostics":
 		if err := generateDiagnostics(); err != nil {
 			return err

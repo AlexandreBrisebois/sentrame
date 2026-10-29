@@ -18,7 +18,7 @@ import (
 )
 
 var tokenPattern = regexp.MustCompile(`^[a-zA-Z0-9_.:/ -]{1,160}$`)
-var allowed = map[string]bool{"stage.name": true, "stage.state": true, "activity.state": true, "reason": true, "exception.type": true, "exception.occurrence.id": true, "telemetry.sdk.language": true, "process.runtime.name": true, "deployment.environment.name": true}
+var allowed = map[string]bool{"http.request.method": true, "http.route": true, "http.response.status_code": true, "stage.name": true, "stage.state": true, "activity.state": true, "reason": true, "exception.type": true, "exception.occurrence.id": true, "telemetry.sdk.language": true, "process.runtime.name": true, "deployment.environment.name": true}
 
 func safe(v string) string {
 	if tokenPattern.MatchString(v) {
@@ -29,6 +29,9 @@ func safe(v string) string {
 func attr(m pcommon.Map, k string) string {
 	v, ok := m.Get(k)
 	if !ok {
+		return ""
+	}
+	if k != "source.sequence" && v.Type() != pcommon.ValueTypeStr {
 		return ""
 	}
 	return safe(v.AsString())
@@ -51,9 +54,14 @@ func (s *Service) producer(h string) (string, error) {
 }
 func (s *Service) project(source, signal, name string, t pcommon.Timestamp, observed pcommon.Timestamp, a, r pcommon.Map) Evidence {
 	now := s.Store.Now().UnixNano()
-	x := Evidence{Source: source, Signal: signal, Name: safe(name), Time: int64(t), Observed: int64(observed), Receipt: now, Attrs: map[string]string{}, Service: attr(r, "service.name"), Version: attr(r, "service.version"), Scope: attr(a, "session.id"), Tab: attr(a, "tab.id"), Record: attr(a, "event.id"), Action: attr(a, "action.id"), Occurrence: attr(a, "stage.occurrence.id")}
+	x := Evidence{Projection: projectionPolicy, Source: source, Signal: signal, Name: safeEvidenceName(name), Time: int64(t), Observed: int64(observed), Receipt: now, Attrs: map[string]string{}, Service: attr(r, "service.name"), Version: attr(r, "service.version"), Scope: attr(a, "session.id"), Tab: attr(a, "tab.id"), Record: attr(a, "event.id"), Action: attr(a, "action.id"), Occurrence: attr(a, "stage.occurrence.id")}
+	x.NameState = "retained"
 	if x.Name == "" {
 		x.Name = "unnamed"
+		x.NameState = "missing"
+		if name != "" {
+			x.NameState = "omitted"
+		}
 	}
 	if x.Time == 0 {
 		x.Time = now
@@ -64,15 +72,33 @@ func (s *Service) project(source, signal, name string, t pcommon.Timestamp, obse
 	}
 	a.Range(func(k string, v pcommon.Value) bool {
 		if allowed[k] {
-			if val := safe(v.AsString()); val != "" {
+			if val := projectedAttribute(k, v); val != "" {
 				x.Attrs[k] = val
+			} else {
+				x.OmittedAttributes++
 			}
+		} else if contextAttributes[k] {
+			if attr(a, k) == "" {
+				x.OmittedAttributes++
+			}
+		} else {
+			x.OmittedAttributes++
 		}
 		return true
 	})
 	r.Range(func(k string, v pcommon.Value) bool {
-		if allowed[k] {
-			x.Attrs[k] = safe(v.AsString())
+		if k == "service.name" || k == "service.version" {
+			if attr(r, k) == "" {
+				x.OmittedAttributes++
+			}
+		} else if k == "telemetry.sdk.language" || k == "process.runtime.name" || k == "deployment.environment.name" {
+			if val := projectedAttribute(k, v); val != "" {
+				x.Attrs[k] = val
+			} else {
+				x.OmittedAttributes++
+			}
+		} else {
+			x.OmittedAttributes++
 		}
 		return true
 	})
@@ -130,10 +156,15 @@ func (s *Service) consumeLogs(ctx context.Context, ls plog.Logs) error {
 				}
 				name := l.EventName()
 				if name == "" {
-					name = attr(l.Attributes(), "event.name")
+					if value, ok := l.Attributes().Get("event.name"); ok && value.Type() == pcommon.ValueTypeStr {
+						name = value.Str()
+					}
 				}
 				x := s.project(source, "logs", name, l.Timestamp(), l.ObservedTimestamp(), l.Attributes(), r.Resource().Attributes())
+				structuralResourceCounts(&x, r.Resource(), ss.At(j).Scope())
 				x.Severity = int32(l.SeverityNumber())
+				x.Flags = uint32(l.Flags())
+				x.DroppedAttributes = l.DroppedAttributesCount()
 				if x.Severity >= 17 || x.Attrs["exception.type"] != "" {
 					x.Attrs["diagnostic.policy"] = diagnosticPolicy
 					if l.Body().Type() == pcommon.ValueTypeStr {
@@ -174,8 +205,31 @@ func (s *Service) consumeTraces(ctx context.Context, ts ptrace.Traces) error {
 					return status.Error(codes.InvalidArgument, "attribute limit")
 				}
 				x := s.project(source, "traces", p.Name(), p.StartTimestamp(), 0, p.Attributes(), r.Resource().Attributes())
+				structuralResourceCounts(&x, r.Resource(), ss.At(j).Scope())
 				x.Trace, x.Span = sourceIDs(p.TraceID(), p.SpanID())
 				x.Record = x.Trace + "/" + x.Span
+				x.End = int64(p.EndTimestamp())
+				if uint64(p.EndTimestamp()) > uint64(1<<63-1) {
+					return status.Error(codes.InvalidArgument, "unsupported span end timestamp")
+				}
+				_, x.Parent = sourceIDs(pcommon.TraceID{}, p.ParentSpanID())
+				x.Kind = int32(p.Kind())
+				x.Status = int32(p.Status().Code())
+				x.Flags = p.Flags()
+				x.EventCount = p.Events().Len()
+				x.DroppedAttributes = p.DroppedAttributesCount()
+				x.DroppedEvents = p.DroppedEventsCount()
+				x.DroppedLinks = p.DroppedLinksCount()
+				for n := 0; n < p.Links().Len(); n++ {
+					if n >= 32 {
+						x.OmittedLinks = p.Links().Len() - 32
+						break
+					}
+					link := p.Links().At(n)
+					trace, span := sourceIDs(link.TraceID(), link.SpanID())
+					x.Links = append(x.Links, SpanLink{Trace: trace, Span: span})
+				}
+
 				if p.Status().Code() == ptrace.StatusCodeError {
 					x.Severity = 17
 					x.Attrs["diagnostic.policy"] = diagnosticPolicy
@@ -191,6 +245,9 @@ func (s *Service) consumeTraces(ctx context.Context, ts ptrace.Traces) error {
 						return status.Error(codes.InvalidArgument, "event attribute limit")
 					}
 					z := s.project(source, "span-events", v.Name(), v.Timestamp(), 0, v.Attributes(), r.Resource().Attributes())
+					structuralResourceCounts(&z, r.Resource(), ss.At(j).Scope())
+					z.EventIndex = q
+					z.DroppedAttributes = v.DroppedAttributesCount()
 					z.Trace = x.Trace
 					z.Span = x.Span
 					if z.Scope == "" {
@@ -237,6 +294,7 @@ func (s *Service) consumeMetrics(ctx context.Context, ms pmetric.Metrics) error 
 						return
 					}
 					x := s.project(source, "metrics", m.Name(), t, 0, a, r.Resource().Attributes())
+					structuralResourceCounts(&x, r.Resource(), ss.At(j).Scope())
 					x.Scope = ""
 					x.Tab = ""
 					x.Record = ""
@@ -298,4 +356,72 @@ func sourceIDs(t pcommon.TraceID, s pcommon.SpanID) (string, string) {
 		span = hex.EncodeToString(s[:])
 	}
 	return trace, span
+}
+
+// HTTP selectors are deliberately narrower than arbitrary safe tokens. A route
+// must be a minimized template supplied by the producer, never a URL or query.
+var routeLiteral = regexp.MustCompile(`^[a-z][a-z-]*$`)
+var routeParameter = regexp.MustCompile(`^(\{[a-zA-Z][a-zA-Z0-9_]*\}|:[a-zA-Z][a-zA-Z0-9_]*|\[[a-zA-Z][a-zA-Z0-9_]*\])$`)
+
+func projectedAttribute(key string, v pcommon.Value) string {
+	switch key {
+	case "stage.name":
+		if v.Type() != pcommon.ValueTypeStr || strings.TrimSpace(v.Str()) != v.Str() || strings.TrimSpace(v.Str()) == "" {
+			return ""
+		}
+		return safe(v.Str())
+	case "http.request.method":
+		switch v.Str() {
+		case "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "CONNECT", "TRACE":
+			return v.Str()
+		}
+		return ""
+	case "http.response.status_code":
+		if v.Type() != pcommon.ValueTypeInt || v.Int() < 100 || v.Int() > 599 {
+			return ""
+		}
+		return strconv.FormatInt(v.Int(), 10)
+	case "http.route":
+		if v.Type() != pcommon.ValueTypeStr {
+			return ""
+		}
+		route := v.Str()
+		if len(route) > 160 || !strings.HasPrefix(route, "/") {
+			return ""
+		}
+		if route == "/" {
+			return route
+		}
+		for _, part := range strings.Split(strings.TrimPrefix(route, "/"), "/") {
+			if !routeLiteral.MatchString(part) && !routeParameter.MatchString(part) {
+				return ""
+			}
+		}
+		return route
+	default:
+		return safe(v.AsString())
+	}
+}
+
+var contextAttributes = map[string]bool{"event.name": true, "session.id": true, "tab.id": true, "event.id": true, "action.id": true, "stage.occurrence.id": true, "source.sequence": true, "exception.message": true, "exception.stacktrace": true}
+
+func structuralResourceCounts(e *Evidence, r pcommon.Resource, scope pcommon.InstrumentationScope) {
+	e.ResourceDroppedAttributes = r.DroppedAttributesCount()
+	e.ScopeDroppedAttributes = scope.DroppedAttributesCount()
+	e.OmittedAttributes += scope.Attributes().Len()
+}
+func safeEvidenceName(name string) string {
+	if len(name) == 0 || len(name) > 160 || strings.Contains(name, "://") {
+		return ""
+	}
+	if strings.HasPrefix(name, "/") {
+		return projectedAttribute("http.route", pcommon.NewValueStr(name))
+	}
+	if method, route, found := strings.Cut(name, " "); found && projectedAttribute("http.request.method", pcommon.NewValueStr(strings.ToUpper(method))) != "" {
+		if projectedAttribute("http.route", pcommon.NewValueStr(route)) == route {
+			return name
+		}
+		return ""
+	}
+	return safe(name)
 }

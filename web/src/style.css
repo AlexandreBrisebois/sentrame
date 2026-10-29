@@ -30,3 +30,47 @@ input,select{max-width:100%}
 /* Native selects may match :focus-visible after mouse use. Keep the amber
    outline for keyboard navigation, without a pointer-click halo. */
 html[data-pointer-focus="true"] :is(select,input:not([type="range"]):not([type="checkbox"]),textarea):focus{outline:none}
+
+/* Workspace rhythm: reuse the existing 8 / 12 / 18 / 24px intervals. */
+.workspace-main>nav.button-row{flex-shrink:0;margin:0;padding:12px 26px;gap:12px;border-bottom:1px solid var(--line)}
+.workspace-main>nav.button-row button[aria-pressed=false]{background:var(--surface);color:var(--green);border-color:#b8c5b6}
+.workspace-tools{flex-wrap:wrap;gap:8px 12px;min-width:0;max-width:100%}
+.lens-control{gap:8px;min-width:0;max-width:100%}
+.lens-control>span{flex-shrink:0}
+.lens-control select{min-width:0;max-width:100%}
+.segmented button:focus-visible{outline-offset:-4px}
+.dialog-heading h2{min-width:0;overflow-wrap:anywhere;line-height:1.25}
+.dialog-heading .icon-button{margin:0}
+.form-grid{align-items:start}
+.form-grid>div{min-width:0}
+.form-grid>div>input,.form-grid>div>select{margin-top:6px}
+.workspace-dialog p,.workspace-dialog h3,.workspace-dialog .neighbor-row{overflow-wrap:anywhere}
+.workspace-dialog .neighbor-row>span:last-child{flex-shrink:1;text-align:right}
+.workspace-dialog .panel>.form-grid:first-child{margin-top:0}
+.node-inspector .timing-detail dl,.inspector-counts{flex-wrap:wrap;gap:12px 24px}
+.node-inspector .inspector-actions{gap:8px}
+.node-inspector .inspector-actions button{white-space:normal;text-align:left}
+@media(pointer:coarse){
+ button,.quiet-button,.icon-button,.text-button,.chip,.context-chip,.segmented button,.workspace-toolbar .segmented button,.languages button,.header-button,.journey-actions button,.event-details button{min-height:44px}
+ .icon-button,.languages button{min-width:44px}
+ .toggle{min-height:44px}
+}
+@media(max-width:760px){
+ .workspace-main>nav.button-row{padding:12px 14px}
+ .workspace-toolbar{row-gap:12px;padding-bottom:12px}
+ .workspace-title{flex:1 1 100%}
+ .workspace-toolbar .layouts{margin-left:0;max-width:100%}
+ .workspace-tools{justify-content:flex-start;gap:8px 12px}
+ .workspace-tools .lens-control{flex:1 1 200px}
+ .lens-control select{flex:1;width:auto}
+ .canvas-status>div{flex-wrap:wrap;gap:8px 18px}
+ .workspace-freshness{margin-left:0}
+ .workspace-context{gap:8px 12px;padding-bottom:12px}
+ .workspace-dialog .button-row{align-items:stretch}
+ .workspace-dialog .button-row>button{max-width:100%;overflow-wrap:anywhere}
+}
+label:has(>input[type=checkbox]){flex-direction:row;align-items:flex-start;gap:8px;line-height:1.55}
+label>input[type=checkbox]{flex-shrink:0;margin:3px 0}
+.event-fields .form-grid{align-items:end}
+.node-inspector>.text-button{display:flex;width:fit-content;margin-top:8px;min-height:36px}
+@media(max-width:380px){.masthead.compact{height:auto;flex-wrap:wrap}.compact .mast-actions{flex-wrap:wrap}.workspace-main{height:auto;min-height:calc(100dvh - 54px)}.workspace-canvas{min-height:360px}}

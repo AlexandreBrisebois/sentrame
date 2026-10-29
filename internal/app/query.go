@@ -3,9 +3,11 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -73,7 +75,7 @@ func validateDefinition(d Definition) string {
 	seen := []Mapping{}
 	goal := false
 	for _, m := range d.Mappings {
-		if safe(m.Event) == "" || safe(m.Step) == "" || m.Source != "" && m.Source != "browser" && m.Source != "server" {
+		if safeEvidenceName(m.Event) == "" || safe(m.Step) == "" || m.Source != "" && m.Source != "browser" && m.Source != "server" {
 			return "Invalid event, step or producer"
 		}
 		switch m.Kind {
@@ -88,19 +90,49 @@ func validateDefinition(d Definition) string {
 			if prev.Event != m.Event {
 				continue
 			}
+			disjointContext := prev.Service != "" && m.Service != "" && prev.Service != m.Service || prev.Signal != "" && m.Signal != "" && prev.Signal != m.Signal || mappingCarrier(prev) != "" && mappingCarrier(m) != "" && mappingCarrier(prev) != mappingCarrier(m)
 			disjointSource := prev.Source != "" && m.Source != "" && prev.Source != m.Source
 			disjointCondition := prev.Key != "" && prev.Key == m.Key && prev.Value != m.Value
-			if !disjointSource && !disjointCondition {
+			if !disjointContext && !disjointSource && !disjointCondition {
 				return "Conflicting event mappings require disjoint producer or attribute conditions"
 			}
+		}
+		if m.Service != "" && safe(m.Service) == "" {
+			return "Invalid service selector"
+		}
+		if m.Signal != "" && m.Signal != "traces" && m.Signal != "span-events" && m.Signal != "logs" {
+			return "Choose a supported signal; metrics remain receipt-only"
+		}
+		if m.Carrier != "" && m.Carrier != "span" && m.Carrier != "span-event" && m.Carrier != "log" {
+			return "Choose span, span-event or log carrier"
+		}
+		if m.Signal != "" && m.Carrier != "" && evidenceCarrier(Evidence{Signal: m.Signal}) != m.Carrier {
+			return "Signal and carrier must agree"
+		}
+		switch m.Timing {
+		case "", "native-span", "paired", "estimated", "none":
+		default:
+			return "Choose an explicit timing basis"
+		}
+		if m.Timing == "native-span" && m.Carrier != "span" {
+			return "Native timing requires a span selector"
+		}
+		if m.Timing == "paired" && (m.Kind != "stage-start" && m.Kind != "stage-end") {
+			return "Paired timing requires explicit boundary kinds"
+		}
+		if (m.Key == "") != (m.Value == "") {
+			return "Condition key and value must both be present or empty"
 		}
 		seen = append(seen, m)
 		if m.Key != "" && !allowed[m.Key] {
 			return "Condition field is outside the safe allowlist"
 		}
-		if m.Value != "" && safe(m.Value) == "" {
+		if m.Value != "" && !validConditionValue(m.Key, m.Value) {
 			return "Invalid condition value"
 		}
+	}
+	if _, ok := goalMapping(d); goal && !ok {
+		return "Choose exactly one goal selector; disjoint mappings with the same name need an explicit goalSelector"
 	}
 	if !goal {
 		return "Goal must be a mapped event"
@@ -122,18 +154,28 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	counts := map[string]int{}
+	missingFields := map[string]int{}
+	missingByEvent := map[string]int{}
+	cut := s.Store.Now().Add(-30 * 24 * time.Hour).UnixNano()
 	missing := 0
 	for _, x := range es {
+		if x.Time <= cut {
+			continue
+		}
 		for _, m := range d.Mappings {
-			if m.Event == x.Name && (m.Source == "" || m.Source == x.Source) && (m.Key == "" || x.Attrs[m.Key] == m.Value) {
+			if m.Event == x.Name && m.Key != "" && x.Attrs[m.Key] == "" {
+				missingFields[m.Key]++
+			}
+			if mappingMatches(x, m) {
 				counts[m.Event]++
 				if x.Scope == "" || x.Source == "browser" && x.Tab == "" {
 					missing++
+					missingByEvent[m.Event]++
 				}
 			}
 		}
 	}
-	write(w, map[string]any{"conflict": validateDefinition(d), "matches": counts, "missingContext": missing, "policy": "Activation is prospective. Existing captured journeys keep their definition."})
+	write(w, map[string]any{"conflict": validateDefinition(d), "matches": counts, "missingContext": missing, "missingContextByEvent": missingByEvent, "unavailableFields": missingFields, "missingContextCapability": "multi-request journey only; native trace exploration remains available", "policy": "Activation is prospective. Existing captured journeys keep their definition."})
 }
 func (s *Service) getViews() ([]SavedView, error) {
 	rows, e := s.Store.DB.Query(`SELECT id,data FROM views ORDER BY id`)
@@ -179,7 +221,12 @@ func (s *Service) views(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, 400)
 		return
 	}
-	if v.Layout != "" && v.Layout != "hierarchy" && v.Layout != "force" && v.Layout != "sankey" {
+	if v.Mode == "trace" {
+		if v.Layout != "" && v.Layout != "tree" && v.Layout != "timeline" && v.Layout != "table" {
+			http.Error(w, "Choose a trace tree, timeline or table", 400)
+			return
+		}
+	} else if v.Layout != "" && v.Layout != "hierarchy" && v.Layout != "force" && v.Layout != "sankey" {
 		http.Error(w, "Choose a supported graph layout", 400)
 		return
 	}
@@ -194,6 +241,23 @@ func (s *Service) views(w http.ResponseWriter, r *http.Request) {
 			s.Store.Mu.Unlock()
 		}
 	}()
+	if v.Mode == "trace" && v.Definition > 0 {
+		defs, err := s.Store.Definitions()
+		found := false
+		for _, d := range defs {
+			if d.Version == v.Definition {
+				found = true
+			}
+		}
+		if err != nil {
+			http.Error(w, "Store unavailable", 503)
+			return
+		}
+		if !found {
+			http.Error(w, "Reference definition unavailable", 400)
+			return
+		}
+	}
 	var n int
 	s.Store.DB.QueryRow(`SELECT count(*) FROM views`).Scan(&n)
 	if n >= 100 {
@@ -321,6 +385,10 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Saved reference unavailable", 400)
 			return
 		}
+	}
+	if reference != nil && reference.Mode == "trace" {
+		http.Error(w, "Open this reference in trace exploration", 400)
+		return
 	}
 	// Saved filters are defaults, so opening a reference by ID restores its scope.
 	// Explicit query filters may refine the saved investigation without mutating it.
@@ -533,7 +601,7 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Store.Mu.Unlock()
 	locked = false
-	write(w, map[string]any{"revision": rev, "now": now, "discovered": discovered, "appVersions": appVersions, "appScopes": appScopes, "evidence": selected, "definitions": defs, "activeDefinition": defs[len(defs)-1], "views": views, "model": model, "baselineModel": base, "baselineBounds": bounds, "summary": summary, "health": map[string]any{"mode": "local synthetic", "collectionCompleteness": "unknown; exporter sampling/loss not observed", "transport": "origin HTTP only; Tunnel and gRPC unqualified", "privacy": diagnosticPolicyDescription, "detailFrom": cut, "summaryOnlyBefore": cut, "freshnessSeconds": 5, "summaryPolicy": "App-wide complete UTC days only, version/definition dimensions. Isolated-visit and partial-day summary queries are unsupported; no individual drilldown. Correction horizon ends captured start+30 days."}, "limits": map[string]any{"truncated": truncated, "modelRecordLimit": 10000, "evidenceLimit": 2000, "policy": "Captured start cohorts; follow-up to snapshot. Partial starts separate; supported summaries only after detail expires."}})
+	write(w, map[string]any{"mode": "journey", "revision": rev, "now": now, "contextualDiscovery": contextualDiscovery(retained), "discovered": discovered, "appVersions": appVersions, "appScopes": appScopes, "evidence": selected, "definitions": defs, "activeDefinition": defs[len(defs)-1], "views": views, "model": model, "baselineModel": base, "baselineBounds": bounds, "summary": summary, "health": map[string]any{"mode": "local synthetic", "collectionCompleteness": "unknown; exporter sampling/loss not observed", "transport": "origin HTTP only; Tunnel and gRPC unqualified", "privacy": diagnosticPolicyDescription, "detailFrom": cut, "summaryOnlyBefore": cut, "freshnessSeconds": 5, "summaryPolicy": "App-wide complete UTC days only, version/definition dimensions. Isolated-visit and partial-day summary queries are unsupported; no individual drilldown. Correction horizon ends captured start+30 days."}, "limits": map[string]any{"truncated": truncated, "modelRecordLimit": 10000, "evidenceLimit": 2000, "policy": "Captured start cohorts; follow-up to snapshot. Partial starts separate; supported summaries only after detail expires."}})
 }
 
 // DaySummary contains no individual membership. Quantiles use mergeable histogram counts.
@@ -543,14 +611,15 @@ type DaySummary struct {
 	Groups map[string]*SummaryGroup `json:"groups"`
 }
 type SummaryGroup struct {
-	Records    int                    `json:"records"`
-	Journeys   int                    `json:"journeys"`
-	Completed  int                    `json:"completed"`
-	Inactive   int                    `json:"inactive"`
-	Exits      int                    `json:"exits"`
-	Histograms map[string]map[int]int `json:"histograms"`
-	Excluded   map[string]int         `json:"excluded"`
-	Policy     string                 `json:"policy"`
+	Computation string                 `json:"computation"`
+	Records     int                    `json:"records"`
+	Journeys    int                    `json:"journeys"`
+	Completed   int                    `json:"completed"`
+	Inactive    int                    `json:"inactive"`
+	Exits       int                    `json:"exits"`
+	Histograms  map[string]map[int]int `json:"histograms"`
+	Excluded    map[string]int         `json:"excluded"`
+	Policy      string                 `json:"policy"`
 }
 
 func (s *Service) deletion(w http.ResponseWriter, r *http.Request) {
@@ -613,4 +682,15 @@ func (s *Service) deletion(w http.ResponseWriter, r *http.Request) {
 
 func matchesVersion(actual, wanted string) bool {
 	return wanted == "" || wanted == actual || (wanted == "unknown" && actual == "")
+}
+
+func validConditionValue(key, value string) bool {
+	if key == "http.response.status_code" {
+		n, err := strconv.ParseInt(value, 10, 64)
+		return err == nil && projectedAttribute(key, pcommon.NewValueInt(n)) == value
+	}
+	if key == "http.route" || key == "http.request.method" {
+		return projectedAttribute(key, pcommon.NewValueStr(value)) == value
+	}
+	return safe(value) != ""
 }

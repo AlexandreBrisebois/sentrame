@@ -4,6 +4,12 @@ Use these instructions when a developer asks you to prepare or add Sentrame jour
 
 This guide is a planning deliverable. It has not instrumented any application or installed a package. Examples are semantic plans, not tested runnable SDK recipes. Read the application's own instructions and current SDK documentation before choosing real APIs.
 
+## Standard telemetry and application interpretation
+
+Read the [standard OTel versus Sentrame convention boundary](OTEL-CONTRACT.md#what-is-standard-and-what-is-sentrame-specific) before proposing fields. OTel spans/logs/events and applicable semantic conventions remain the producer foundation. Sentrame Kind **activity**, `stage.name`, `stage.occurrence.id` and `activity.state` are optional application conventions, not official OTel user-journey semantics or mandatory reception fields.
+
+Use the contract's [activity decision examples](OTEL-CONTRACT.md#activity-examples-when-to-use-each-meaning) and [stage-value naming convention](OTEL-CONTRACT.md#naming-convention-for-stagename-values). Choose a graph step versus supporting activity according to the developer's question; do not call every click a .NET Activity, manufacture attention from a click, or require stage tags on ordinary logs/spans. Existing valid standard telemetry must remain accepted even when journey context is missing.
+
 ## 1. Discover the app before proposing emitters
 
 Establish the developer's authorized scope first. Read relevant source, navigation/UI states, tests and current instrumentation; preserve unrelated work. Identify existing OpenTelemetry SDK versions, logging/event APIs, resource detectors, exporter/processor configuration, emitted signals, sampling/batching, standard propagation and deployment/consent controls. Reuse them. Do not replace the SDK or introduce a mandatory Sentrame client, custom telemetry protocol or generic wrapper framework.
@@ -56,11 +62,11 @@ The owner can save goal-backward, beginning/end-segment and origin-forward views
 
 ## 5. Instrument time at stage honestly
 
-Propose semantic entry/exit or start/end pairs for recipe viewing, deciding on one vote, or a server operation stage. Keep each repeated occurrence distinct using safe occurrence context, not recipe/person identity. Duplicate delivery must not create another measurement where supported identity permits deduplication.
+First reuse a native span for a duration-bearing operation. No paired logs, stage attributes or custom occurrence ID are needed for that native operation. Propose semantic entry/exit pairs only for a broader page/conceptual interval without a sufficient encompassing span. Keep each repeated occurrence distinct using safe occurrence context, not recipe/person identity. Duplicate delivery must not create another measurement where supported identity permits deduplication.
 
 Distinguish measured elapsed, observed-active and estimated timing. Active viewing needs actual visibility/idle/tab evidence; elapsed alone can include background time. Server-only elapsed timing does not imply human attention. Next-event fallback is explicitly estimated under a defined policy. Missing ends are ongoing/right-censored, not zero. Incompatible clocks, clock jumps, ambiguous overlaps and ends received before starts must reconcile or be unavailable, never produce invented negative durations. Do not sum overlapping stages as a unique visit total.
 
-The accepted display is **time at stage**: median plus supported slower cases, node size for duration, edge thickness for traffic, a bounded legend and numeric/table access. The slower percentile, support threshold, idle/fallback policy and scale are technical defaults to review, not silently selected by this guide. Live ongoing time is provisional and separate from completed distributions. Neither larger nodes nor longer dwell proves cognitive effort, frustration or a defect.
+The accepted display keeps timing in inspectors and accessible numeric tables, separated by native-inclusive, paired elapsed, estimated and observed-active basis. Journey edge thickness represents traffic; trace parent/event/log/link relationships retain their own meaning. The slower percentile, support threshold, idle/fallback policy and scale are technical defaults to review, not silently selected by this guide. Live ongoing time is provisional and separate from completed distributions. Neither native duration nor longer observed dwell proves cognitive effort, frustration or a defect.
 
 ## 6. Propose missing warnings/errors and recovery evidence
 
@@ -92,3 +98,14 @@ After developer approval, use that application's test-first workflow and minimal
 Propose synthetic cases for base intake with missing journey fields; one client-only, server-only and correctly correlated combined path; cross-app/tab isolation; healthy repeats; goal/next-event restart and 30-minute inactivity; duplicate/late/out-of-order events; warning/error then recovery/goal; post-commit error; stage visibility/missing ends; saved-view partial evidence; 30-day detail/12-month summary boundaries; and privacy/producer-namespace checks. Use real standard exporter/receiver/storage/read seams when separately authorized; a mocked UI or direct database fixture is not enough to qualify integration.
 
 Report tested SDK/config/content identity and passed, failed, blocked, not-run or not-applicable checks. Do not claim compatibility, privacy certification or production readiness from a plan. Stop at the approved scope; request separate developer authorization for deployment or real collection where it is not already granted. This guide performs none of those actions itself.
+
+
+## Progressive voting checklist
+
+1. Inventory existing providers, logging bridges, auto-instrumentation, exporters, sampling, propagation and shutdown. Reuse one initialization path; do not add a proprietary wrapper or duplicate SDK/provider.
+2. Trace actual navigation → intent → processing/persistence → failure/retry → commit → recovery boundaries in source/tests. Ordinary operations/errors come first. An HTTP request is not browser page dwell, intent is not persistence and a publication error after commit does not undo the saved vote.
+3. Verify actual receipt/storage/protected discovery and native trace structure/timing. Then configure service/carrier/source/name/retained-field mappings. Require a trusted named commitment or documented successful operation for a persistence goal, not generic HTTP2xx.
+4. Optional `stage.name=voting.persist` on an existing span/named log only offers a label suggestion. Explicit **Vote saved** wins over `voting`. Accept into a literal prospective definition; no child inheritance, automatic Kind/goal/authority/session or historical remapping. Stable lowercase dotted labels contain no content, routes or IDs. Both [language additions](../DEVELOPER-GUIDE.md#optional-label-enrichment-in-existing-emitters) reuse the existing provider.
+5. Add explicit random scope/tab only for the multi-request question; server-only workflows need no fabricated browser tab. `session.id` is an opt-in Development client convention with a separate Sentrame server-workflow interpretation. Approved propagation must explicitly emit it; baggage and shared trace IDs do not automatically create journeys.
+6. Add real page boundaries/presence only if that question remains unanswered. Visibility/idle observations under the60-second cap do not establish attention. Keep browser forwarding under browser authority, review collection/CSP/CORS/lifecycle loss and keep server tokens out of bundles.
+7. Exercise missing evidence, replay, late arrivals, privacy, browser forgery, failed attempt/retry/commit and recovery through the actual exporter → receiver → SQLite → protected read path. Record exact versions/route/protocol/compression and batching/flush behavior. Wire fixtures, source review and mocks cannot qualify .NET, Next.js, browser or deployment routes. No external application instrumentation, collection or deployment follows this checklist without its own authorization.

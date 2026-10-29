@@ -4,19 +4,24 @@
 
 - [User guide](USER-GUIDE.md): graph views, selection, event mapping, time filters, highlights, references, errors, data lifecycle and temporary viewers.
 - [Developer integration guide](DEVELOPER-GUIDE.md): .NET and Next.js telemetry, direct export versus Collector/proxy routing, trust boundaries, exceptions and journey context.
+- [OTel event/activity contract](integration/OTEL-CONTRACT.md): standard native spans/logs first, contextual mappings, optional stage hints and capability-specific scope/presence.
 - [Container deployment guide](NAS.md): Docker Hub workflow, Compose, environment configuration, filesystem bind storage, health and upgrades.
 - [Local setup and demonstrations](LOCAL-REVIEW.md): source startup, synthetic scenarios and VS Code REST Client requests.
 - [Docker Hub description](DOCKERHUB.md): repository description copy.
 
 ## Contracts and implementation
 
-- [Active OpenSpec change](../openspec/changes/synthetic-journey-outcomes/): capability specifications, design and implementation tasks. The historical change name does not describe a smaller product.
+- [Canonical capability specifications](../openspec/specs/): current normative baseline.
+- [Archived standard OTel integration change](../openspec/changes/archive/2026-10-29-standard-otel-default-integration/): completed implementation, synced capability deltas and qualification tasks.
+- [Archived synthetic journey baseline](../openspec/changes/archive/2026-10-29-synthetic-journey-outcomes/): historical planning and implementation record.
 - [Implementation contract](../CONTRACT.md): API/data boundaries and current integration contracts.
 - [Release scope](planning/sentrame-release-scope.md) and [decision register](planning/sentrame-decisions.md): settled direction, explicit later scope additions and remaining roadmap.
 - [Visual theme](design/visual-theme/README.md): preserved colors, typography and linked-thread mark.
 - [Integration instructions for coding agents](integration/AGENT-INTEGRATION.md): discover an application's current instrumentation and agree an event/privacy plan before editing it. This complements the runnable-configuration discussion in the developer guide.
 
 ## Verification and historical rationale
+
+- [Standard OTel qualification](verification/standard-otel.md): current model, progressive voting, exact wire/SDK/browser cells and remaining deployment limitations.
 
 - [Workspace verification](verification/workspace-design.md): graph/UI, diagnostic, invitation and container checks, including failed attempts, corrections and limits.
 - [Initial Release A verification](verification/release-a-local.md): earlier technical qualification; later workspace/delivery evidence extends it.

@@ -1,0 +1,688 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "synthetic-voting"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "spans": [
+            {
+              "traceId": "11111111111111111111111111111111",
+              "spanId": "0000000000000001",
+              "name": "POST /votes",
+              "kind": 2,
+              "startTimeUnixNano": "0",
+              "endTimeUnixNano": "1000000001",
+              "flags": 1,
+              "status": {
+                "code": 1
+              },
+              "attributes": [
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "POST"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/votes/{voteId}"
+                  }
+                },
+                {
+                  "key": "private.secret",
+                  "value": {
+                    "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "droppedAttributesCount": 3,
+              "droppedEventsCount": 2,
+              "droppedLinksCount": 4,
+              "events": [
+                {
+                  "name": "vote.committed",
+                  "timeUnixNano": "800000000",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "retry.observed",
+                  "timeUnixNano": "400000000"
+                }
+              ],
+              "links": [
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000001",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000002",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000003",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000004",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000005",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000006",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000007",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000008",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000009",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000000a",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000000b",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000000c",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000000d",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000000e",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000000f",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000010",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000011",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000012",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000013",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000014",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000015",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000016",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000017",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000018",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000019",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000001a",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000001b",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000001c",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000001d",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000001e",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "000000000000001f",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000020",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000021",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "traceId": "22222222222222222222222222222222",
+                  "spanId": "0000000000000022",
+                  "traceState": "STRUCTURAL-PRIVATE-SENTINEL",
+                  "attributes": [
+                    {
+                      "key": "private.secret",
+                      "value": {
+                        "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "traceId": "11111111111111111111111111111111",
+              "spanId": "0000000000000002",
+              "name": "vote.persist",
+              "kind": 2,
+              "startTimeUnixNano": "100",
+              "endTimeUnixNano": "700000000",
+              "flags": 1,
+              "status": {
+                "code": 1
+              },
+              "attributes": [
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "POST"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/votes/{voteId}"
+                  }
+                },
+                {
+                  "key": "private.secret",
+                  "value": {
+                    "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                  }
+                }
+              ],
+              "parentSpanId": "0000000000000001"
+            },
+            {
+              "traceId": "11111111111111111111111111111111",
+              "spanId": "0000000000000003",
+              "name": "vote.persist",
+              "kind": 2,
+              "startTimeUnixNano": "200",
+              "endTimeUnixNano": "800000000",
+              "flags": 1,
+              "status": {
+                "code": 1
+              },
+              "attributes": [
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "POST"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/votes/{voteId}"
+                  }
+                },
+                {
+                  "key": "private.secret",
+                  "value": {
+                    "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                  }
+                }
+              ],
+              "parentSpanId": "0000000000000001"
+            },
+            {
+              "traceId": "11111111111111111111111111111111",
+              "spanId": "0000000000000004",
+              "name": "missing.parent",
+              "kind": 2,
+              "startTimeUnixNano": "300",
+              "endTimeUnixNano": "0",
+              "flags": 1,
+              "status": {
+                "code": 1
+              },
+              "attributes": [
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "POST"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/votes/{voteId}"
+                  }
+                },
+                {
+                  "key": "private.secret",
+                  "value": {
+                    "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                  }
+                }
+              ],
+              "parentSpanId": "0000000000000099"
+            },
+            {
+              "traceId": "11111111111111111111111111111111",
+              "spanId": "0000000000000005",
+              "name": "invalid.clock",
+              "kind": 2,
+              "startTimeUnixNano": "500",
+              "endTimeUnixNano": "400",
+              "flags": 1,
+              "status": {
+                "code": 1
+              },
+              "attributes": [
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "POST"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/votes/{voteId}"
+                  }
+                },
+                {
+                  "key": "private.secret",
+                  "value": {
+                    "stringValue": "STRUCTURAL-PRIVATE-SENTINEL"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "resourceLogs": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "synthetic-voting"
+            }
+          }
+        ]
+      },
+      "scopeLogs": [
+        {
+          "logRecords": [
+            {
+              "eventName": "vote.committed",
+              "timeUnixNano": "800000000",
+              "traceId": "11111111111111111111111111111111",
+              "spanId": "0000000000000001",
+              "flags": 1
+            },
+            {
+              "eventName": "trace.note",
+              "timeUnixNano": "900000000",
+              "traceId": "11111111111111111111111111111111"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

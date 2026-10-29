@@ -1,0 +1,24 @@
+{
+  "browserService": "synthetic-voting-browser",
+  "serverService": "synthetic-voting-api",
+  "browserEvents": [
+    {"name":"voting.page.entered","offset":"0s","occurrence":"voting-page"},
+    {"name":"activity.changed","offset":"0s","attributes":{"activity.state":"visible"}},
+    {"name":"vote.requested","offset":"100ms"},
+    {"name":"activity.changed","offset":"400ms","attributes":{"activity.state":"hidden"}},
+    {"name":"vote.requested","offset":"500ms"},
+    {"name":"activity.changed","offset":"500ms","attributes":{"activity.state":"active"}},
+    {"name":"activity.changed","offset":"900ms","attributes":{"activity.state":"idle"}},
+    {"name":"voting.page.exited","offset":"1s","occurrence":"voting-page"}
+  ],
+  "serverEvents": [
+    {"name":"vote.persistence.failed","offset":"250ms","severity":17,"attributes":{"exception.type":"SyntheticPersistenceUnavailable","exception.message":"Vote persistence unavailable; retry permitted"}},
+    {"name":"publication.failed","offset":"850ms","severity":17,"attributes":{"exception.message":"Vote saved; synthetic publication unavailable"}},
+    {"name":"publication.recovered","offset":"950ms"}
+  ],
+  "goal":{"name":"completion.entered","offset":"1100ms"},
+  "operations":[
+    {"name":"POST /votes","start":"100ms","end":"300ms","status":"error","httpStatus":500,"event":"exception","eventOffset":"250ms"},
+    {"name":"POST /votes","start":"500ms","end":"800ms","status":"ok","httpStatus":200,"event":"vote.committed","eventOffset":"750ms"}
+  ]
+}

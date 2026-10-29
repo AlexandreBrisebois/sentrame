@@ -61,7 +61,7 @@ Select an event node, then **Configure event…**. For an already mapped stage, 
 
 | Field | What to enter |
 | --- | --- |
-| **Stage** | A short graph label, such as `Checkout` or `Vote saved`. Several events may share a stage name. For a timing start/end pair, use the same stage name. Activity still requires a label, but does not add a graph node. |
+| **Stage** | A short graph label, such as `Voting` or `Vote saved`. Several events may share a stage name. For a timing start/end pair, use the same stage name. Activity still requires a label, but does not add a graph node. |
 | **Kind** | How this event affects the path or timing; see below. |
 | **Trusted producer** | **Browser**, **Server** or **Any source**. Choose Server when the event must prove a server-side saved change. This filters by the receiver’s configured producer assignment; it does not make a browser claim trustworthy. |
 | **Condition key** | Optional retained attribute name to test, such as `reason`. |
@@ -77,7 +77,7 @@ Select an event node, then **Configure event…**. For an already mapped stage, 
 | **stage end** | Supplies the matching timing end without adding another graph step. |
 | **activity** | Keeps supporting evidence without adding a graph step. Recognized `activity.state` values—`active`, `visible`, `idle`, `hidden`—can support observed active-time calculations. |
 
-Explicit timing needs compatible start/end evidence with the same stage label, emitted `stage.occurrence.id`, producer and service. Changing the Kind dropdown alone cannot supply missing instrumentation. All mapped kinds refresh the inactivity timeout. An ordinary mapped step may instead have **Next-event estimated** timing when that policy is enabled; that is an estimate, not an observed end.
+A native span uses its own start/end and native identity. Explicit paired timing is an alternative for a broader interval and needs compatible start/end evidence with the same stage label, emitted `stage.occurrence.id`, producer and service. Changing the Kind dropdown alone cannot supply missing instrumentation. All mapped kinds refresh the inactivity timeout. An ordinary mapped step may instead have **Next-event estimated** timing when that policy is enabled; that is an estimate, not an observed end.
 
 ### Use conditions only when necessary
 
@@ -217,7 +217,7 @@ A `127.0.0.1`, `localhost` or loopback IPv6 link works only on the machine openi
 | Empty graph | Clear a selected visit/reference, widen the time range, check the version/definition filters, then inspect **Unmapped events** and **Unassigned records**. Successful receipt without safe journey context is different from ingestion failure. |
 | Event appears but has no connections | It may be unmapped or lack supported correlation. Configure its meaning and inspect received context; do not infer a link from nearby timestamps. |
 | No rare-path highlight | At least 20 closed, comparable, non-partial/uncensored journeys are needed. A low count is not evidence that all paths are common. |
-| Timing is unavailable | Check for explicit paired occurrences, compatible source/clocks and completed samples. For p90, check the 20-sample minimum. |
+| Timing is unavailable | Check native span start/end or the explicitly selected pair, compatible source/clocks and completed samples. For p90, check the 20-sample minimum. |
 | Counts differ between histogram and graph | The histogram counts retained records; graph nodes/edges count mapped occurrences/transitions. Journeys and visits are separate units. |
 | Results say partial or truncated | Narrow the period or filters. Displayed counts are not complete population totals. |
 | New UI is not visible | Refresh to load built browser assets. A backend change needs a service restart; restarting requires sign-in again. |
@@ -226,3 +226,37 @@ A `127.0.0.1`, `localhost` or loopback IPv6 link works only on the machine openi
 | Real exporter sends nothing visible | Check the protected receiver’s advertised signal/HTTP combination, producer credentials and emitted timestamps/context. Use the setup/integration guides; this UI cannot establish delivery completeness. |
 
 For repeatable sample traffic and actual OTLP request files, return to the [local review guide](LOCAL-REVIEW.md). Qualification notes distinguish what was source-tested, exercised locally or not run; do not treat a demonstration as proof of every SDK, route or device.
+
+
+## Trace exploration
+
+After sign-in, **Traces** lists observed execution contexts, with service and observed-span counts. Select one, then choose **tree**, **timeline** or **table**. Parent edges describe native context; parallel children never become chronological transitions. Missing and ambiguous targets stay labeled. Open **Typed relationships**, **Span events in export order** and **Correlated logs** for retained context. Logs with only a trace ID remain trace-level evidence. **Copy sanitized trace** copies the same protected projection.
+
+Exact start/end and duration nanoseconds remain decimal strings. Durations are inclusive operation time, not exclusive time, page dwell, attention or a sum of unique time. Missing ends are right-censored; invalid or receipt-fallback clocks are unavailable. Sampling, SDK drop counts, projection link omissions and read truncation disclose partial evidence. A sampling flag supplies no sampling rate. Turn off **Automatic refresh** to pause updates; Refresh reconciles a full bounded read. Revocation clears access through the shared session boundary.
+
+Switch to **Journeys** for configured chronological business paths. Trace-only telemetry does not create a journey, person count or conversion funnel. The two modes preserve separate counting units. Service/carrier contextual mappings and explicit definition previews are available at the qualified local seam; optional stage hint suggestions are available for explicit owner acceptance. See [qualification](verification/standard-otel.md) for what actually ran; wire tests do not qualify a browser exporter.
+
+
+## Give ordinary telemetry business meaning
+
+On a trace operation, span event or log, choose **Give business meaning**. The editor starts with the retained exact service/carrier/source/name. Enter a literal Stage label, choose Kind and an optional retained key/value condition, then **Preview matches** before activation. Select **Use this exact mapping as the operational goal** only for the actual intended boundary. No stage tag is needed. A trusted `vote.committed` span event can map to **Vote saved** while a similarly named log remains separate.
+
+Native-span timing measures inclusive operation elapsed time using native identity. Point observations have no duration by label. Explicit paired boundaries and next-event estimates are separate policies; a broader page stage needs real supporting observations. Do not sum nested operations into unique page time. An end-boundary span goal requires a valid completed span; a named event goal uses its event timestamp. A generic successful HTTP request and browser intent do not prove persistence.
+
+Default trace labels use capture-time definitions. Use the interpretation menu for an explicit non-persisting preview under another definition. Activation changes future captures, without rewriting retained evidence, previous labels or captured journeys. Two matching explicit rules block activation; there is no hidden rule order. Read-only viewers may inspect previews but cannot configure or activate.
+
+
+## Optional emitted label suggestions
+
+An unmapped record may offer **Use emitted suggestion: voting.persist**. Choosing it fills a literal Stage in the editor; Preview and activation remain required. There is no automatically activated mapping. Different emitted labels remain separate suggestions, with at most32 per contextual selector and omissions disclosed. Missing/invalid tags offer none and do not prevent ordinary-name mapping.
+
+One explicit owner mapping always wins. If the emitter says `voting` while the owner says **Vote saved**, the stage remains **Vote saved**, and the emitted hint remains inspectable. Two overlapping explicit rules must be disambiguated. Child records do not inherit a span's label. Changed emitted hints do not rename prior captures or establish a goal, Kind, session or authority.
+
+
+## Scoped native timing and references
+
+Explicit scope/tab can relate multiple request traces into one configured journey. The graph counts chronological stage occurrences; opening a trace still shows its native operation structure. Native span timing now appears as **Native inclusive operation**, separate from **Measured elapsed**, **Observed active** and **Next-event estimated**. Each distribution carries its definition/computation, sample count and exclusions; p90 needs20 compatible completed samples. Missing ends/invalid clocks do not become zero samples, and competing timing bases for the same occurrence are unavailable until the owner chooses one.
+
+In Traces, choose or save a **Trace reference** with a name, current view and definition interpretation. It stays distinct from journey goal/segment references. An explicit preview pins that definition; the default uses recorded capture context. Expired/deleted targets remain unavailable even when the saved query survives. A late earlier mapped prefix within the supported inactivity gap retains the known capture definition instead of adopting the latest labels. No personal identity index is created.
+
+Observed-active time requires actual browser visibility/idle observations within a complete native browser interval or an optional paired page interval in the same capture. It measures capped positive observed intervals; gaps remain unknown, and server operation time cannot borrow browser presence.

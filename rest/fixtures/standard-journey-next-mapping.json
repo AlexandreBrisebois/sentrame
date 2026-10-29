@@ -1,0 +1,88 @@
+{
+  "goal": "completion.entered",
+  "mappings": [
+    {
+      "event": "voting.page.entered",
+      "step": "Voting",
+      "kind": "stage-start",
+      "source": "browser",
+      "carrier": "log",
+      "service": "synthetic-voting-browser",
+      "timing": "paired"
+    },
+    {
+      "event": "voting.page.exited",
+      "step": "Voting",
+      "kind": "stage-end",
+      "source": "browser",
+      "carrier": "log",
+      "service": "synthetic-voting-browser",
+      "timing": "paired"
+    },
+    {
+      "event": "activity.changed",
+      "step": "Presence",
+      "kind": "activity",
+      "source": "browser",
+      "carrier": "log",
+      "service": "synthetic-voting-browser"
+    },
+    {
+      "event": "vote.requested",
+      "step": "Vote intent",
+      "kind": "activity",
+      "source": "browser",
+      "carrier": "log",
+      "service": "synthetic-voting-browser"
+    },
+    {
+      "event": "POST /votes",
+      "step": "Vote processing",
+      "kind": "step",
+      "source": "server",
+      "carrier": "span",
+      "service": "synthetic-voting-api",
+      "timing": "native-span"
+    },
+    {
+      "event": "vote.committed",
+      "step": "Next saved vote",
+      "kind": "step",
+      "source": "server",
+      "carrier": "span-event",
+      "service": "synthetic-voting-api"
+    },
+    {
+      "event": "vote.persistence.failed",
+      "step": "Persistence failure",
+      "kind": "activity",
+      "source": "server",
+      "carrier": "log",
+      "service": "synthetic-voting-api"
+    },
+    {
+      "event": "publication.failed",
+      "step": "Publication error",
+      "kind": "activity",
+      "source": "server",
+      "carrier": "log",
+      "service": "synthetic-voting-api"
+    },
+    {
+      "event": "publication.recovered",
+      "step": "Recovered",
+      "kind": "step",
+      "source": "server",
+      "carrier": "log",
+      "service": "synthetic-voting-api"
+    },
+    {
+      "event": "completion.entered",
+      "step": "Completion",
+      "kind": "step",
+      "source": "browser",
+      "carrier": "log",
+      "service": "synthetic-voting-browser"
+    }
+  ]
+}

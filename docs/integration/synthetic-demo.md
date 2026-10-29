@@ -104,3 +104,19 @@ The new fixture test first failed because the readable scenario was absent, then
 ## Final expanded request verification
 
 On 2026-10-28 at20:36UTC, `task demo` passed all22 current literal requests, including the42-record/20-occurrence timing case. Protected API reads verified median10.5s,p90=18s and100% completed timing coverage. After the final source-aligned restart at20:51UTC, `task demo:verify` passed all22 again with the same identified bodies; healthy remained16 and live2 records, timing42. No DB preload or reset. Final backend checks also preserve canonical trace/span hex IDs, reject invalid standard span IDs atomically, and inherit only verified parent logical context for span events.
+
+
+## Standard OTel voting operations
+
+The [readable source](../../rest/fixtures/standard-otel.json) is ordinary OTLP with relative timestamp offsets: `POST /votes`, parallel repeated `vote.persist` operations, a trusted `vote.committed` span event and correlated named log, trace-only log, missing parent/end, invalid clock, dropped counts and34 links. It contains no stage/session/occurrence fields. These are wire observations, not actual .NET/Next.js exports or proof of a real saved vote. The first increment explores operations; it does not join attempts into a multi-request journey.
+
+With a separately configured disposable loopback service and its environment exported, run `task demo:standard`. This generates fresh native trace IDs and timestamps, preserves exact bytes/hashes under ignored `rest/generated`, and executes [rest/standard-otel.http](../../rest/standard-otel.http) through actual ingestion/storage/protected reads. `task fixtures:standard` prepares the files without sending; `task demo:standard:verify` reuses them. Private `rest/.env` contains the REST Client variables. Never paste producer tokens into tracked requests. Do not rerun the anonymous log fixture against an existing dataset when checking log counts: logs without stable IDs intentionally remain distinct. Native span replay is idempotent.
+
+The verifier checks native timing, link bounds, contextual evidence and replay through HTTP binary, JSON span replay and gzip binary span replay. Full framework/exporter/protocol matrices remain separate in [the ledger](../verification/standard-otel.md). Owner mappings and optional stage enrichment are later increments; browser intent and generic HTTP2xx do not prove persistence.
+
+
+## Scoped voting story
+
+The third increment uses [standard-journey.json](../../rest/fixtures/standard-journey.json) and explicit owner [mappings](../../rest/fixtures/standard-journey-mapping.json). It adds random scope/tab only for the multi-request journey. It sends browser navigation/intent, two separate native server request traces (failure then successful retry), trusted `vote.committed`, publication failure/recovery, explicit page pair and optional synthetic presence observations. The separately configured browser completion-screen goal arrives after another definition activates. Protected reads prove the existing capture keeps its definition, earlier friction and one trusted commitment; HTTP2xx does not invent the screen goal. Exact goal replay adds no journey.
+
+The local verifier now executes37 literal steps, including trace-mode references and separate native/pair/observed-active timing. Native durations are200ms and300ms, the page pair is1s and the **synthetic** visibility/idle intervals total800ms. These are distinct bases, never attention or a unique-time sum. Actual browser visibility/idle collection and lifecycle loss are not qualified by these wire observations. Use a new disposable database/generation for a full repeat, preserving prior local data.

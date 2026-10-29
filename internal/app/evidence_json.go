@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 )
 
@@ -13,17 +14,21 @@ func (e Evidence) MarshalJSON() ([]byte, error) {
 		Time     string `json:"time"`
 		Receipt  string `json:"receipt"`
 		Observed string `json:"observed"`
-	}{alias: alias(e), Time: strconv.FormatInt(e.Time, 10), Receipt: strconv.FormatInt(e.Receipt, 10), Observed: strconv.FormatInt(e.Observed, 10)})
+		End      string `json:"end"`
+	}{End: strconv.FormatInt(e.End, 10), alias: alias(e), Time: strconv.FormatInt(e.Time, 10), Receipt: strconv.FormatInt(e.Receipt, 10), Observed: strconv.FormatInt(e.Observed, 10)})
 }
 
-// Accept both the initial local numeric storage format and the exact decimal-string format.
+// The greenfield projection stores and reads exact decimal strings only.
 func (e *Evidence) UnmarshalJSON(b []byte) error {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
-	for _, key := range []string{"time", "receipt", "observed"} {
+	for _, key := range []string{"time", "receipt", "observed", "end"} {
 		v := raw[key]
+		if len(v) > 0 && v[0] != '"' {
+			return fmt.Errorf("%s requires decimal nanosecond string", key)
+		}
 		if len(v) > 0 && v[0] == '"' {
 			var text string
 			if err := json.Unmarshal(v, &text); err != nil {

@@ -20,7 +20,7 @@ func TestEvidenceReadPreservesNanosecondsBeyondJavaScriptIntegerPrecision(t *tes
 	if err = json.Unmarshal(b, &got); err != nil || got.Time != ns {
 		t.Fatalf("decimal roundtrip %d %v", got.Time, err)
 	}
-	if err = json.Unmarshal([]byte(`{"time":1793217517832529123}`), &got); err != nil || got.Time != ns {
-		t.Fatalf("existing numeric SQLite projection lost precision %d %v", got.Time, err)
+	if err = json.Unmarshal([]byte(`{"time":1793217517832529123}`), &got); err == nil {
+		t.Fatal("old numeric projection must not be silently decoded")
 	}
 }

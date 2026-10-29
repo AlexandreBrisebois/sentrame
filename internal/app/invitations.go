@@ -39,6 +39,9 @@ func viewerReadAllowed(r *http.Request) bool {
 	if r.Method != "GET" {
 		return false
 	}
+	if r.URL.Path == "/api/traces" || strings.HasPrefix(r.URL.Path, "/api/traces/") {
+		return true
+	}
 	switch r.URL.Path {
 	case "/api/session", "/api/snapshot", "/api/timeline", "/api/errors", "/api/views", "/api/events", "/api/definitions":
 		return true

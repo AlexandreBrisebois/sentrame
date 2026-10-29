@@ -79,3 +79,10 @@ The owner requested standard .NET/Next-like exceptions, stacks and custom error 
 
 - The owner authorized app-wide temporary read-only viewers, including retained history/live/reference/diagnostic browsing, with expiry and revocation. This explicitly adds a broader mode; it does not widen an existing visit-only grant. Technical defaults: one-use redemption;1h/24h(default)/7d absolute expiry; separate viewer cookie; server read allowlist; active SSE and historical-session revocation checks.
 - The owner requested DockerHub delivery through GitHub Actions, image `brisebois/sentrame`, multi-architecture `linux/amd64,linux/arm64`, and repository Compose/`.env.example` files for NAS deployment. Publishing/actual NAS qualification remain separately evidenced; initial no-commit/no-push instructions have not been withdrawn. WFS changes are not part of this packaging work.
+
+
+## 2026-10-29 — Standard OTel greenfield implementation
+
+Owner clarification: no users, no backward compatibility requirement. Implement `standard-otel-default-integration` against fresh disposable synthetic databases; never reset existing data on startup. Remove legacy projection replay adapters and old numeric timestamp readers. New-model exact replay and prospective historical definition semantics remain required. Keep native trace parent/event/log/link structure separate from chronological business paths; optional stage hints require owner acceptance; native inclusive operation time never proves page dwell or persistence. Roadmap B remains deferred. See [change design](../../openspec/changes/archive/2026-10-29-standard-otel-default-integration/design.md) and [qualification ledger](../verification/standard-otel.md). No external instrumentation, deployment, commit, publication or spec synchronization is authorized by local verification.
+
+2026-10-29 follow-up: the owner separately authorized canonical specification synchronization and archival. All seven deltas were merged, all 23 implementation tasks were complete, and the package was archived as `2026-10-29-standard-otel-default-integration`. This authorization does not deploy, publish or expand roadmap B.

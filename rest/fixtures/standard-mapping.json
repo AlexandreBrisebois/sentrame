@@ -1,0 +1,8 @@
+{
+  "goal": "vote.committed",
+  "mappings": [
+    {"event":"POST /votes","step":"Vote processing","kind":"step","source":"server","service":"synthetic-voting","carrier":"span","timing":"native-span","key":"http.request.method","value":"POST"},
+    {"event":"vote.persist","step":"Persistence operation","kind":"step","source":"server","service":"synthetic-voting","carrier":"span","timing":"native-span"},
+    {"event":"vote.committed","step":"Vote saved","kind":"step","source":"server","service":"synthetic-voting","carrier":"span-event"}
+  ]
+}
