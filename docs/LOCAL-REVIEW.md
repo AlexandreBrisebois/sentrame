@@ -1,6 +1,8 @@
 # Sentrame local Release A review build
 
-This is the authorized synthetic implementation on `codex/sentrame-mvp`, based on planning commit `4a20c95`. The historical planning-only passages describe the previous phase. No WFS app was contacted or changed; no real telemetry, deployment, publication, merge or spec archive is included. Roadmap B remains deferred. Local qualification and the remaining OpenSpec finish gates are recorded separately in [verification](verification/release-a-local.md).
+Use this guide to run the working application from source, load repeatable synthetic demonstrations and send the supplied REST Client requests. For everyday graph controls and configuration, read the [user guide](USER-GUIDE.md). For telemetry from .NET/Next.js, read the [developer guide](DEVELOPER-GUIDE.md). For the Docker image and filesystem-bound Compose setup, read [container deployment](NAS.md).
+
+The scenarios here use synthetic data and the actual ingestion/storage/read paths. They do not instrument WFS or establish real SDK/network-route qualification. [Current workspace verification](verification/workspace-design.md) extends the [initial Release A report](verification/release-a-local.md).
 
 ## Canvas workspace update
 
@@ -14,6 +16,7 @@ The URL remains [http://127.0.0.1:8096](http://127.0.0.1:8096). Refresh an alrea
 
 - Switch **Hierarchy / Force / Sankey** in the top bar. Select a node for incoming/outgoing traffic, timing and evidence; select a connection for observed transitions. Small arrowheads retain screen size independently of traffic. Use trackpad **pinch** to zoom at the pointer and two-finger scrolling to pan, or **Fit**, +/- and keyboard controls; live snapshots do not continually rearrange the camera.
 - **Errors** opens application-wide diagnostics without requiring a visit. Search by message, exception, service or trace ID; expand a record for a scrubbed message/stack, technical IDs and sanitized copy. Details are bounded, expire with30-day evidence, and scrubbing is imperfect. Actual .NET/Next.js exporter qualification remains separate.
+- **Temporary viewers**, in the workspace menu, creates whole-app read-only links with one-use redemption, expiry and revocation. Viewers may inspect historical/live/reference/error data but cannot configure, save, delete or administer invitations.
 - **Configure event…** opens a node popup. Preview actual matching records before activating a copied, prospective definition. Existing captured journeys retain their version. **Mappings & goal** is in the workspace menu; goal changes remain explicit.
 - **Paths into here / Paths from here** preview recorded projections without saving. **Use as beginning…**, then select an end stage for a segment. **References** saves the current investigation or overview with exact time bounds, visit/version/definition filters, layout and highlight. It preserves captured boundaries, not expired raw evidence. A live reference freezes its live observation window; the baseline remains a separate comparison layer.
 - Error-related observed connections are red by default, with evidence labels; healthy continuation is separate. Choose **Rare paths**, **Endings**, **Warnings & exceptions** or **Recovery** in Highlights. Rarity uses full closed, non-partial/uncensored sequences at <=10% share with >=20 comparable journeys per definition/version. Shared highlighted edges can also occur in common paths. The base demo has low support; `task demo:workspace` adds a qualified rarity example.
@@ -41,7 +44,7 @@ Open [http://127.0.0.1:8096](http://127.0.0.1:8096). Use that exact origin, not 
 
 Prerequisites used here: Go 1.27.3, Node 26.12.0/npm, Task and OpenSpec 1.14.3. Exact Go modules/checksums are in `go.mod`/`go.sum`; frontend dependencies resolve from `web/package-lock.json` through `npm ci`. Go serves built Svelte/Vite assets and viewer/API/OTLP HTTP on loopback port 8096. A private ephemeral loopback listener hosts the maintained Collector receiver; its consumers independently validate producer credentials. gRPC is not exposed.
 
-Configuration inputs: `SENTRAME_PASSPHRASE` (at least 12 characters), distinct nonempty `SENTRAME_BROWSER_TOKEN` and `SENTRAME_SERVER_TOKEN`, optional `SENTRAME_ADDR`, `SENTRAME_ORIGIN`, `SENTRAME_DB`. Defaults are loopback `127.0.0.1:8096`, origin `http://127.0.0.1:8096` and `.sentrame/local.db`. Do not repurpose this as a public deployment; Home Server/HTTPS/proxy configuration is not qualified.
+Configuration inputs: `SENTRAME_PASSPHRASE` (at least 12 characters), distinct nonempty `SENTRAME_BROWSER_TOKEN` and `SENTRAME_SERVER_TOKEN`, optional `SENTRAME_ADDR`, `SENTRAME_ORIGIN`, `SENTRAME_DB`. Defaults are loopback `127.0.0.1:8096`, origin `http://127.0.0.1:8096` and `.sentrame/local.db`. For a container deployment, use the separate Compose/environment contract in [container deployment](NAS.md); this local command does not qualify an external HTTPS/proxy route.
 
 ## Repeatable demonstration
 
@@ -68,7 +71,7 @@ For a fresh visible live continuation:
 task demo:live
 ```
 
-Select the newly printed/generated live scope in the browser, then start Live observation before sending:
+Follow the generated visit through **Journeys & evidence → Follow this visit**, or paste its printed correlation ID in the advanced filters. Start Live observation before sending:
 
 ```sh
 task demo:followup
@@ -85,7 +88,8 @@ Run `task fixtures`, open `rest/demo.http` in VS Code with REST Client, and use 
 | Command | Scope |
 | --- | --- |
 | `task setup` | Resolve pinned dependencies, create local synthetic credentials and build |
-| `task start` | Build and run the local service; Ctrl+C stops the process |
+| `task start:workspace` | Build/run the separate workspace review database; Ctrl+C stops the process |
+| `task start` | Build/run the default `.sentrame/local.db`; keep separate from the workspace database |
 | `task test` | Go behavior/seam tests, UI helper tests and Svelte/TypeScript checks |
 | `go test -race ./... -count=1` | Explicit broader concurrent access check |
 | `task fixtures` | Generate fresh binary/JSON bodies, identities and ignored REST credentials |
@@ -93,6 +97,9 @@ Run `task fixtures`, open `rest/demo.http` in VS Code with REST Client, and use 
 | `task demo:live` / `task demo:followup` | Real intake with stable follow-up identity |
 | `task demo:replay` | Replay exact identified ten-commitment bytes |
 | `task qualify:local` | Isolated temporary loopback DB; 1,100 synthetic requests with concurrent query/SSE/cleanup |
+| `task test:viewer-access` / `task test:delivery` | Targeted access-boundary and delivery/probe checks |
+| `task container:smoke` | Build/run a disposable ARM64 image through actual OTLP/storage/SSE/restart |
+| `task container:smoke PLATFORM=linux/amd64` | Same local runtime check for AMD64 |
 | `task spec:validate` | Strict selected-change OpenSpec validation |
 | `task check` | Tests, type checks, selected spec validation and whitespace |
 | `task reset` | Refuses while port 8096 is serving; deletes only named local DB/WAL/config files and rotates credentials |
@@ -106,6 +113,6 @@ Run `task fixtures`, open `rest/demo.http` in VS Code with REST Client, and use 
 - Correction ends at captured-start+30 days. After finalization, individual subtraction/reprocessing is unsupported; use explicit app/UTC-day deletion. Retained partial tails and late evidence cannot restore started-journey eligibility or multiply finalized contributions. Saved queries cannot resurrect detail. No automatic backups/restore workflow or forensic erasure claim.
 - Counts without reliable record IDs have retry uncertainty; clocks/sampling/collection completeness remain explicit. Controlled diagnostic messages/stacks and error-log string bodies now use bounded scrubbed-v1 projection. Ordinary bodies, raw request content and unknown attributes remain omitted; scrubbed text can still contain application data. Full source-mapped stacks and perfect text scrubbing are not implemented.
 - At most 100,000 records in this local dataset; bounded recent 10,000-record derivation, 2,000 detail response rows, 100 graph nodes and 300 edges. Limits are visible; a truncated result is not a complete count. This short workload does not qualify full-capacity retention growth or sustained 30-day operation.
-- Owner-only passphrase access is implemented. Invitations, multi-app experience and richer parallel comparisons remain B. Main English/French controls and explanatory text are available, but some metadata/diagnostic text remains English; comprehensive language/assistive-technology conformance is not claimed.
+- Owner passphrase access and temporary whole-app read-only invitations are implemented. Multi-app experience, richer comparisons/configuration and narrower visit-only grants remain deferred. Main English/French controls and explanatory text are available, but some metadata/diagnostic text remains English; comprehensive language/assistive-technology conformance is not claimed.
 
 The most useful product review choices are the initial completion-screen goal, the value of conservative diagnostic omission, estimated versus explicitly measured timing, and how well the cohort/partial/censoring explanations help distinguish potential dead ends from unknown evidence.

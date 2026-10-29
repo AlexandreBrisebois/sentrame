@@ -98,3 +98,11 @@ The reviewer’s combined `task test && task container:smoke` advanced to the co
 ### Both container platforms passed
 
 The reviewer supplied final successful smoke output for linux/arm64 and linux/amd64 after the fixture timestamp was aligned to the receiver’s protected snapshot clock. Both checks exercised the actual non-root/read-only image, private filesystem bind, readiness, built static UI, owner-protected reads, standard OTLP/HTTP JSON logs accepted-unassigned, SSE and identical retained evidence after restart. Initial harness failures remain recorded above; four probe/clock regression tests now pass. This Mac/Docker Desktop evidence does not qualify a native NAS workload, Home Server limits, the shared Tunnel or real WFS producers. No registry publication or deployment has occurred.
+
+### Initial image publication — 2026-10-28
+
+Verified the pushed implementation commit5738712 and signed tagv0.1.0-rc.1 through GitHub. [Container workflow40808148393](https://github.com/AlexandreBrisebois/sentrame/actions/runs/40808148393) completed successfully: checks, amd64 smoke, arm64 smoke and publish all passed. The publishing step reported indexsha256:4524464d90d9d72e54ffc17b9ee8197a29380673cb1721fce3452a69d974891e and the post-push check confirmed both target platforms. Published image brisebois/sentrame:v0.1.0-rc.1 is available. Native NAS workload, shared Tunnel route and actual.NET/Next.js exporters remain unqualified.
+
+### Product and developer documentation
+
+Replaced the planning-era root README with the implemented product overview, source/container setup and clear guide navigation. Added a user guide, .NET/Next.js developer integration guide and documentation index; reconciled local-review/frontend historical notes and selected the verified published image in .env.example. Local Markdown links/images and code-fence balance were checked. Developer SDK package/APIs and authentication header parsing were checked against pinned primary sources, including current.NET EventId.Name versus numeric logging-template ID and the coherent JS3.0/NodeSDK0.300 family. No application or WFS code was changed, no.NET/Next.js SDK was installed/compiled/executed, and those SDKs remain unqualified until actual integration tests.

@@ -14,6 +14,8 @@ Map discovered events to meaningful journey stages, save reference views, and sh
 
 Sentrame is self-hosted, built with Go, Svelte, and SQLite, and designed for Docker Compose. It retains sanitized event detail for 30 days and supported summaries for 12 months. Standard OTLP/HTTP ingestion works without a proprietary Sentrame SDK.
 
-Image target: Linux AMD64 and ARM64 under one Docker Hub tag. Platform runtime verification is enforced by the publishing workflow; publish this claim with an image only after both platform checks pass.
+Images are available for Linux AMD64 and ARM64 under one Docker Hub tag. Release candidate `v0.1.0-rc.1` passed both architecture smoke checks and publication.
 
 For setup, environment variables, persistent storage and supported transport boundaries, see [NAS/container delivery](NAS.md). Registry publication, a working NAS route and an application integration are separate verification steps.
+
+User documentation: [user guide](USER-GUIDE.md) · [developer integration guide](DEVELOPER-GUIDE.md).

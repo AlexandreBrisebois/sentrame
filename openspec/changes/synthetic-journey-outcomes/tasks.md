@@ -54,6 +54,8 @@ Implementation roadmap for the evolved journey plan. The 2026-10-28 request auth
 
 - [x] 6.1 Add a multi-architecture container build, Compose file, environment example and DockerHub GitHub Actions workflow for brisebois/sentrame. Verify source/configuration checks and accurately record container-runtime, registry and NAS qualification gaps; do not commit or push.
 
+- [x] 6.2 Replace the planning-era README with the implemented product overview and add user/developer documentation, including source-checked .NET/Next.js OTLP recipes, routing/trust distinctions and explicit unrun SDK qualification. Validate local links/code fences and record published-container evidence.
+
 ## Engineering discipline
 
 Implementation verification: [local review candidate, passed checks and retained finish gates](../../../docs/verification/release-a-local.md). The initial Go/network blocker is resolved. Task 2.4 remains unchecked because measurement was recorded after expansion; task 3.12 remains partial beyond the short local qualification. Roadmap B remains deferred.

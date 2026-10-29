@@ -1,59 +1,97 @@
-# sentrame
-Find the meaning between events : “sen-tram” Inspired by sens and trame: meaning, direction and the thread connecting events.
+# Sentrame
 
-## Local synthetic review build
+**Find the meaning between events.** Pronounced “sen-tram,” inspired by *sens* and *trame*: meaning, direction, and the thread connecting events.
 
-The first Svelte/TypeScript + Go + SQLite review build runs locally at [http://127.0.0.1:8096](http://127.0.0.1:8096). For the current canvas workspace, run `task setup`, `task start:workspace`, then `task demo` and `task demo:workspace` in another terminal. The workspace review uses its own synthetic database and preserves the original database. Owner access uses the generated private `.sentrame/local.env` passphrase. See the [launch/demo/REST guide](docs/LOCAL-REVIEW.md), [technical defaults](docs/review/release-a-technical-defaults.md) and [verification with remaining limits](docs/verification/release-a-local.md).
+Sentrame is a self-hosted OpenTelemetry journey explorer. It helps you see how application activity connects: which paths reach a goal, where visits stop, how often steps repeat, and what happens before and after an error.
 
-The current request authorizes local synthetic implementation. Historical planning-only authorization/status passages below describe the preceding phase. They do not restrict this local build. WFS changes, real collection, deployment, publication, merge and specification archival remain excluded; roadmap B remains deferred except for the explicitly authorized app-wide temporary viewers and NAS/container delivery preparation described below.
+The application is implemented with **Svelte/TypeScript, Go and SQLite**. It runs as one service with a built-in OTLP/HTTP receiver and a graph-first workspace.
 
-## North Star
+## Start here
 
-Sentrame helps a small application team understand observed journeys: what happened, where people continued or stopped, which goals were evidenced, and how errors affected the path. What's for Supper (WFS) is the first integration to learn from; future applications remain separate. It is intended for a low-footprint Home Server deployment using Docker Compose, configured by an associated Compose file and `.env`, behind the existing shared Cloudflare Tunnel with HTTPS. A local synthetic application is implemented; Home Server deployment and the shared Tunnel remain unqualified.
+| I want to… | Guide |
+| --- | --- |
+| Understand the graph, configure events, investigate errors or share a view | [User guide](docs/USER-GUIDE.md) |
+| Send telemetry from a .NET or Next.js application | [Developer integration guide](docs/DEVELOPER-GUIDE.md) |
+| Run the container with Compose and a chosen data folder | [Container deployment guide](docs/NAS.md) |
+| Run from source, load synthetic scenarios or use VS Code REST Client | [Local setup and demonstrations](docs/LOCAL-REVIEW.md) |
+| Review requirements, decisions and verification | [Project documentation](docs/README.md) |
 
-The useful questions are concrete: Which paths reach a configured goal? Where do visits stop without a known outcome? Are repeated votes healthy exploration, recovery after an error, or an explicitly reported exit? Did a release change those patterns? Can a developer inspect the relevant exception and scrubbed context without guessing a cause?
+## What the workspace does
 
-## Confirmed direction
+- Switch between left-to-right **Hierarchy**, directed **Force** and **Sankey** views. Select nodes and connections for incoming/outgoing traffic, counts, timing and ordered evidence. Drag nodes to improve the arrangement.
+- Discover incoming event names and configure their journey meaning in context. Preview a mapping before activating a new definition; captured journeys keep their original boundaries.
+- Explore historical traffic or watch live updates. Select time ranges with an event-volume histogram, follow a visit from its evidence, and compare live activity with a separately counted seven-day baseline.
+- Highlight rare paths, endings, warnings/exceptions and recovery. Repetition can be healthy; an error does not automatically terminate a journey.
+- Inspect application-wide errors, scrubbed messages and stacks without needing a session ID. Save and reopen reference views, or delete a saved view without deleting telemetry.
+- Invite a temporary **read-only viewer** to browse the whole application. Links are redeemable once, expire after one hour, 24 hours or seven days, and can be revoked.
 
-- Receive standard OpenTelemetry through OTLP using existing SDKs/exporters and ordinary configuration. No mandatory Sentrame SDK, custom transport, or custom fields merely to ingest telemetry. Product interpretation needs sufficient optional context.
-- Keep stable app/version identities from day one. Support client-only, server-only and correctly correlated combined journeys. Browser visits stay separate per tab; server operations need no fictitious browser/tab. Shared app-scoped correlation links observations, not authority, total order, duplicates or person identity. No cross-app/cross-visit/person joins.
-- The owner can emit application events and add ordinary standard OTel instrumentation. Journey steps map to those events. The UI lists discovered events, lets the owner choose a goal event, and shows how journeys reached that event from their beginning, marking missing/truncated prefixes honestly. Stable semantics support version comparisons; HTTP success and silence do not establish business intent.
-- Warnings and exceptions are discoverable event classifications too, carried through standard OTel logs/events or qualified span events. Severity alone does not fail or end a journey: preserve continuation, recovery and later goal success. No custom SDK or protocol is required.
-- Show **time at stage**, such as recipe viewing or deciding on a vote: timing is inspected contextually and edge thickness represents traffic; the switchable Sankey view uses volume-sized bars. Show median time plus supported slower cases, sample/completeness and numeric/table equivalents. Distinguish elapsed, observed-active and estimated time, including background/idle/tab changes, repeated occurrences and missing ends. Larger does not mean worse or more cognitive effort; exact timing/percentile policies remain open.
-- Start at the first mapped event, end at the active selected goal, and start another journey at the next new mapped occurrence. After 30 minutes without mapped activity, close inactive—not failed. Preserve event-time/late corrections and supported duplicate-goal handling.
-- Save reusable reference views: explore backward to a goal, between beginning/end events, or forward from an origin event. Views preserve recorded boundaries and do not keep deleted/expired raw journeys.
-- Keep ordered detail for 30 days and count/conversion/timing summaries for 12 months. After 30 days, compare supported trends without individual journey drilldown. Preserve version/denominator/privacy and mergeable duration statistics; never average medians.
-- Provide historical traffic maps and live views for a selected application or anonymous visit. Preserve filters when switching. A toggle offers a clean live window or the selected app's accumulated traffic over the last seven days, with the chosen live visit highlighted over that baseline. Keep compatible app/version filters and baseline/live counts distinct. Show potential dead ends by default with evidence and uncertainty.
-- Keep exceptions attached only where linkage is valid. An exception does not end a journey. Repeated voting can be healthy. The user reports WFS moves the user to a completion screen: observing that screen is a visit outcome, separate from emitted end reason and who caused shared agreement. Suitable telemetry is not yet established. Silence cannot establish tiredness.
-- Owner access uses a passphrase. The owner-approved extension adds temporary whole-app read-only invitations with expiry/revocation, including history, live maps, saved references and sanitized diagnostics. Narrower one-visit invitations with optional baseline/diagnostic grants remain deferred; viewer identity stays separate from tracked correlation.
+The workspace preserves the warm-paper background, forest-green branding and linked-thread icon. Tables and ordered sequences complement the graph; keyboard controls remain available.
 
-## Principles and boundaries
+## Run with Docker Compose
 
-Evidence before inference; plain-language explanations; privacy by minimization; bounded storage and work; reuse maintained standards and libraries; keyboard and accessible alternatives to graph-only interaction; minimal or no AI. The owner selected preservation of the first MVP’s warm-paper/forest-green visual theme and linked-thread icon; see the [visual reference](docs/design/visual-theme/README.md).
+Image repository: [`brisebois/sentrame`](https://hub.docker.com/r/brisebois/sentrame). The first release candidate is `brisebois/sentrame:v0.1.0-rc.1`. The publishing workflow builds and smoke-tests **Linux AMD64 and ARM64** before publishing one multi-architecture tag. Check [available tags](https://hub.docker.com/r/brisebois/sentrame/tags) or the [Container workflow](https://github.com/AlexandreBrisebois/sentrame/actions/workflows/container.yml) for publication status.
 
-This is a focused journey-insight tool, not a full observability platform, person-tracking system, session replay service, automatic root-cause engine, or proof of satisfaction. Research and specifications do not authorize application/scaffold implementation, deployment, merge, or production testing.
+Copy [compose.yaml](compose.yaml) and [.env.example](.env.example) into your deployment folder. Copy `.env.example` to `.env`, then set:
 
-## Proposed success measures and stop/go gates
+- `SENTRAME_IMAGE`: a published tag or immutable image digest.
+- `SENTRAME_DATA_DIR`: the existing local filesystem folder to bind into `/data`, writable by UID/GID `10001`.
+- `SENTRAME_ORIGIN`: the exact browser origin, without a trailing path, such as `https://sentrame.example.com`.
+- A fresh owner passphrase and distinct browser/server producer tokens. The example contains no working credentials; keep `.env` private.
 
-These are review targets, not measured results or approved hardware budgets:
+After preparing the folder and configuration:
 
-1. A developer can redirect an unmodified standard exporter and inspect accepted signals; unsupported transport/signal combinations are reported honestly. Richer journey interpretation has explicit missing-context states.
-2. A WFS example distinguishes healthy voting, completion-screen observation, an explicit end reason, post-commit errors/recovery and unknown outcome from silence. Counts are replay-stable where qualified source identity permits; shared agreement is not attributed to every visit.
-3. One reviewer can explain a path, denominator, version comparison and associated exception from the interface, using keyboard controls and an equivalent list/table.
-4. Detail expires at 30 days and summaries at 12 months, with correction/deletion horizons made explicit. Unknown-ID/missing-time retries do not support unlimited original-age guarantees. Summary precision/grains and backup policy remain technical design defaults.
-5. Measure the selected Svelte/Vite + Go + SQLite stack in Compose on the Home Server. The owner reports sufficient RAM and CPU options; hardware specifics, workload, disk growth and numerical bounds remain unmeasured. Tunnel HTTPS does not establish origin TLS, app authorization or routed SSE/OTLP compatibility.
-6. Stop or adapt an existing project if a cheaper maintained combination answers these questions, ordinary WFS telemetry cannot support them, or the operational cost exceeds the eventual budget.
+```sh
+docker compose config --quiet
+docker compose pull
+docker compose up -d --wait
+```
 
-## Decisions, proposals and open questions
+The default published port is host loopback `127.0.0.1:8096`. Remote access needs a deliberately configured reverse proxy or network route. See the [deployment guide](docs/NAS.md) for folder ownership, HTTPS/Tunnel integration, health checks, upgrades and rollback.
 
-The five main choices are settled: a complete WFS release A with B preserved; automatic journey boundaries; narrow deferred invitations; 30-day detail/12-month summaries; Svelte/Vite + Go + SQLite with maintained OTLP components. [Release scope](docs/planning/sentrame-release-scope.md) keeps multi-app experience, richer version comparisons and broader sharing/configuration as retained roadmap B. A list-only tracer is an engineering step, not the final graph release.
+## Try it locally from source
 
-Today's direction replaces the initial narrow concept. The [active OpenSpec change](openspec/changes/synthetic-journey-outcomes/proposal.md) contains the evolved capabilities, design and roadmap under its historical identifier. [Research](docs/research/sentrame-feasibility.md), [resource tradeoffs](docs/research/sentrame-stack-and-resources.md), [decisions](docs/planning/sentrame-decisions.md), [review disposition](docs/review/post-review-disposition.md), [internal harness proposal](docs/proposals/sentrame-engineering-harness.md) and [external integration-agent instructions](docs/integration/AGENT-INTEGRATION.md) support it.
+Prerequisites: Go **1.27.3** (see [go.mod](go.mod)), Node.js **26** with npm, and [Task](https://taskfile.dev/). OpenSpec CLI is needed for specification validation, not to run the service.
 
-The [deployment contract](docs/proposals/home-server-deployment-contract.md) is documentation only: no actual Compose/`.env` or tunnel setup is created. Integration agents inspect the target app, question the developer and propose useful events plus new warnings/errors/recovery before approved edits; this is separate from Sentrame's internal harness and adds no AI runtime. Remaining technical defaults will receive one focused design review before implementation. Planning-file reconciliation and a documentation-only draft PR are approved; no app/harness implementation, canonical sync/archive, merge or deployment is authorized.
+```sh
+task setup
+task start:workspace
+```
 
-## Authorized delivery and sharing extensions
+Open [http://127.0.0.1:8096](http://127.0.0.1:8096). Find the generated owner passphrase in the private, ignored `.sentrame/local.env` file. Leave the server running, then load synthetic examples from another terminal:
 
-The owner authorized temporary read-only whole-app invitations with expiry/revocation, and Docker Compose delivery with a linux/amd64+linux/arm64 DockerHub publishing workflow targeting `brisebois/sentrame`. These extend the local synthetic review; narrower per-visit invitations, multi-app experience and richer comparison/configuration remain deferred. No local implementation or CI definition alone proves image publication, NAS operation, shared Tunnel transport or real WFS export. Follow [NAS delivery instructions](docs/NAS.md) for the Compose/environment contract and qualification status.
+```sh
+task demo
+task demo:workspace
+task demo:diagnostics
+```
 
-Publishing status: the owner authorized committing/pushing the implementation branch after both local container smoke checks passed. DockerHub publication/release tagging follows registry-secret setup; no image has been published by this work yet.
+These commands send actual standard OTLP through ingestion, storage and protected reads. They do not preload a separate graph database. `start:workspace` uses `.sentrame/workspace-review.db`; demonstrations expect the seeded mappings. See the [local guide](docs/LOCAL-REVIEW.md) before experimenting with definitions or resetting data.
+
+## Connect your application
+
+.NET and Next.js **servers can export independently** to Sentrame using standard OpenTelemetry exporters. A shared OpenTelemetry Collector is optional; .NET does not need to relay every other application's telemetry. Browser telemetry needs a separate untrusted producer path and must never contain the server ingestion token or viewer passphrase.
+
+Use **OTLP/HTTP**, with ordinary authentication headers, at `/v1/logs`, `/v1/traces` or `/v1/metrics`. No Sentrame SDK or proprietary fields are required for valid reception. Meaningful journey maps depend on event mappings and sufficient safe correlation; technical records without that context remain accepted and unassigned. Metrics are receipt-only.
+
+The [developer guide](docs/DEVELOPER-GUIDE.md) explains transport, credentials, .NET/Next.js setup, named events, exceptions and the path from first receipt to a useful journey. SDK-specific recipes and a deployed network route need their own verification; standard wire compatibility alone does not qualify every framework/exporter.
+
+## Data and interpretation
+
+Retain ordered detail for **30 days** and supported summaries for **12 months**. Summary-only periods cannot reconstruct individual journeys. Scrubbed diagnostic text is bounded, but minimization is not a promise of perfect anonymity: send controlled technical data, not credentials, personal information or request bodies.
+
+Counts describe observed evidence. Sampling, missing identifiers, clock differences and query limits affect interpretation. Timing distinguishes measured elapsed, observed-active and estimated durations; it does not measure attention. See [data lifecycle and limits](docs/USER-GUIDE.md#retention-collection-health-and-limits).
+
+## Development and current scope
+
+```sh
+task test                 # Go behavior/seam tests, frontend tests and type checks
+task test:viewer-access   # Temporary viewer access boundaries
+task test:delivery        # Probe/configuration checks
+task container:smoke      # Local ARM64 container build and smoke test
+task container:smoke PLATFORM=linux/amd64
+task spec:validate        # Strict validation of the active OpenSpec change
+```
+
+Core journey exploration, diagnostics, temporary app-wide viewers and container delivery are implemented. Multi-app workspace management, richer version comparisons/configuration and narrower visit-only invitation grants remain deferred. Local/container checks do not establish native Home Server capacity, shared Tunnel behavior, actual .NET/Next.js exporter qualification or a deployed WFS integration.
+
+Specifications live in the [active OpenSpec change](openspec/changes/synthetic-journey-outcomes/); its historical name does not limit the app to the obsolete first-vote design. Planning/research documents record how decisions evolved. Use the user/developer/deployment guides for current operation and the [documentation index](docs/README.md) to find the underlying contracts and evidence.

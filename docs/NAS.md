@@ -2,7 +2,7 @@
 
 The container package targets **linux/amd64 and linux/arm64** under the same Docker Hub tag: `brisebois/sentrame`. Docker selects the matching platform when the NAS pulls it. The browser assets, Go service, maintained OTLP receiver and SQLite run in one non-root container; there is no separate frontend server or public database port.
 
-This package is prepared locally. A successful GitHub build/smoke/publish run is required before claiming either container platform qualified. It does not establish Home Server capacity, Cloudflare Tunnel behavior, browser SDK compatibility, power-loss durability or a WFS integration.
+Release candidate `brisebois/sentrame:v0.1.0-rc.1` is published. Its [GitHub workflow](https://github.com/AlexandreBrisebois/sentrame/actions/runs/40808148393) passed checks, both platform smoke jobs, publication and the final manifest-platform check. It does not establish Home Server capacity, Cloudflare Tunnel behavior, browser SDK compatibility, power-loss durability or a WFS integration.
 
 ## Publish through GitHub Actions
 
@@ -127,7 +127,7 @@ The smoke script uses fresh synthetic credentials and its own uniquely named con
 
 ## Verification and sources
 
-Local preparation passed Compose configuration validation, YAML syntax/duplicate-key checks, Python probe regression tests and script compilation. The service and health probe cross-compile to static Linux amd64/arm64 ELF binaries. The sandbox denied Docker daemon access. The reviewer ran `task test && task container:smoke`: the test task passed and the ARM64 image built successfully. Two initial smoke checks exposed test-harness defects: startup connection resets were not retried, and a host-clock fixture could fall outside the container’s occurrence-time window. Both were fixed with regression coverage, retaining the accepted-unassigned assertion. The reviewer then supplied successful `PASS linux/arm64` and `PASS linux/amd64` results: non-root/read-only startup, private bind-folder storage, readiness/static UI, protected reads, standard OTLP/HTTP JSON logs, SSE and persistence after restart all passed on Docker Desktop. This is local runtime evidence (including AMD64 execution on the ARM64 Mac), not native NAS workload or routed-transport qualification. No workflow has been dispatched, Docker Hub image published or NAS deployed.
+Local preparation passed Compose configuration validation, YAML syntax/duplicate-key checks, Python probe regression tests and script compilation. The service and health probe cross-compile to static Linux amd64/arm64 ELF binaries. The sandbox denied Docker daemon access. The reviewer ran `task test && task container:smoke`: the test task passed and the ARM64 image built successfully. Two initial smoke checks exposed test-harness defects: startup connection resets were not retried, and a host-clock fixture could fall outside the container’s occurrence-time window. Both were fixed with regression coverage, retaining the accepted-unassigned assertion. The reviewer then supplied successful `PASS linux/arm64` and `PASS linux/amd64` results: non-root/read-only startup, private bind-folder storage, readiness/static UI, protected reads, standard OTLP/HTTP JSON logs, SSE and persistence after restart all passed on Docker Desktop. This is local runtime evidence (including AMD64 execution on the ARM64 Mac), not native NAS workload or routed-transport qualification. The initial GitHub workflow has since passed all jobs and published the release candidate; the NAS itself has not been deployed or qualified.
 
 Official source checks on 2026-10-28 verified `golang:1.27.3-alpine3.24` and `node:26.13.0-alpine3.24` in Docker's maintained image manifest lists with amd64/arm64 support. Registry digest resolution was unavailable locally, so the workflow resolves version tags once and uses those same immutable builder references for both smoke builds and final publication. Local frontend tests use installed Node 26.12.0; the workflow independently tests/builds on the pinned 26.13.0 builder version.
 
@@ -138,4 +138,13 @@ Official source checks on 2026-10-28 verified `golang:1.27.3-alpine3.24` and `no
 
 - [GitHub manual workflow discovery and default-branch requirement](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow).
 
-The owner has authorized committing/pushing the implementation branch after the successful local smoke checks. Configure the DockerHub secret before creating a publication tag; a branch push alone does not publish. No release tag is created as part of this preparation.
+The initial implementation was committed as `5738712b7469d5ef24810f53a2af1d71c9961925`, pushed, and tagged `v0.1.0-rc.1`. Publication succeeded after registry-secret configuration. Future branch pushes alone do not publish; use the workflow’s release-tag or manual-publication path.
+
+### Published first release candidate
+
+- Image: `brisebois/sentrame:v0.1.0-rc.1`
+- Immutable index: `brisebois/sentrame@sha256:4524464d90d9d72e54ffc17b9ee8197a29380673cb1721fce3452a69d974891e`
+- Platforms verified by the publishing job: `linux/amd64`, `linux/arm64`.
+- [Successful workflow and logs](https://github.com/AlexandreBrisebois/sentrame/actions/runs/40808148393).
+
+This records container and registry evidence, not a native NAS capacity test or a deployed external route. The environment example now selects this published release tag; use the index digest above when you want an immutable deployment selection.

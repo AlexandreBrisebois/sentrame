@@ -1,4 +1,6 @@
-# Frontend evidence — 2026-10-28
+# Initial frontend evidence — 2026-10-28
+
+This is the initial implementation evidence log. Later canvas, timing, diagnostics, field guidance and temporary-viewer work supersede its original test counts and duration-sized-node design. The current suite has40frontend tests; current behavior and qualification are in the [user guide](../docs/USER-GUIDE.md) and [workspace verification](../docs/verification/workspace-design.md).
 
 Scope: `web/**` only. Svelte/Vite/TypeScript, warm paper/forest green visual theme and the preserved linked-thread mark.
 
