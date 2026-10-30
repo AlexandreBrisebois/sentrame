@@ -43,7 +43,7 @@ Start with existing request spans, child persistence operations and named post-c
 | Persist successfully | Trusted named `vote.committed` after actual persistence, or a semantically precise successful commit operation | Vote saved; browser intent or HTTP 2xx alone is insufficient |
 | Publication failure / recovery | Actual post-commit error/recovery observations | Preserves friction without undoing persistence |
 
-No stage tag, scope/tab, custom occurrence or presence stream is required for trace exploration or contextual mapping. Add an optional `stage.name` only to simplify literal label entry. Add explicit random scope/tab only when the question requires a chronological path across requests; technical trace context and journey correlation remain distinct.
+No stage tag, scope/tab, custom occurrence or presence stream is required for trace exploration or contextual mapping. An optional `stage.name` simplifies literal label entry for business mappings and supplies display labels for unconfigured correlated browser navigation. Add explicit random scope/tab only when the question requires a chronological path across requests; technical trace context and journey correlation remain distinct.
 
 For page elapsed time, reuse a real encompassing browser page span. If none exists, optional `voting.page.entered` / `voting.page.exited` records can use the same fresh `stage.occurrence.id` and configured Stage with start/end Kinds. The press does not end the page interval. Require a separate action ID only for an otherwise unresolved intent/outcome relation. Actual visibility/idle observations enable a separate observed-active basis within the captured browser interval; they do not measure attention. A backend span cannot borrow browser presence.
 
@@ -61,6 +61,8 @@ Choose the operational goal separately. **Vote saved** closes a journey on trust
 | None | Several distinct values for the selector | Separate suggestions for review; no popularity default |
 | None | Missing/invalid | Ordinary name mapping remains available |
 
+The table describes business mapping suggestions. With an empty captured definition, browser logs with explicit session and tab IDs also use retained labels to display navigation without activating a mapping or goal.
+
 Discovery retains at most32 distinct labels per contextual selector and discloses omissions. Accepting a suggestion copies a **literal label** into an ordinary owner draft. Preview/activation is still required and prospective. It does not create a dynamic rule reading future tag values. Example: `vote.committed` emits `stage.name=voting`; the owner's mapping says **Vote saved**. **Vote saved** wins, the emitted hint stays inspectable, and later tag changes cannot rename prior captures. A tag never supplies Kind, authority, goal, timing boundary, session or timing quality.
 
 Prefer short stable lowercase dot-separated labels: `voting`, `voting.submit`, `voting.persist`. Keep spelling/meaning stable across releases; changed meaning needs a different label. Avoid identifiers, routes, customer content, timestamps and `started`/`ended` suffixes. A stage label is not a lifecycle event. Display labels such as **Vote saved** remain the owner's choice and may differ from the emitted value.
@@ -77,10 +79,13 @@ For actual API additions to existing .NET and Next.js emitters, see [the optiona
 | Configure operation business meaning | Owner mapping over service/carrier/source/name and a supported retained condition; no stage tag required. |
 | Inspect an error without a journey | Standard error severity/status or exception fields. No visit ID is required. Ordinary INFO bodies are not diagnostic detail. |
 | Build a **server-only journey** | Mapped named records sharing a safe random `session.id` for that operation/visit. A browser tab is not required. |
-| Build a **browser journey** | Mapped records sharing a random `session.id` and per-tab `tab.id`, received using the browser producer credential. |
+| Explore **browser navigation** without configuration | Named, non-diagnostic browser logs sharing a random `session.id` and per-tab `tab.id`, with an empty captured definition. No mapping or completion goal is required. `stage.name` supplies a label; otherwise the event name is used. Unique positive `source.sequence` values within one source/service supply ordering. Correlated browser errors attach as evidence. |
+| Configure a **browser journey** | Mapped records sharing a random `session.id` and per-tab `tab.id`, received using the browser producer credential. A completion goal is optional; an explicit definition controls included steps and labels. |
 | Measure a broader page stage with no encompassing native span | Mapped **stage start** and **stage end** records with the same configured Stage, `stage.occurrence.id`, journey context, trusted producer and `service.name`, and usable source timestamps. |
 | Estimate observed active time | A complete native browser interval or the optional elapsed pair above, plus actual activity-state observations in the same captured journey, browser producer and service. Unobserved gaps stay unknown; this is not attention measurement. |
 | Replay one log without recounting it | A unique string `event.id` per emitted record, preserved on exact retry. Optional for reception; without reliable identity retry uncertainty remains. Spans use their standard trace/span identity. |
+
+Goal-free paths close inactive after 30 minutes without navigation activity. They never count as completed goals or enter goal-conversion denominators, and navigation logs alone do not measure stage duration or attention. Native spans, metrics and server-only logs still require their separately documented interpretation. Identified replay does not add steps.
 
 Sentrame groups journeys using explicit permitted correlation, not a trace ID or nearby timestamps. `action.id`, `event.id`, `stage.occurrence.id` and trace/span IDs answer different questions; none is a person or a viewer credential. See the [optional-context table](../DEVELOPER-GUIDE.md#6-add-journey-context-only-when-you-need-it).
 
@@ -128,7 +133,7 @@ The resulting OTLP/HTTP JSON shape is below. **All JSON wire examples here are t
 {"key": "session.id", "value": {"stringValue": "operation-a"}}
 ```
 
-Use a fresh random operation value in real instrumentation. For browser records add `tab.id` too and use browser authority. Map the event to Kind **step** to make a graph occurrence. A body string, `stage.name`, record ID and trace ID are not required for that graph step once mapping and safe correlation exist.
+Use a fresh random operation value in real instrumentation. For browser records add `tab.id` too and use browser authority. For configured business meaning, map the event to Kind **step**. Unconfigured correlated browser logs can already form navigation paths. A body string, `stage.name`, record ID and trace ID are not required for that graph step once mapping and safe correlation exist.
 
 ## Minimum .NET Activity: span envelope
 

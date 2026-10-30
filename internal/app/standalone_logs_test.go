@@ -56,15 +56,15 @@ func TestManagedStandaloneWFSLogsRemainVisibleWithoutJourneysOrTraces(t *testing
 	if code != http.StatusOK || strings.Contains(string(raw), "pwa.app.opened") {
 		t.Fatalf("standalone evidence crossed app boundary: status=%d", code)
 	}
-	t.Run("first mapping requires an explicit goal but not journey correlation", func(t *testing.T) {
+	t.Run("first mapping needs neither a goal nor journey correlation", func(t *testing.T) {
 		definition := Definition{Mappings: []Mapping{{Event: "pwa.app.opened", Step: "App opened", Source: "browser", Service: "wfs-pwa-browser", Signal: "logs", Kind: "step"}}}
 		code, raw := appRequest(t, c, server.URL, "POST", base+"/preview", csrf, definition)
 		var preview struct {
 			Conflict       string
 			MissingContext int
 		}
-		if code != http.StatusOK || json.Unmarshal(raw, &preview) != nil || preview.Conflict == "" || preview.MissingContext != 1 {
-			t.Fatalf("first mapping must explain missing goal separately from correlation: %d %s", code, raw)
+		if code != http.StatusOK || json.Unmarshal(raw, &preview) != nil || preview.Conflict != "" || preview.MissingContext != 1 {
+			t.Fatalf("first goal-free mapping must accept missing correlation without fabricating a journey: %d %s", code, raw)
 		}
 		definition.Goal = "pwa.app.opened"
 		code, raw = appRequest(t, c, server.URL, "POST", base+"/preview", csrf, definition)

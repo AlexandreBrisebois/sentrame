@@ -1,7 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { editEventDefinition, captureReferenceBounds } from './workspace.ts';
+import { editEventDefinition, captureReferenceBounds, isCompletionGoal, mappingActivationBlocker } from './workspace.ts';
 const mapping=(event:string,step=event)=>({event,step,source:'server',kind:'step',key:'',value:''});
+test('completion goal reflects the exact configured selector, not every same-name event',()=>{
+ const goal={...mapping('saved'),service:'api',key:'stage.name',value:'planner'};
+ const active={version:2,goal:'saved',goalSelector:goal,mappings:[goal],fallbackTiming:false};
+ assert.equal(isCompletionGoal(active,goal),true);
+ assert.equal(isCompletionGoal(active,{...goal,value:'search'}),false);
+ assert.equal(isCompletionGoal(active,{...goal,source:'browser'}),false);
+ assert.equal(isCompletionGoal({...active,goal:''},goal),false);
+ assert.equal(isCompletionGoal({...active,goalSelector:undefined},goal),true);
+});
+test('a received unmapped event can become a goal without replacing other mappings',()=>{
+ const active={version:1,goal:'',mappings:[mapping('opened')],fallbackTiming:false};
+ const next=editEventDefinition(active,mapping('saved','Meal added to planner'),-1,true);
+ assert.equal(next.goal,'saved');
+ assert.equal(isCompletionGoal(next,next.mappings[1]),true);
+ assert.equal(next.mappings.length,2);
+ assert.equal(active.goal,'');
+ assert.equal(mappingActivationBlocker('Saved','saved',{conflict:''},'step'),'');
+ assert.equal(mappingActivationBlocker('Saved','saved',{conflict:''},'exit'),'A completion goal cannot also be an exit. Choose Step for a successful milestone.');
+});
 test('contextual event edit preserves every other mapping and the operational goal',()=>{
  const active={version:3,goal:'done',fallbackTiming:false,mappings:[mapping('start'),mapping('vote'),mapping('done')]};
  const result=editEventDefinition(active,mapping('vote','Choose'),1);
@@ -35,14 +54,15 @@ test('unmapping preserves other rules and prevents removing the active goal',asy
  assert.throws(()=>removeEventMapping(active,1),/another operational goal/);
 });
 
-test('first event activation explains the missing goal and preview without choosing a goal implicitly',async()=>{
+test('event activation waits for automatic validation without requiring or inventing a goal',async()=>{
  const {mappingActivationBlocker}=await import('./workspace.ts');
  const empty={version:1,goal:'',fallbackTiming:false,mappings:[]};
  const next=editEventDefinition(empty,mapping('pwa.app.opened'),-1);
  assert.equal(next.goal,'');
- assert.equal(mappingActivationBlocker(next.mappings[0].step,next.goal,null),'Choose an operational goal before activating the first mapping.');
+ assert.equal(mappingActivationBlocker(next.mappings[0].step,next.goal,null),'Checking this configuration…');
+ assert.equal(mappingActivationBlocker(next.mappings[0].step,next.goal,{conflict:''}),'');
  const withGoal=editEventDefinition(empty,mapping('pwa.app.opened'),-1,true);
- assert.equal(mappingActivationBlocker(withGoal.mappings[0].step,withGoal.goal,null),'Choose Preview matches before activating. Preview again after changing any field.');
+ assert.equal(mappingActivationBlocker(withGoal.mappings[0].step,withGoal.goal,null),'Checking this configuration…');
  assert.equal(mappingActivationBlocker(withGoal.mappings[0].step,withGoal.goal,{conflict:'',missingContext:4}), '');
 });
 test('activation blocks missing stage and server conflicts while preserving an existing goal',async()=>{
@@ -53,4 +73,15 @@ test('activation blocks missing stage and server conflicts while preserving an e
  const next=editEventDefinition(active,mapping('pwa.app.opened'),-1);
  assert.equal(next.goal,'done');
  assert.equal(mappingActivationBlocker('Open',next.goal,{conflict:''}),'');
+});
+
+test('automatic validation cannot authorize a changed definition or goal',async()=>{
+ const {currentMappingPreview}=await import('./workspace.ts');
+ const definition={version:1,goal:'',mappings:[mapping('screen')],fallbackTiming:false};
+ const preview={definitionFingerprint:JSON.stringify(definition),conflict:''};
+ assert.equal(currentMappingPreview(definition,preview),preview);
+ assert.equal(currentMappingPreview({...definition,goal:'screen'},preview),null);
+ assert.equal(currentMappingPreview({...definition,mappings:[mapping('screen','Changed stage')]},preview),null);
+ assert.equal(currentMappingPreview({...definition,mappings:[...definition.mappings,mapping('other')]},preview),null);
+ assert.equal(currentMappingPreview(definition,null),null);
 });

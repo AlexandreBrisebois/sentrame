@@ -184,7 +184,7 @@ Registered apps SHALL use the existing standard OTLP endpoints, Authorization be
 #### Scenario: Configure a newly registered app
 - **WHEN** a second app uses an existing standard OTLP exporter
 - **THEN** endpoint/protocol/header configuration with the generated credential is sufficient for supported reception, without a Sentrame SDK, app-ID tag, custom envelope or journey fields
-- **AND** journey analysis still depends on its separately documented mapping/correlation prerequisites
+- **AND** journey analysis still depends on its separately documented prerequisites: explicit correlation for unconfigured browser navigation, and mappings for configured business journeys
 
 #### Scenario: Rotation and intentional reassignment
 - **WHEN** the owner explicitly rotates a credential or intentionally configures a producer for a different registered app

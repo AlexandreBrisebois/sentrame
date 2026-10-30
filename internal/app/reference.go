@@ -8,10 +8,16 @@ func referenceJourney(j Journey, v SavedView) (Journey, bool) {
 	if len(j.Evidence) == 0 {
 		return j, false
 	}
+	labels := map[int64]string{}
+	if j.NavigationOnly {
+		for _, step := range j.Steps {
+			labels[step.EvidenceID] = step.Step
+		}
+	}
 	find := func(name, choice string) int {
 		found := -1
 		for i, e := range j.Evidence {
-			if e.Name == name {
+			if e.Name == name || labels[e.ID] == name {
 				found = i
 				if choice != "last" {
 					break

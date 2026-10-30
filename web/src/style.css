@@ -82,3 +82,5 @@ label>input[type=checkbox]{flex-shrink:0;margin:3px 0}
 @media(max-width:480px){.compact .mast-actions{width:100%;margin-left:0;justify-content:flex-start}.app-selector{flex:1 1 160px;max-width:none;width:auto}}
 
 .event-fields .form-grid>.received-mapping-data{grid-column:1/-1;min-width:0}
+
+.completion-goal{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:16px;margin:16px 0}.completion-goal legend{font-weight:650;padding:0 6px}.completion-goal h3{margin-top:0}.completion-goal .goal-buttons{display:flex;flex-wrap:wrap;gap:8px}.completion-goal label{display:flex;align-items:center;gap:10px}

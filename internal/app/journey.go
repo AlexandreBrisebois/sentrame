@@ -20,6 +20,7 @@ type Model struct {
 	Warnings    []string     `json:"warnings"`
 }
 type Journey struct {
+	NavigationOnly bool             `json:"navigationOnly"`
 	WindowFrom     int64            `json:"windowFrom,string"`
 	WindowTo       int64            `json:"windowTo,string"`
 	CapturedStatus string           `json:"capturedStatus"`
@@ -134,7 +135,7 @@ const inactivityNanos = int64(30 * time.Minute)
 // Derive reads an already sanitized, app-isolated retained evidence snapshot. It never
 // infers a person, cross-tab join, or a causal relation from temporal proximity.
 func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model {
-	m := Model{Computation: "journey-native-v3", Journeys: []Journey{}, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: []Evidence{}, Warnings: []string{}, Policy: "First mapped occurrence / active goal / 30-minute inactivity; event-time display is not causal order. Transition occurrences, journeys and anonymous scopes are separate units. Timings never measure attention."}
+	m := Model{Computation: "journey-navigation-v4", Journeys: []Journey{}, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: []Evidence{}, Warnings: []string{}, Policy: "Correlated browser navigation or first mapped occurrence / optional goal / 30-minute inactivity; event-time display is not causal order. Transition occurrences, journeys and anonymous scopes are separate units. Timings never measure attention."}
 	defs := map[int64]Definition{}
 	for _, d := range definitions {
 		defs[d.Version] = d
@@ -218,7 +219,7 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 			if current != nil && current.Status == "active" && e.Time-current.LastMapped < inactivityNanos {
 				d = currentDef
 			}
-			mapping, matched, conflict := mappingFor(e, d)
+			mapping, matched, conflict := journeyMappingFor(e, d)
 			if conflict {
 				m.Unassigned = append(m.Unassigned, e)
 				m.Warnings = appendUnique(m.Warnings, "Conflicting mappings left evidence unassigned; activate a non-conflicting definition.")
@@ -233,7 +234,7 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 					// Select the version captured on the new occurrence, rather than changing
 					// an existing active journey's definition when configuration is activated.
 					d = candidate
-					mapping, matched, conflict = mappingFor(e, d)
+					mapping, matched, conflict = journeyMappingFor(e, d)
 					if !matched || conflict {
 						m.Unassigned = append(m.Unassigned, e)
 						continue
@@ -241,6 +242,10 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 					m.Journeys = append(m.Journeys, Journey{ID: fmt.Sprintf("%s/%s/d%d/e%d", e.Scope, e.Tab, d.Version, e.ID), Scope: e.Scope, Tab: e.Tab, Definition: d.Version, Version: e.Version, Start: e.Time, LastMapped: e.Time, Status: "active", Path: []string{}, Steps: []StepOccurrence{}, Evidence: []Evidence{}, Timings: []Timing{}, Warnings: []string{}})
 					current = &m.Journeys[len(m.Journeys)-1]
 					currentDef = d
+					current.NavigationOnly = d.Goal == ""
+					if current.NavigationOnly {
+						current.Warnings = appendUnique(current.Warnings, "Correlated navigation; no completion goal configured. Excluded from goal conversion.")
+					}
 				}
 				if e.Time > current.LastMapped {
 					current.LastMapped = e.Time
@@ -297,7 +302,7 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 					}
 				}
 			}
-			if current != nil && e.Time >= current.Start && e.Time-current.LastMapped <= inactivityNanos {
+			if current != nil && e.Time >= current.Start && e.Time-current.LastMapped <= inactivityNanos && (!current.NavigationOnly || len(currentDef.Mappings) > 0 || e.Source == "browser" && e.Signal == "logs") {
 				current.Evidence = append(current.Evidence, e)
 				if e.Attrs["_partial_start"] == "true" {
 					current.Partial = true
@@ -367,6 +372,24 @@ func mappingFor(e Evidence, d Definition) (Mapping, bool, bool) {
 	}
 	return found, count == 1, count > 1
 }
+
+// Browser logs with explicit visit/tab correlation can describe navigation
+// without assigning business meaning to traces or claiming completion.
+// An explicit definition remains authoritative, including excluded events.
+func journeyMappingFor(e Evidence, d Definition) (Mapping, bool, bool) {
+	if len(d.Mappings) > 0 || d.Goal != "" || d.GoalSelector != nil {
+		return mappingFor(e, d)
+	}
+	if e.Source != "browser" || e.Signal != "logs" || e.Scope == "" || e.Tab == "" || isDiagnostic(e) || safeEvidenceName(e.Name) == "" || e.Name == "unnamed" {
+		return Mapping{}, false, false
+	}
+	label := e.Attrs["stage.name"]
+	if label == "" {
+		label = e.Name
+	}
+	return Mapping{Event: e.Name, Step: label, Kind: "step", Source: "browser", Signal: "logs", Timing: "none"}, true, false
+}
+
 func appendUnique(xs []string, x string) []string {
 	for _, y := range xs {
 		if x == y {
@@ -595,7 +618,7 @@ func activeDuration(es []Evidence, start, end Evidence) (int64, bool) {
 // Summarize recomputes map/statistic projections for a selected cohort without
 // touching captured segmentation or manufacturing adjacency across hidden events.
 func Summarize(journeys []Journey, unassigned []Evidence, nowNanos int64) Model {
-	m := Model{Computation: "journey-native-v3", Journeys: journeys, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: unassigned, Warnings: []string{}, Policy: "Captured journey boundaries are preserved; cohort selection does not resegment. Counts describe observed eligible journeys; timing kinds and censoring remain separate."}
+	m := Model{Computation: "journey-navigation-v4", Journeys: journeys, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: unassigned, Warnings: []string{}, Policy: "Captured journey boundaries are preserved; cohort selection does not resegment. Counts describe observed eligible journeys; timing kinds and censoring remain separate."}
 	if m.Journeys == nil {
 		m.Journeys = []Journey{}
 	}
@@ -667,7 +690,7 @@ func summarizeModel(m *Model) {
 		m.Stats.Journeys++
 		if j.Partial {
 			m.Stats.PartialJourneys++
-		} else {
+		} else if !j.NavigationOnly {
 			m.Stats.EligibleJourneys++
 			if j.Status == "completed" {
 				m.Stats.EligibleCompleted++

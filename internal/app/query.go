@@ -72,8 +72,8 @@ func validateDefinition(d Definition) string {
 	if d.Goal == "" && len(d.Mappings) == 0 && d.GoalSelector == nil {
 		return ""
 	}
-	if d.Goal == "" || len(d.Mappings) == 0 || len(d.Mappings) > 100 {
-		return "Choose a mapped goal and 1–100 mappings"
+	if len(d.Mappings) == 0 || len(d.Mappings) > 100 {
+		return "Choose 1–100 mappings"
 	}
 	seen := []Mapping{}
 	goal := false
@@ -137,7 +137,10 @@ func validateDefinition(d Definition) string {
 	if _, ok := goalMapping(d); goal && !ok {
 		return "Choose exactly one goal selector; disjoint mappings with the same name need an explicit goalSelector"
 	}
-	if !goal {
+	if d.Goal == "" && d.GoalSelector != nil {
+		return "Goal selector requires a mapped goal"
+	}
+	if d.Goal != "" && !goal {
 		return "Goal must be a mapped event"
 	}
 	return ""

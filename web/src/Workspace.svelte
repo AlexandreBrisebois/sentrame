@@ -22,7 +22,7 @@
   import { invitationLocation } from './invitation';
   import type {TimelineData} from './timeline';
   import { errorEvidence } from './graphEvidence';
-  import { editEventDefinition, captureReferenceBounds, referenceBound, removeEventMapping, mappingActivationBlocker } from './workspace';
+  import { editEventDefinition, captureReferenceBounds, referenceBound, removeEventMapping, mappingActivationBlocker, isCompletionGoal, currentMappingPreview } from './workspace';
   import { edgeKey, transitions, lensEvidence, type Layout, type Lens } from './graph';
   import { acceptsSnapshot, dateTime, duration, isoLocal, histogramQuantile, mergeSummaryGroups, discoveryChoices, evidenceCopy, receiptLagMilliseconds } from './helpers';
   import { translate, type Language } from './i18n';
@@ -67,20 +67,24 @@
   $effect(()=>{
     const generation=++mappingEvidenceGeneration;
     if(!mappingOpen)return;
-    const mapping={...eventDraft};
-    mappingEvidence=null;mappingEvidenceError='';mappingEvidenceLoading=true;
-    const timer=setTimeout(()=>{void api('preview',{goal:'',mappings:[mapping],fallbackTiming:false}).then(result=>{if(generation===mappingEvidenceGeneration)mappingEvidence=result.mappingPreviews?.[0]?{...result.mappingPreviews[0],truncated:result.truncated}:null}).catch(e=>{if(generation===mappingEvidenceGeneration)mappingEvidenceError=e instanceof Error?e.message:t('Request failed. Try again.')}).finally(()=>{if(generation===mappingEvidenceGeneration)mappingEvidenceLoading=false})},200);
+    const definition=mappingDefinition(),fingerprint=JSON.stringify(definition);
+    const index=unmapEvent?-1:mappingIndex>=0?mappingIndex:definition.mappings.length-1;
+    mappingPreview=null;mappingEvidence=null;mappingEvidenceError='';mappingEvidenceLoading=true;
+    const timer=setTimeout(()=>{void api('preview',definition).then(result=>{
+      if(generation!==mappingEvidenceGeneration)return;
+      mappingPreview={...result,definitionFingerprint:fingerprint};
+      mappingEvidence=index>=0&&result.mappingPreviews?.[index]?{...result.mappingPreviews[index],truncated:result.truncated}:null;
+    }).catch(e=>{if(generation===mappingEvidenceGeneration)mappingEvidenceError=e instanceof Error?e.message:t('Request failed. Try again.')}).finally(()=>{if(generation===mappingEvidenceGeneration)mappingEvidenceLoading=false})},200);
     return()=>{clearTimeout(timer);mappingEvidenceGeneration++};
   });
   function chooseNode(id:string){if(tool==='table')tool='';selectedStep=id;selectedEdge='';if(segmentStart&&id){viewStart=segmentStart;viewEnd=eventForStage(id);viewMode='segment';viewName='';segmentStart='';exploreReference('segment',viewStart,viewEnd)}}
   function chooseEdge(a:string,b:string){edgeFrom=a;edgeTo=b;selectedEdge=edgeKey(a,b);selectedStep=''}
   function eventForStage(id:string){return id.startsWith('event:')?id.slice(6):(active?.mappings.find(m=>m.step===id)?.event??id)}
-  function openMapping(event:string,goal=false,index?:number){if(readOnly)return;const source=active??draft;mappingIndex=index??source.mappings.findIndex(m=>m.event===event);eventDraft=mappingIndex>=0?{...source.mappings[mappingIndex]}:initialReceivedMapping(event,receivedContexts(event));makeGoal=goal;unmapEvent=false;mappingPreview=null;mappingOpen=true;tool='';error=''}
-  function openEvidenceMapping(e:Evidence,suggestion?:string){if(readOnly)return;const mapping=contextualMapping(e,suggestion);const source=active??draft;mappingIndex=source.mappings.findIndex(m=>m.event===mapping.event&&(m.service??'')===mapping.service&&(m.carrier??'')===mapping.carrier&&m.source===mapping.source);eventDraft=mappingIndex>=0?{...source.mappings[mappingIndex]}:mapping;makeGoal=false;unmapEvent=false;mappingPreview=null;mappingOpen=true;tool='';error=''}
+  function openMapping(event:string,goal=false,index?:number){if(readOnly)return;const source=active??draft;mappingIndex=index??source.mappings.findIndex(m=>m.event===event);eventDraft=mappingIndex>=0?{...source.mappings[mappingIndex]}:initialReceivedMapping(event,receivedContexts(event));makeGoal=goal||isCompletionGoal(source,eventDraft);unmapEvent=false;mappingPreview=null;mappingOpen=true;tool='';error=''}
+  function openEvidenceMapping(e:Evidence,suggestion?:string){if(readOnly)return;const mapping=contextualMapping(e,suggestion);const source=active??draft;mappingIndex=source.mappings.findIndex(m=>m.event===mapping.event&&(m.service??'')===mapping.service&&(m.carrier??'')===mapping.carrier&&m.source===mapping.source);eventDraft=mappingIndex>=0?{...source.mappings[mappingIndex]}:mapping;makeGoal=isCompletionGoal(source,eventDraft);unmapEvent=false;mappingPreview=null;mappingOpen=true;tool='';error=''}
  function mappingDefinition(){const base=active??draft;const index=mappingIndex;if(unmapEvent)return removeEventMapping(base,index);return editEventDefinition(base,eventDraft,index,makeGoal)}
-  let selectedMappingPreview=$derived(unmapEvent?null:mappingPreview?.mappingPreviews?.[mappingIndex>=0?mappingIndex:(mappingPreview?.mappingPreviews?.length??0)-1]);
-  let mappingBlocker=$derived(mappingActivationBlocker(eventDraft.step,mappingDefinition().goal,mappingPreview));
-  async function previewMapping(){const definition=mappingDefinition();const fingerprint=JSON.stringify(definition);const result=await mutate('preview',definition,'');if(mappingOpen&&fingerprint===JSON.stringify(mappingDefinition()))mappingPreview=result;}
+  let validatedMappingPreview=$derived(currentMappingPreview(mappingDefinition(),mappingPreview));
+  let mappingBlocker=$derived(mappingActivationBlocker(eventDraft.step,mappingDefinition().goal,validatedMappingPreview,makeGoal?eventDraft.kind:undefined));
   async function saveMapping(){if(busy||mappingBlocker)return;const result=await mutate('definitions',mappingDefinition(),'Definition activated');if(result){mappingOpen=false;draftLoaded=false;await refresh()}}
   function exploreReference(next:string,start='',end=''){selectedReference=null;exploration={mode:next,start,end};applyFilters()}
   function exploreNode(next:string){exploreReference(next,next==='origin-forward'?eventForStage(selectedStep):'',next==='goal-backward'?eventForStage(selectedStep):'')}
@@ -95,7 +99,8 @@
   let versions=$derived(snapshot?.appVersions??[...new Set((snapshot?.evidence??[]).map(e=>e.version||'unknown'))].sort());
   let scopes=$derived(snapshot?.appScopes??[...new Set((snapshot?.evidence??[]).map(e=>e.scope).filter(Boolean))].sort());
   let currentNode=$derived(model.nodes?.find(n=>n.id===selectedStep)??snapshot?.baselineModel?.nodes?.find(n=>n.id===selectedStep));
-  let discoveryNodes=$derived(showDiscovery?events.filter(([name])=>!active?.mappings.some(m=>m.event===name)).map(([name,info])=>({id:'event:'+name,label:name,occurrences:info.count})):[]);
+  let representedEvents=$derived(new Set([...model.journeys,...(mode==='live'&&baseline?snapshot?.baselineModel?.journeys??[]:[])].flatMap(j=>j.steps.map(s=>s.event))));
+  let discoveryNodes=$derived(showDiscovery?events.filter(([name])=>!active?.mappings.some(m=>m.event===name)&&!representedEvents.has(name)).map(([name,info])=>({id:'event:'+name,label:name,occurrences:info.count})):[]);
   let errorConnections=$derived(errorEvidence(model).edges);
   let nodeEvidenceModel=$derived(model.nodes.some(n=>n.id===selectedStep)?model:(mode==='live'&&baseline?snapshot?.baselineModel:model)??model);
   let selectedEvent=$derived(!currentNode&&selectedStep.startsWith('event:')?selectedStep.slice(6):'');
@@ -201,6 +206,7 @@
       </div>
       {#if error}<div class="workspace-alert error-banner" role="alert">{error}<button class="text-button" onclick={()=>void refresh()}>{t('Refresh')}</button></div>{/if}
       {#if notice}<div class="workspace-alert notice" role="status">{notice}<button class="text-button" onclick={()=>notice=''}>×</button></div>{/if}
+      {#if model.journeys.some(j=>j.navigationOnly)}<p class="canvas-explanation">{t('Correlated navigation · no completion goal. Connections show observed order; these paths are excluded from goal conversion.')}</p>{/if}
       <div class="workspace-canvas" class:inspecting={!!selectedStep||!!selectedEdge}>
         <Graph {model} oninspect={()=>openTool('evidence')} baseline={mode==='live'&&baseline?snapshot?.baselineModel:null} {language} selected={selectedStep} onselect={chooseNode} {selectedEdge} onedge={chooseEdge} {layout} {lens} discovery={discoveryNodes} goal={active?.mappings.find(m=>m.event===active?.goal)?.step??''}/>
         {#if selectedStep||selectedEdge}
@@ -237,11 +243,14 @@
     </section>
     {/if}
     {#if mappingOpen&&!readOnly}
-      <Modal title={t(makeGoal?'Set operational goal':'Configure event')} onclose={()=>mappingOpen=false}>
+      <Modal title={t(makeGoal?'Set completion goal':'Configure event')} onclose={()=>mappingOpen=false}>
         <form onsubmit={e=>{e.preventDefault();void saveMapping()}} oninput={()=>mappingPreview=null}>
           <p class="mono">{eventDraft.event}</p><p class="inspector-note">{t('Give this received event a journey meaning. Relationships come from ordered evidence, not this configuration.')}</p>
-          {#if !active?.goal}<p class="notice">{t('This app has no operational goal yet. The first definition needs a goal event that ends future journeys. Select the checkbox below only if this is that event.')}</p>{/if}
-          <label><input type="checkbox" bind:checked={makeGoal}/>{t('End a journey when this event occurs (operational goal)')}</label>
+          <fieldset class="completion-goal"><legend>{t('Completion goal (optional)')}</legend>
+            <p id="completion-goal-help" class="inspector-note">{t('A goal is the event that marks a successful journey, such as Meal added to planner. Exit means the journey ended without claiming success. A goal is separate from Kind.')}</p>
+            <label><input type="checkbox" bind:checked={makeGoal} disabled={isCompletionGoal(active,eventDraft)} aria-describedby="completion-goal-help"/>{t('Use this event as the completion goal')}</label>
+            {#if isCompletionGoal(active,eventDraft)}<p class="inspector-note">{t('This is the current completion goal. To replace it, choose another event in Mappings & goal.')}</p>{:else if makeGoal}<p class="inspector-note">{t('Activating will make this event the completion goal for new journeys and replace any current goal.')}</p>{:else}<p class="inspector-note">{t('Leave unchecked to map this event without changing the completion goal. Journeys can have no goal.')}</p>{/if}
+          </fieldset>
  <p class="inspector-note">{t('A browser intent or generic HTTP success cannot prove persistence. Choose a trusted named commitment or a documented successful operation for that goal.')}</p>
  <fieldset class="event-fields" disabled={unmapEvent}>
  {#if mappingContexts.length}<label>{t('Received event context')}<select value={mappingContextIndex<0?(eventDraft.service||eventDraft.source||eventDraft.carrier?'custom':''):String(mappingContextIndex)} onchange={e=>chooseMappingContext(e.currentTarget.value)}><option value="">{t('All received contexts')}</option>{#if mappingContextIndex<0&&(eventDraft.service||eventDraft.source||eventDraft.carrier)}<option value="custom" disabled>{t('Custom selector')}</option>{/if}{#each mappingContexts as context,i}<option value={String(i)}>{context.service||t('unknown')} · {context.source} / {context.carrier} · {context.count} {t('records')}</option>{/each}</select></label>{/if}
@@ -254,15 +263,16 @@
             <div><FieldHelp fieldId="mapping-source" label={t('Trusted producer')} helpLabel={t('Help: Trusted producer')} help={[t('Choose which configured producer may match this event: Browser, Server, or Any source. Use Server for an event that proves a saved change.'),t('This uses the receiver’s trusted producer assignment. Selecting Server does not turn a browser claim into trusted server evidence.')]}/><select id="mapping-source" aria-describedby="mapping-source-help" bind:value={eventDraft.source}><option value="">{t('Any source')}</option><option value="browser">{t('Browser')}</option><option value="server">{t('Server')}</option></select></div>
             <div class="received-mapping-data"><MappingEvidence preview={mappingEvidence} loading={mappingEvidenceLoading} error={mappingEvidenceError} {language} hasCondition={!!eventDraft.key||!!eventDraft.value} oncondition={chooseCondition}/></div>
             <div><FieldHelp fieldId="mapping-key" label={t('Condition key')} helpLabel={t('Help: Condition key')} help={[t("This field names a piece of information inside the event. Equals is the value that information must contain. These two fields work together to filter this event’s mapping."),t("Example: for journey.exited with {\"reason\":\"exhausted\"}, enter reason in Condition key and exhausted in Equals. Only journey.exited events with that reason match; other reasons do not."),t("Another example: for completion.entered with {\"reason\":\"agreed\"}, enter reason in Condition key and agreed in Equals."),t("Use Pick a condition from received data above to fill both fields from an observed value. Only retained, allowed attributes are offered."),t("If you want every occurrence of this event from the selected producer, leave BOTH fields empty. You do not need a condition for a normal mapping.")]}/><input id="mapping-key" aria-describedby="mapping-key-help" bind:value={eventDraft.key} list="received-condition-keys"/><datalist id="received-condition-keys">{#each [...new Set((mappingEvidence?.conditions??[]).map(c=>c.key))] as key}<option value={key}></option>{/each}</datalist></div>
-            <div><FieldHelp fieldId="mapping-value" label={t('Equals')} helpLabel={t('Help: Equals')} help={[t("Enter the exact value you want to allow for Condition key. It is text, not a formula or search."),t("Example: Condition key = reason; Equals = exhausted. An event containing {\"reason\":\"exhausted\"} matches. {\"reason\":\"agreed\"} does not. An event without reason does not match this example either."),t("Example: Condition key = activity.state; Equals = hidden. Only events with activity.state set to hidden match this mapping."),t("Type exhausted, not reason=exhausted, not \"exhausted\", and not the whole JSON object. Capitalization matters: Exhausted is different from exhausted."),t("Leave both fields empty if you do not need this filter. Then use Preview matches to check your rule before activating it.")]}/><input id="mapping-value" aria-describedby="mapping-value-help" bind:value={eventDraft.value} list="received-condition-values"/><datalist id="received-condition-values">{#each (mappingEvidence?.conditions??[]).filter(c=>c.key===eventDraft.key) as condition}<option value={condition.value}></option>{/each}</datalist></div>
+            <div><FieldHelp fieldId="mapping-value" label={t('Equals')} helpLabel={t('Help: Equals')} help={[t("Enter the exact value you want to allow for Condition key. It is text, not a formula or search."),t("Example: Condition key = reason; Equals = exhausted. An event containing {\"reason\":\"exhausted\"} matches. {\"reason\":\"agreed\"} does not. An event without reason does not match this example either."),t("Example: Condition key = activity.state; Equals = hidden. Only events with activity.state set to hidden match this mapping."),t("Type exhausted, not reason=exhausted, not \"exhausted\", and not the whole JSON object. Capitalization matters: Exhausted is different from exhausted."),t("Leave both fields empty if you do not need this filter. Matching records and validation update automatically before activation.")]}/><input id="mapping-value" aria-describedby="mapping-value-help" bind:value={eventDraft.value} list="received-condition-values"/><datalist id="received-condition-values">{#each (mappingEvidence?.conditions??[]).filter(c=>c.key===eventDraft.key) as condition}<option value={condition.value}></option>{/each}</datalist></div>
           </div></fieldset>{#if mappingIndex>=0&&!makeGoal}<label class="toggle"><input type="checkbox" bind:checked={unmapEvent} disabled={eventDraft.event===active?.goal||(active?.mappings.length??0)<=1} onchange={()=>mappingPreview=null}/>{t('Stop mapping this event')}</label>{#if eventDraft.event===active?.goal}<p class="inspector-note">{t('Choose another operational goal before removing this mapping.')}</p>{/if}{/if}
 
           <p class="inspector-note">{t('Activation creates a new prospective definition. Captured journeys keep their original rule version. Browser claims cannot establish a server commitment.')}</p>
           {#if makeGoal}<p class="warning">{t('This explicitly changes the operational goal for future journeys.')}</p>{/if}
-          {#if mappingPreview}<div class="preview"><h3>{t('Preview')}</h3>{#if mappingPreview.conflict}<p class="warning">{mappingPreview.conflict}</p>{/if}{#if unmapEvent}<p>{t('This event will no longer be mapped in the next definition.')}</p>{/if}<p>{selectedMappingPreview?.matches??mappingPreview.matches?.[eventDraft.event]??0} {t('Matching records')} · {selectedMappingPreview?.missingContext??mappingPreview.missingContextByEvent?.[eventDraft.event]??0} {t('without safe journey context')}</p>{#if selectedMappingPreview?.missingContext??mappingPreview.missingContextByEvent?.[eventDraft.event]}<p class="warning">{t('Missing journey correlation does not block activation. These records remain unassigned; a mapping alone cannot connect them into journeys.')}</p>{/if}</div>{/if}
+          {#if unmapEvent}<p class="notice">{t('This event will no longer be mapped in the next definition.')}</p>{/if}
+          {#if validatedMappingPreview?.conflict}<p class="warning" role="alert">{t(validatedMappingPreview.conflict)}</p>{/if}
           {#if error}<p class="error" role="alert">{error}</p>{/if}
-          <p id="mapping-activation-help" class="inspector-note" aria-live="polite">{t(mappingBlocker||'Preview is valid. You can activate this definition.')}</p>
-          <div class="button-row"><button type="button" class="secondary" disabled={busy} onclick={previewMapping}>{t('Preview matches')}</button><button aria-describedby="mapping-activation-help" disabled={busy||!!mappingBlocker}>{t('Activate new definition')}</button></div>
+          <p id="mapping-activation-help" class="inspector-note" aria-live="polite">{mappingEvidenceError?t('Could not check this configuration. Try again.') : t(mappingBlocker||'Configuration checked. Ready to activate.')}</p>
+          <div class="button-row">{#if mappingEvidenceError}<button type="button" class="secondary" onclick={()=>eventDraft={...eventDraft}}>{t('Retry check')}</button>{/if}<button aria-describedby="mapping-activation-help" disabled={busy||!!mappingBlocker}>{t(makeGoal?'Activate completion goal':'Activate new definition')}</button></div>
         </form>
       </Modal>
     {/if}
@@ -305,9 +315,18 @@
           <p class="inspector-note">{t('Discovery uses retained app-wide evidence. Unconnected events have no supported journey relationship.')}</p><label class="toggle"><input type="checkbox" bind:checked={showDiscovery}/>{t('Show discovered events on canvas')}</label>
           <div class="discovery-list">{#each events.filter(([name])=>!active?.mappings.some(m=>m.event===name)) as [name,info]}<button class="neighbor-row" onclick={()=>{selectedStep='event:'+name;selectedEdge='';showDiscovery=true;tool=''}}><span>{name}<small>{[...info.sources].join(', ')}</small></span><small>{info.count} {t('records')}</small></button>{:else}<p class="muted">{t('No unmapped events')}</p>{/each}</div>
         {:else if tool==='configuration'&&!readOnly}
-          <p class="inspector-note">{t('Active definition')} v{active?.version??'—'} · {t('Operational goal')}: <strong>{active?.goal??'—'}</strong></p>
-          <div class="mapping-review">{#each active?.mappings??[] as mapping,i}<button class="neighbor-row" onclick={()=>openMapping(mapping.event,false,i)}><span>{mapping.event}<small>{mapping.source||t('Any source')} · {t(mapping.kind)}</small></span><span>{mapping.step} →</span></button>{/each}</div>
-          <h3>{t('Set operational goal')}</h3><p class="inspector-note">{t('Exploring paths to a stage does not change the operational goal.')}</p><div class="goal-buttons">{#each active?.mappings??[] as mapping,i}<button class="chip" onclick={()=>openMapping(mapping.event,true,i)}>{mapping.event}{active?.goal===mapping.event?' ✓':''}</button>{/each}</div>
+          <p class="inspector-note">{t('Active definition')} v{active?.version??'—'}</p>
+          <section class="completion-goal" aria-labelledby="completion-goal-heading">
+            <h3 id="completion-goal-heading">{t('Completion goal')}</h3>
+            <p>{t('Current goal')}: <strong>{active?.goal||t('None — navigation only')}</strong></p>
+            <p class="inspector-note">{t('Choose the event that proves the journey succeeded. This is separate from an exit or a dead end. You can explore navigation without setting a goal.')}</p>
+            <p class="inspector-note">{t('Choose an event below, review its matching records, then select Activate completion goal. Checks update automatically.')}</p>
+            <div class="goal-buttons">{#each active?.mappings??[] as mapping,i}{#if mapping.kind!=='exit'}<button class="chip" onclick={()=>openMapping(mapping.event,true,i)} aria-pressed={isCompletionGoal(active,mapping)}>{mapping.step} · {mapping.event}{isCompletionGoal(active,mapping)?' ✓':''}</button>{/if}{/each}
+            {#each events.filter(([name])=>!active?.mappings.some(m=>m.event===name)) as [name]}<button class="chip" onclick={()=>openMapping(name,true)}>{name}</button>{/each}</div>
+            {#if !events.length&&!active?.mappings.length}<p class="muted">{t('No events received yet. Send an event that represents success, then choose it here.')}</p>{/if}
+          </section>
+          <h3>{t('Event mappings')}</h3>
+          <div class="mapping-review">{#each active?.mappings??[] as mapping,i}<button class="neighbor-row" onclick={()=>openMapping(mapping.event,false,i)}><span>{mapping.event}<small>{mapping.source||t('Any source')} · {t(mapping.kind)}{isCompletionGoal(active,mapping)?' · '+t('Completion goal'):''}</small></span><span>{mapping.step} →</span></button>{/each}</div>
           <details><summary>{t('Timing policy')}</summary><form onsubmit={e=>{e.preventDefault();void activate()}}><label class="toggle"><input type="checkbox" bind:checked={draft.fallbackTiming}/>{t('Next-event estimated timing')}</label><button disabled={busy}>{t('Activate new definition')}</button></form></details>
         {:else}
           <p class="inspector-note">{t('Synthetic local data only. Standard reception does not require Sentrame fields. Correlation is not identity, authority or causality. Metrics are receipt-only. Home Server, shared Tunnel and real application integration remain unqualified.')}</p><p class="inspector-note">{t(model.policy)}</p>{#each model.warnings??[] as warning}<p class="warning">{t(warning)}</p>{/each}

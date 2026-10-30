@@ -14,6 +14,7 @@
  {:else if preview}
  {#if preview.truncated}<p class="warning">{t('Results are partial. Some retained records were omitted.')}</p>{/if}
  <p class="match-count" role="status"><strong>{preview.matches} {t('Matching records')}</strong> · {preview.candidates} {t('before the optional condition')}</p>
+ {#if preview.matches&&preview.missingContext}<p class="warning">{preview.missingContext} {t('matching records are missing a session ID or, for browser events, a tab ID. You can save this mapping, but these records cannot be connected into journeys.')}</p>{:else if preview.matches}<p>{t('All matching records have the IDs needed to connect them into journeys.')}</p>{/if}
  {#if !preview.candidates}<p class="warning">{t('No retained records match this event context. Choose a received context above or check the exact service, carrier and producer.')}</p>
  {:else}
   {#if !preview.matches}<p class="warning">{t('This condition matches no records. The examples and available values below show this event context before applying the condition.')}</p>{/if}

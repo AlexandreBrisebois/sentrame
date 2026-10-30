@@ -13,6 +13,12 @@ The system SHALL filter a weighted journey map by registered app, application ve
 - **WHEN** one journey traverses Vote to Vote nine times
 - **THEN** transition occurrences can be nine while affected-journey and affected-visit counts remain one
 
+#### Scenario: Correlated navigation with no completion goal
+- **WHEN** correlated browser logs produce an unconfigured navigation path
+- **THEN** the map shows its stage labels and observed connections, identifies the path as goal-free navigation and excludes it from goal conversion
+- **AND** event types already represented by path steps are not duplicated as disconnected discovery nodes in the same selection
+- **AND** references into, from or between navigation stages distinguish repeated event names by the selected stage labels and preserve recorded boundaries
+
 #### Scenario: Retention boundary
 - **WHEN** a selected range extends outside retained detail
 - **THEN** the interface identifies unavailable dates and does not present incomplete counts as full-range evidence
@@ -212,6 +218,22 @@ The interface SHALL offer configuration from discovered services, spans, events 
 - **WHEN** an owner discovers a standard request span without stage or session attributes
 - **THEN** the owner can explore timing, preview a business label and see why multi-request paths remain unavailable without being told to add stage attributes first
 
+### Requirement: Discoverable completion goal configuration
+The configuration interface SHALL provide a dedicated completion-goal section showing the current goal or an explicit unset state. It SHALL distinguish successful completion from an exit or dead end, and explain that a goal is optional and separate from event Kind. Owners SHALL be able to select received unmapped events as well as existing mappings, review live matches and explicitly activate the goal. Existing goal state SHALL reflect its exact selector.
+
+#### Scenario: First goal before any mappings
+- **WHEN** an owner opens Mappings & goal with received events and no mappings
+- **THEN** the completion-goal section offers those events, explains selection, live checking and activation, and does not require a prior mapping
+
+#### Scenario: Review a completion goal
+- **WHEN** an owner selects an event as the completion goal
+- **THEN** its editor clearly identifies successful completion, explains replacement of any current goal for new journeys, and labels the activation action Activate completion goal
+- **AND** selecting exit as its Kind blocks activation with guidance to use Step for a successful milestone
+
+#### Scenario: Inspect or replace the current goal
+- **WHEN** an owner edits the active goal or another mapping sharing its event name
+- **THEN** only the exact goal selector is marked as the current goal, and the interface explains how to replace it by selecting another event
+
 ### Requirement: Trace and journey reference context
 Saved references SHALL retain explicit exploration mode, safe filters, definition context and supported captured endpoints. Queries and mode changes SHALL NOT rewrite boundaries or manufacture adjacency across hidden, missing, expired or separate evidence.
 
@@ -229,3 +251,20 @@ Inspectors and accessible tables SHALL distinguish native inclusive span duratio
 #### Scenario: Mixed operation and page observations
 - **WHEN** the Voting stage has native request timing and separately observed browser intervals
 - **THEN** each basis appears separately with its prerequisites and unknowns; no single duration claims page attention
+
+### Requirement: Automatic mapping validation beside received evidence
+The event editor SHALL automatically validate the complete draft definition when a mapping, condition, kind or goal selection changes. Received-record results SHALL serve as the preview without a separate Preview matches action or duplicate bottom summary. Activation SHALL require successful validation of the exact current draft. Pending, failed and stale checks SHALL NOT authorize activation; retry SHALL be available after a check fails. Activation SHALL remain explicit.
+
+#### Scenario: Change a received-data selection
+- **WHEN** an owner selects a received field value or changes a draft field
+- **THEN** matching examples and complete-definition validation update automatically, and activation remains disabled until the latest draft passes
+- **AND** an older response cannot overwrite the current selection or enable its activation
+
+#### Scenario: Journey context in matching records
+- **WHEN** matching records are displayed
+- **THEN** the same section explains whether session IDs and applicable browser tab IDs are available, using plain wording without a zero-missing-context warning
+- **AND** missing context does not block saving a valid mapping
+
+#### Scenario: Failed validation request
+- **WHEN** the automatic check fails
+- **THEN** the editor explains the failure, offers retry and keeps activation disabled without requiring the owner to find a separate preview section

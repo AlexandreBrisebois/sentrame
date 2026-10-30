@@ -6,6 +6,14 @@ Provide reusable discovery-led instructions for coding agents helping developers
 
 ## Requirements
 
+### Requirement: Progressive browser navigation without a goal
+Integration guidance SHALL explain automatic browser navigation for an empty captured definition with safe explicit session and tab IDs. It SHALL distinguish emitted labels and ordering from configured business meaning, persistence, duration and goal conversion. A completion goal SHALL be optional for both navigation and mapping activation.
+
+#### Scenario: Existing browser exporter supplies navigation context
+- **WHEN** an application already emits correlated opening, screen and error logs
+- **THEN** guidance requests no invented completion event to connect the navigation and explains that explicit mappings remain authoritative once configured
+- **AND** it documents optional `stage.name` labels, unique increasing `source.sequence` ordering, event identity for replay, 30-minute inactivity and separate app/session/tab boundaries
+
 ### Requirement: Discovery-led developer event plan
 The guidance SHALL inspect relevant app source/UI/tests and current SDK/resource/signal/exporter setup before recommending changes. It SHALL ask focused developer questions about success, friction and useful observations, then present prioritized event proposals with evidence, question/value, emitter boundary, authority, privacy/noise and synthetic acceptance expectations for approval before edits.
 

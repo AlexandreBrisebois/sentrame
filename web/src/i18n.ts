@@ -420,3 +420,39 @@ Object.assign(fr,{
 });
 
 Object.assign(fr,{'Results are partial. Some retained records were omitted.':'Les résultats sont partiels. Certains enregistrements conservés ont été omis.'});
+
+Object.assign(fr, {
+  "A completion goal is optional. Correlated navigation can be explored without one; select this checkbox only to end journeys at this event.": "Un objectif de fin est facultatif. Vous pouvez explorer la navigation corrélée sans objectif ; cochez cette case uniquement pour terminer les parcours à cet événement.",
+  "Correlated navigation · no completion goal. Connections show observed order; these paths are excluded from goal conversion.": "Navigation corrélée · aucun objectif de fin. Les liens montrent l’ordre observé ; ces chemins sont exclus du taux de conversion.",
+  "Choose 1–100 mappings": "Choisissez de 1 à 100 correspondances",
+});
+
+Object.assign(fr, {
+  "Completion goal": "Objectif de réussite",
+  "Completion goal (optional)": "Objectif de réussite (facultatif)",
+  "Set completion goal": "Définir l’objectif de réussite",
+  "Current goal": "Objectif actuel",
+  "None — navigation only": "Aucun — navigation seulement",
+  "Use this event as the completion goal": "Utiliser cet événement comme objectif de réussite",
+  "Activate completion goal": "Activer l’objectif de réussite",
+  "Event mappings": "Correspondances des événements",
+  "A goal is the event that marks a successful journey, such as Meal added to planner. Exit means the journey ended without claiming success. A goal is separate from Kind.": "Un objectif est l’événement qui marque la réussite d’un parcours, comme Repas ajouté au planning. Une sortie termine le parcours sans indiquer de réussite. L’objectif est distinct du type.",
+  "This is the current completion goal. To replace it, choose another event in Mappings & goal.": "Il s’agit de l’objectif de réussite actuel. Pour le remplacer, choisissez un autre événement dans Correspondances et objectif.",
+  "Activating will make this event the completion goal for new journeys and replace any current goal.": "L’activation définira cet événement comme objectif de réussite des nouveaux parcours et remplacera l’objectif actuel.",
+  "Leave unchecked to map this event without changing the completion goal. Journeys can have no goal.": "Laissez cette case décochée pour définir cet événement sans modifier l’objectif de réussite. Les parcours peuvent ne pas avoir d’objectif.",
+  "Choose the event that proves the journey succeeded. This is separate from an exit or a dead end. You can explore navigation without setting a goal.": "Choisissez l’événement qui prouve la réussite du parcours. Il est distinct d’une sortie ou d’une impasse. Vous pouvez explorer la navigation sans définir d’objectif.",
+  "Choose an event below, review its matching records, then select Preview matches and Activate completion goal.": "Choisissez un événement ci-dessous, examinez les enregistrements correspondants, puis sélectionnez Prévisualiser les correspondances et Activer l’objectif de réussite.",
+  "No events received yet. Send an event that represents success, then choose it here.": "Aucun événement reçu pour le moment. Envoyez un événement qui représente une réussite, puis choisissez-le ici.",
+  "A completion goal cannot also be an exit. Choose Step for a successful milestone.": "Un objectif de réussite ne peut pas aussi être une sortie. Choisissez Étape pour un jalon de réussite."
+});
+
+Object.assign(fr, {
+  "Checking this configuration…": "Vérification de la configuration…",
+  "Configuration checked. Ready to activate.": "Configuration vérifiée. Prête à être activée.",
+  "Could not check this configuration. Try again.": "Impossible de vérifier cette configuration. Réessayez.",
+  "Retry check": "Réessayer la vérification",
+  "Choose an event below, review its matching records, then select Activate completion goal. Checks update automatically.": "Choisissez un événement ci-dessous, examinez les enregistrements correspondants, puis sélectionnez Activer l’objectif de réussite. Les vérifications se mettent à jour automatiquement.",
+  "Leave both fields empty if you do not need this filter. Matching records and validation update automatically before activation.": "Laissez les deux champs vides si ce filtre est inutile. Les enregistrements correspondants et la validation se mettent à jour automatiquement avant l’activation.",
+  "matching records are missing a session ID or, for browser events, a tab ID. You can save this mapping, but these records cannot be connected into journeys.": "enregistrements correspondants n’ont pas d’identifiant de session ou, pour les événements du navigateur, d’identifiant d’onglet. Vous pouvez enregistrer cette correspondance, mais ces enregistrements ne peuvent pas être reliés en parcours.",
+  "All matching records have the IDs needed to connect them into journeys.": "Tous les enregistrements correspondants ont les identifiants nécessaires pour les relier en parcours."
+});

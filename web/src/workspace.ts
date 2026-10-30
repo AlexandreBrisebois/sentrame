@@ -1,4 +1,10 @@
 import type { Definition, Mapping } from './types';
+
+export function isCompletionGoal(active:Definition|undefined,mapping:Mapping):boolean {
+ if(!active?.goal||active.goal!==mapping.event)return false;
+ const selector=active.goalSelector;
+ return !selector||(['event','source','service','signal','carrier','key','value'] as const).every(key=>(selector[key]??'')===(mapping[key]??''));
+}
 // A node edit is a copy of the complete active definition, never an isolated
 // replacement that accidentally drops other stages or changes the goal.
 export function editEventDefinition(active:Definition, mapping:Mapping, replace:number, makeGoal=false):Definition {
@@ -20,10 +26,14 @@ export function removeEventMapping(active:Definition,index:number):Definition {
 
 // Missing journey correlation affects interpretation, not permission to save a
 // valid mapping. Keep the disabled action and its visible explanation together.
-export function mappingActivationBlocker(stage:string,goal:string,preview:{conflict?:string;missingContext?:number}|null):string {
+export function mappingActivationBlocker(stage:string,goal:string,preview:{conflict?:string;missingContext?:number}|null,goalKind?:string):string {
  if(!stage.trim())return 'Enter a stage name before activating.';
- if(!goal)return 'Choose an operational goal before activating the first mapping.';
- if(!preview)return 'Choose Preview matches before activating. Preview again after changing any field.';
+ if(goalKind==='exit')return 'A completion goal cannot also be an exit. Choose Step for a successful milestone.';
+ if(!preview)return 'Checking this configuration…';
  if(preview.conflict)return 'Resolve the preview conflict before activating.';
  return '';
+}
+
+export function currentMappingPreview<T extends {definitionFingerprint?:string}>(definition:Definition,preview:T|null):T|null {
+ return preview?.definitionFingerprint===JSON.stringify(definition)?preview:null;
 }

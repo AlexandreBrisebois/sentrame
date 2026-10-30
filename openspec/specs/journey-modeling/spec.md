@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Turn available telemetry into explicitly configured, explainable journey evidence without inventing business meaning or tracking people across visits. All requirements are proposed behavior.
+Turn explicitly correlated browser navigation and configured telemetry into explainable journey evidence without inventing business meaning or tracking people across visits.
 
 ## Requirements
 
@@ -30,7 +30,7 @@ The system SHALL support client-only, server-only and combined journeys within o
 - **THEN** they can form one journey while retaining producer authority, clock/order uncertainty and distinct record/action identities; the shared ID alone establishes neither duplicates nor causality
 
 ### Requirement: Self-explanatory event classification
-The system SHALL list sanitized discovered events and fields so an authorized owner can map emitted events to stable journey steps, choose a goal event from that list and define explicit start/exit conditions. It SHALL preview matches, missing context and conflicts before definition activation. Ordinary standard OTel instrumentation SHALL suffice; a custom SDK, executable script or AI SHALL NOT be required.
+The system SHALL list sanitized discovered events and fields so an authorized owner can map emitted events to stable journey steps, optionally choose a completion goal and define explicit start/exit conditions. A valid definition with mappings SHALL NOT require a completion goal. It SHALL preview matches, missing context and conflicts before definition activation. Ordinary standard OTel instrumentation SHALL suffice; a custom SDK, executable script or AI SHALL NOT be required.
 
 #### Scenario: Mapping a received event
 - **WHEN** an editor selects a received event, names its step and chooses an attribute condition
@@ -56,7 +56,12 @@ The system SHALL distinguish OTel signal/carrier, event name, severity and owner
 - **THEN** the prefix is inspectable and later recovery remains available; event selection does not silently activate a terminal/failure rule
 
 ### Requirement: Explicit journey lifecycle
-The system SHALL start at the first mapped event in a logical scope, end at the active goal and restart at the next new mapped occurrence. After 30 minutes without mapped activity it SHALL close inactive, not failed. Browser tabs SHALL remain separate; server-only scopes need no tab. Event-time/late revisions SHALL be explicit. Severity and saved-view queries SHALL NOT implicitly change boundaries.
+The system SHALL start at the first mapped event or eligible unconfigured browser log within a logical scope. Configured goals SHALL close journeys; otherwise 30 minutes without eligible activity SHALL close them inactive. Goal-free journeys SHALL NOT enter completed-goal counts or goal conversion. Browser tabs SHALL remain separate. Severity and saved-view queries SHALL NOT change boundaries.
+
+#### Scenario: Mappings without a completion goal
+- **WHEN** an owner previews and activates a valid mapping definition without a goal
+- **THEN** activation succeeds, mapped events form paths, and no event implicitly becomes completion
+- **AND** journeys remain active until inactivity or an explicitly mapped exit; server-only scopes require no fabricated tab and late revisions remain explicit
 
 #### Scenario: Timeout without terminal evidence
 - **WHEN** a journey reaches 30 minutes without mapped activity or a goal
@@ -73,6 +78,24 @@ The system SHALL start at the first mapped event in a logical scope, end at the 
 #### Scenario: Explicit goal and continuing activity
 - **WHEN** a goal is evidenced and activity continues
 - **THEN** the next new mapped occurrence starts a new journey and the completed goal remains evidenced
+
+### Requirement: Correlated browser navigation without configuration
+With an empty captured definition, the system SHALL derive navigation from named non-diagnostic browser logs sharing safe explicit session and tab IDs within one app. It SHALL label steps with retained `stage.name`, otherwise the event name. Explicit definitions SHALL retain precedence. Navigation SHALL NOT imply business meaning, goals or duration, or turn server-only logs, metrics or native spans into automatic steps.
+
+#### Scenario: Next.js navigation retains document correlation
+- **WHEN** Home, Search and Planner browser logs share session and tab IDs, increasing source sequences, and an empty captured definition
+- **THEN** they form one ordered path with Home-to-Search and Search-to-Planner transitions without requiring a mapping or completion goal
+- **AND** correlated browser errors remain evidence attached to the path rather than automatic steps or terminal outcomes
+- **AND** unique positive `source.sequence` values within one source/service determine order; otherwise occurrence time and stable receipt tie-breaks are used with order uncertainty disclosed
+- **AND** exact identified replay does not multiply steps
+
+#### Scenario: Missing correlation and concurrent visits
+- **WHEN** browser logs lack session or tab context, or belong to different apps, sessions or tabs
+- **THEN** missing-context records remain unassigned and different scopes remain separate without proximity joins
+
+#### Scenario: Configured meaning overrides emitted labels
+- **WHEN** a captured definition explicitly maps an event to a label or goal
+- **THEN** its literal mappings and lifecycle apply, and automatic navigation does not add excluded events or replace owner labels
 
 ### Requirement: Deterministic evidence-based outcomes
 The system SHALL separate completion, positive business outcome, observed failure and configured flaky behavior. Each classification SHALL expose its rule version and evidence. A negative vote SHALL NOT imply a negative journey outcome. HTTP success, optimistic UI, repetition, silence or an exception alone SHALL NOT establish goal completion or failure.
@@ -165,10 +188,10 @@ Owners SHALL map standard span/event names and supported attributes using explic
 - **THEN** configuration explains the absent trusted business-outcome evidence rather than asserting that a vote persisted
 
 ### Requirement: Optional stage hint suggestions
-The system SHALL retain optional `stage.name` as a Sentrame application convention and suggest labels for unmapped evidence. Suggestions SHALL require owner acceptance into literal versioned rules; the attribute alone SHALL NOT assign Kind, goal, session, boundary, authority or timing quality.
+The system SHALL retain optional `stage.name` as a Sentrame application convention and suggest labels for unmapped evidence. Business mapping suggestions SHALL require owner acceptance into literal versioned rules; the attribute alone SHALL NOT assign Kind, goal, session, boundary, authority or timing quality. Unconfigured correlated browser navigation may use the retained label for display without activating a business rule.
 
 #### Scenario: Enriched voting event
-- **WHEN** an unmapped `vote.committed` event carries `stage.name=voting.persist`
+- **WHEN** an unmapped server `vote.committed` event carries `stage.name=voting.persist`
 - **THEN** configuration suggests that label and shows its source, and activation requires explicit owner preview/acceptance rather than silently creating a graph stage
 
 #### Scenario: Missing and conflicting labels
