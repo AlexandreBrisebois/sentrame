@@ -61,6 +61,10 @@ For example, ten separate `vote.committed` events mapped to **Vote** can produce
 
 Standard telemetry can be accepted without optional journey identifiers. Received records that cannot support a journey remain **Unassigned records**. Sentrame does not invent a visit or connection to make them fit.
 
+If the historical timeline has bars but the journey graph is empty, those bars count **received records**, not journeys. When the selected range contains unassigned records, the empty graph confirms receipt and offers **View received records**. **Journeys & evidence → Unassigned records** opens automatically when there are no displayed journeys; it shows the event name, producer/signal, service/version, occurrence time and any emitted stage hint. **☰ → Unmapped events** also lists received event names across the retained app history.
+
+A standalone log such as `pwa.app.opened` without a trace ID cannot appear in **Traces**. Without supported journey correlation, it also cannot become a journey merely by assigning a stage label. An empty trace list offers **View received records** to return to the journey workspace. For a live investigation, widen the historical range if the live observation began after the record arrived.
+
 ## Discover and configure events
 
 Use **☰ → Unmapped events** to see received event names without mappings. **Show discovered events** puts them on the canvas as dashed, unconnected nodes. A disconnected discovery node means no journey relationship has been inferred; it does not mean the receiver failed.
@@ -246,6 +250,8 @@ Switch to **Journeys** for configured chronological business paths. Trace-only t
 
 
 ## Give ordinary telemetry business meaning
+
+Received logs also offer **Configure event** directly under **Unassigned records**. The editor fills in the received service, producer and carrier when there is one observed context. When an event exists in several contexts, choose **Received event context** to select the actual service and producer; exact service suggestions are also available. **Received records for this mapping** loads automatically from retained app-wide history, independently of the graph time range. It shows the matching count and up to five recent examples with their retained attributes. **Pick a condition from received data (optional)** fills both Condition key and Equals from an observed field/value, with its occurrence count. Leave both fields empty to match all records in the selected context. If a condition matches nothing, the editor shows examples and alternative values from that context before the condition. Choices are limited to 64 retained, allowlisted field/value pairs, with omissions disclosed. A condition or selector change requires another **Preview matches** before activation. On an app with no goal yet, the first definition requires an explicitly chosen operational goal. Select **End a journey when this event occurs (operational goal)** only for the intended ending event, then choose **Preview matches**. Any edit requires another preview. The activation button explains an unmet stage, goal, preview or conflict requirement. Missing correlation is reported separately and does not block saving a valid definition; those records remain unassigned.
 
 On a trace operation, span event or log, choose **Give business meaning**. The editor starts with the retained exact service/carrier/source/name. Enter a literal Stage label, choose Kind and an optional retained key/value condition, then **Preview matches** before activation. Select **Use this exact mapping as the operational goal** only for the actual intended boundary. No stage tag is needed. A trusted `vote.committed` span event can map to **Vote saved** while a similarly named log remains separate.
 

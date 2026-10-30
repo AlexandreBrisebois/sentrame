@@ -156,6 +156,11 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Store unavailable", 503)
 		return
 	}
+	truncated := len(es) > 10000
+	if truncated {
+		es = es[len(es)-10000:]
+	}
+	retained := []Evidence{}
 	counts := map[string]int{}
 	missingFields := map[string]int{}
 	missingByEvent := map[string]int{}
@@ -165,6 +170,7 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 		if x.Time <= cut {
 			continue
 		}
+		retained = append(retained, x)
 		for _, m := range d.Mappings {
 			if m.Event == x.Name && m.Key != "" && x.Attrs[m.Key] == "" {
 				missingFields[m.Key]++
@@ -178,7 +184,11 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	write(w, map[string]any{"conflict": validateDefinition(d), "matches": counts, "missingContext": missing, "missingContextByEvent": missingByEvent, "unavailableFields": missingFields, "missingContextCapability": "multi-request journey only; native trace exploration remains available", "policy": "Activation is prospective. Existing captured journeys keep their definition."})
+	previews := []mappingPreviewEvidence{}
+	for _, mapping := range d.Mappings {
+		previews = append(previews, previewMappingEvidence(retained, mapping))
+	}
+	write(w, map[string]any{"mappingPreviews": previews, "truncated": truncated, "conflict": validateDefinition(d), "matches": counts, "missingContext": missing, "missingContextByEvent": missingByEvent, "unavailableFields": missingFields, "missingContextCapability": "multi-request journey only; native trace exploration remains available", "policy": "Activation is prospective. Existing captured journeys keep their definition."})
 }
 func (s *Service) getViews() ([]SavedView, error) {
 	rows, e := s.Store.DB.Query(`SELECT id,data FROM views ORDER BY id`)

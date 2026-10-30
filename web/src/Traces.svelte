@@ -4,7 +4,7 @@
  import {appURL} from './apps';
  import {traceRows,operationBar} from './trace';
  import {translate,type Language} from './i18n';
- let {appID,generation:appGeneration,request,revision,language='en',readOnly=false,onconfigure}:{appID:string;generation:string;request:(path:string,body?:unknown)=>Promise<any>;revision:string|number;language?:Language;readOnly?:boolean;onconfigure?:(e:Evidence,suggestion?:string)=>void}=$props();
+ let {appID,generation:appGeneration,request,revision,language='en',readOnly=false,oninspect,onconfigure}:{appID:string;generation:string;request:(path:string,body?:unknown)=>Promise<any>;revision:string|number;language?:Language;readOnly?:boolean;oninspect?:()=>void;onconfigure?:(e:Evidence,suggestion?:string)=>void}=$props();
  const t=(s:string)=>translate(s,language);
  let list=$state<{trace:string;spans:number;records:number;services:string[]}[]>([]), selected=$state(new URLSearchParams(location.search).get('trace')??''),detail=$state<TraceDetail|null>(null),error=$state(''),loading=$state(false),view=$state('tree'),truncated=$state(false);
  let definitions=$state<Definition[]>([]),previewDefinition=$state('');
@@ -26,7 +26,7 @@
  <label>{t('Trace references')}<select value={selectedReference} onchange={e=>openReference(e.currentTarget.value)}><option value="">{t('No reference')}</option>{#each references as ref}<option value={String(ref.id)}>{ref.name}</option>{/each}</select></label>
  {#if loading}<p role="status">{t('Loading…')}</p>{/if}{#if error}<p role="alert">{error}</p>{/if}
  {#if truncated}<p>{t('Bounded results: narrow collection or inspect a recent trace. Some evidence is omitted.')}</p>{/if}
- {#if !loading&&!list.length}<p>{t('No retained traces. Export ordinary spans with valid trace/span IDs; no stage or session attributes are required.')}</p>{/if}
+ {#if !loading&&!error&&!list.length}<div class="trace-empty"><h3>{t('No retained traces')}</h3><p>{t('Logs without trace IDs do not appear in the trace list. This does not mean collection failed. Inspect received records in the journey workspace.')}</p><p>{t('No retained traces. Export ordinary spans with valid trace/span IDs; no stage or session attributes are required.')}</p>{#if oninspect}<button class="secondary" onclick={oninspect}>{t('View received records')}</button>{/if}</div>{/if}
  {#if detail}
  <label>{t('Business interpretation')}<select bind:value={previewDefinition} onchange={()=>{selectedReference='';history.replaceState(null,'',appURL(appID,{generation:appGeneration,trace:selected||undefined}))}}><option value="">{t('Capture-time definitions')}</option>{#each definitions as def}<option value={String(def.version)}>{t('Non-persisting preview')} v{def.version}</option>{/each}</select></label>
  <p>{t(detail.interpretation)}</p>
@@ -47,6 +47,7 @@
  {/if}
 </section>
 <style>
+ .trace-empty{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:20px;max-width:720px}.trace-empty p{font-size:12px;color:var(--muted)}
  .trace-workspace{padding:24px 26px;overflow:auto;min-height:0;display:flex;flex-direction:column;gap:18px}
  .trace-workspace>*{flex-shrink:0}
  .trace-workspace>p{margin:0;max-width:90ch;overflow-wrap:anywhere;font-size:13px}

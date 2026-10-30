@@ -34,3 +34,23 @@ test('unmapping preserves other rules and prevents removing the active goal',asy
  assert.equal(active.mappings.length,2);
  assert.throws(()=>removeEventMapping(active,1),/another operational goal/);
 });
+
+test('first event activation explains the missing goal and preview without choosing a goal implicitly',async()=>{
+ const {mappingActivationBlocker}=await import('./workspace.ts');
+ const empty={version:1,goal:'',fallbackTiming:false,mappings:[]};
+ const next=editEventDefinition(empty,mapping('pwa.app.opened'),-1);
+ assert.equal(next.goal,'');
+ assert.equal(mappingActivationBlocker(next.mappings[0].step,next.goal,null),'Choose an operational goal before activating the first mapping.');
+ const withGoal=editEventDefinition(empty,mapping('pwa.app.opened'),-1,true);
+ assert.equal(mappingActivationBlocker(withGoal.mappings[0].step,withGoal.goal,null),'Choose Preview matches before activating. Preview again after changing any field.');
+ assert.equal(mappingActivationBlocker(withGoal.mappings[0].step,withGoal.goal,{conflict:'',missingContext:4}), '');
+});
+test('activation blocks missing stage and server conflicts while preserving an existing goal',async()=>{
+ const {mappingActivationBlocker}=await import('./workspace.ts');
+ assert.equal(mappingActivationBlocker('  ','done',{conflict:''}),'Enter a stage name before activating.');
+ assert.equal(mappingActivationBlocker('Open','done',{conflict:'Conflicting event mappings'}),'Resolve the preview conflict before activating.');
+ const active={version:2,goal:'done',fallbackTiming:false,mappings:[mapping('done')]};
+ const next=editEventDefinition(active,mapping('pwa.app.opened'),-1);
+ assert.equal(next.goal,'done');
+ assert.equal(mappingActivationBlocker('Open',next.goal,{conflict:''}),'');
+});

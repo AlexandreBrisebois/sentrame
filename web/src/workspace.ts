@@ -17,3 +17,13 @@ export function removeEventMapping(active:Definition,index:number):Definition {
  if(!mapping||mapping.event===active.goal||active.mappings.length<=1)throw new Error('Choose another operational goal before removing this mapping.');
  return {...active,mappings:active.mappings.filter((_,i)=>i!==index).map(m=>({...m}))};
 }
+
+// Missing journey correlation affects interpretation, not permission to save a
+// valid mapping. Keep the disabled action and its visible explanation together.
+export function mappingActivationBlocker(stage:string,goal:string,preview:{conflict?:string;missingContext?:number}|null):string {
+ if(!stage.trim())return 'Enter a stage name before activating.';
+ if(!goal)return 'Choose an operational goal before activating the first mapping.';
+ if(!preview)return 'Choose Preview matches before activating. Preview again after changing any field.';
+ if(preview.conflict)return 'Resolve the preview conflict before activating.';
+ return '';
+}

@@ -80,3 +80,5 @@ label>input[type=checkbox]{flex-shrink:0;margin:3px 0}
 .credential{display:block;overflow-wrap:anywhere;white-space:normal;margin-bottom:.8rem}
 @media(max-width:760px){.masthead.compact{height:auto;min-height:54px;flex-wrap:wrap}.compact .mast-actions{min-width:0;flex-wrap:wrap;justify-content:flex-end}.workspace-main{height:auto;min-height:calc(100dvh - 54px)}}
 @media(max-width:480px){.compact .mast-actions{width:100%;margin-left:0;justify-content:flex-start}.app-selector{flex:1 1 160px;max-width:none;width:auto}}
+
+.event-fields .form-grid>.received-mapping-data{grid-column:1/-1;min-width:0}

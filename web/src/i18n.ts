@@ -377,3 +377,46 @@ Object.assign(fr,{'Copy base endpoint':'Copier le point de terminaison de base',
 Object.assign(fr,{'App registration unavailable':'Cette inscription de l’application n’est plus disponible.'});
 
 Object.assign(fr,{'secure randomness unavailable':'La génération sécurisée est indisponible.','confirm the exact app name':'Confirmez le nom exact de l’application.'});
+
+Object.assign(fr,{
+ 'View received records':'Voir les enregistrements reçus',
+ 'Telemetry has arrived. These records have no derived journey in this selection. Journeys need mapped events and supported correlation; standalone logs remain available as received records.':'La télémétrie a été reçue. Aucun parcours n’est dérivé de ces enregistrements dans cette sélection. Les parcours nécessitent des événements définis et une corrélation prise en charge ; les journaux isolés restent consultables parmi les enregistrements reçus.',
+ 'No retained traces':'Aucune trace conservée',
+ 'Logs without trace IDs do not appear in the trace list. This does not mean collection failed. Inspect received records in the journey workspace.':'Les journaux sans identifiant de trace n’apparaissent pas dans la liste des traces. Cela ne signifie pas que la collecte a échoué. Consultez les enregistrements reçus dans l’espace des parcours.'
+});
+
+Object.assign(fr,{
+ 'Enter a stage name before activating.':'Saisissez un nom d’étape avant l’activation.',
+ 'Choose an operational goal before activating the first mapping.':'Choisissez un objectif opérationnel avant d’activer la première correspondance.',
+ 'Choose Preview matches before activating. Preview again after changing any field.':'Choisissez Prévisualiser les correspondances avant l’activation. Recommencez après toute modification d’un champ.',
+ 'Resolve the preview conflict before activating.':'Résolvez le conflit de prévisualisation avant l’activation.',
+ 'Preview is valid. You can activate this definition.':'La prévisualisation est valide. Vous pouvez activer cette définition.',
+ 'This app has no operational goal yet. The first definition needs a goal event that ends future journeys. Select the checkbox below only if this is that event.':'Cette application n’a pas encore d’objectif opérationnel. La première définition nécessite un événement objectif qui termine les futurs parcours. Cochez la case ci-dessous uniquement s’il s’agit de cet événement.',
+ 'End a journey when this event occurs (operational goal)':'Terminer le parcours lorsque cet événement se produit (objectif opérationnel)',
+ 'Missing journey correlation does not block activation. These records remain unassigned; a mapping alone cannot connect them into journeys.':'L’absence de corrélation de parcours ne bloque pas l’activation. Ces enregistrements restent non attribués ; une correspondance seule ne peut pas les relier en parcours.'
+});
+
+Object.assign(fr,{
+ 'Received records for this mapping':'Enregistrements reçus pour cette correspondance',
+ 'Examples use retained app-wide history for the selected event, service, carrier and producer, independent of the graph time range.':'Les exemples utilisent l’historique conservé de l’application pour l’événement, le service, le support et le producteur sélectionnés, indépendamment de la période du graphique.',
+ 'Loading received records…':'Chargement des enregistrements reçus…',
+ 'before the optional condition':'avant la condition facultative',
+ 'No retained records match this event context. Choose a received context above or check the exact service, carrier and producer.':'Aucun enregistrement conservé ne correspond à ce contexte. Choisissez un contexte reçu ci-dessus ou vérifiez le service exact, le support et le producteur.',
+ 'This condition matches no records. The examples and available values below show this event context before applying the condition.':'Cette condition ne correspond à aucun enregistrement. Les exemples et les valeurs ci-dessous montrent ce contexte avant l’application de la condition.',
+ 'Pick a condition from received data (optional)':'Choisir une condition dans les données reçues (facultatif)',
+ 'Choose a field and value below, or leave both condition fields empty to include every record in this event context.':'Choisissez un champ et une valeur ci-dessous, ou laissez les deux champs de condition vides pour inclure tous les enregistrements de ce contexte.',
+ 'No selectable attributes were retained for these records. Leave the condition empty.':'Aucun attribut sélectionnable n’a été conservé pour ces enregistrements. Laissez la condition vide.',
+ 'Clear condition':'Effacer la condition',
+ 'Available values are bounded. Some values are omitted.':'Le nombre de valeurs proposées est limité. Certaines valeurs sont omises.',
+ 'Matching examples':'Exemples correspondants',
+ 'Examples before the condition':'Exemples avant la condition',
+ 'Attributes':'Attributs',
+ 'No retained attributes':'Aucun attribut conservé',
+ 'No received examples are available.':'Aucun exemple reçu n’est disponible.',
+ 'Received event context':'Contexte de l’événement reçu',
+ 'All received contexts':'Tous les contextes reçus',
+ 'Custom selector':'Sélecteur personnalisé',
+ 'Use Pick a condition from received data above to fill both fields from an observed value. Only retained, allowed attributes are offered.':'Utilisez Choisir une condition dans les données reçues ci-dessus pour remplir les deux champs avec une valeur observée. Seuls les attributs conservés et autorisés sont proposés.'
+});
+
+Object.assign(fr,{'Results are partial. Some retained records were omitted.':'Les résultats sont partiels. Certains enregistrements conservés ont été omis.'});
