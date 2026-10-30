@@ -159,8 +159,8 @@ func checkStandardJourney(raw []byte, definition string, completed bool) error {
 	if err := json.Unmarshal(raw, &snap); err != nil {
 		return err
 	}
-	if snap.Mode != "journey" || snap.Model.Computation != "journey-native-v3" || len(snap.Model.Journeys) != 1 {
-		return fmt.Errorf("scoped voting requires one explicit journey under native computation, got%d", len(snap.Model.Journeys))
+	if snap.Mode != "journey" || snap.Model.Computation != "journey-navigation-v4" || len(snap.Model.Journeys) != 1 {
+		return fmt.Errorf("scoped voting requires one explicit journey under journey-navigation-v4: mode=%s computation=%s journeys=%d", snap.Mode, snap.Model.Computation, len(snap.Model.Journeys))
 	}
 	j := snap.Model.Journeys[0]
 	if fmt.Sprint(j.Definition) != definition {
