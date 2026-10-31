@@ -668,3 +668,5 @@ Object.assign(fr, {"About this view":"À propos de cette vue", "Coverage":"Couve
 Object.assign(fr, {"Help":"Aide", "Context":"Contexte", "Account":"Compte", "Analysis population":"Population analysée", "Updates":"Mises à jour", "Pause":"Pause", "Resume":"Reprendre"});
 
 Object.assign(fr, {"Source scan capped.":"Analyse de la source plafonnée."});
+
+Object.assign(fr, {"Tools":"Outils", "Tools for":"Outils pour", "View":"Affichage", "Investigate":"Explorer", "Manage this app":"Gérer cette application", "Saved views":"Vues enregistrées"});
