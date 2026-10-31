@@ -84,3 +84,105 @@ label>input[type=checkbox]{flex-shrink:0;margin:3px 0}
 .event-fields .form-grid>.received-mapping-data{grid-column:1/-1;min-width:0}
 
 .completion-goal{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:16px;margin:16px 0}.completion-goal legend{font-weight:650;padding:0 6px}.completion-goal h3{margin-top:0}.completion-goal .goal-buttons{display:flex;flex-wrap:wrap;gap:8px}.completion-goal label{display:flex;align-items:center;gap:10px}
+.loop-view{padding:24px;min-width:0;overflow:auto}.loop-view h2{margin-bottom:16px}.loop-view h3{margin-top:22px}.loop-view table{border-collapse:collapse}.loop-view th,.loop-view td{padding:8px 12px;border:1px solid var(--line);text-align:left}.loop-view td{min-width:75px}.loop-view pre{white-space:pre-wrap;overflow-wrap:anywhere}.journey-timeline{display:flex;gap:14px;overflow:auto;padding:20px 20px 20px 40px}.journey-timeline li{min-width:170px;padding:12px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}.sequence-flow-row{display:flex;gap:10px;align-items:center;overflow:auto;margin:12px 0}.sequence-flow-step{display:inline-flex;flex-direction:column;min-width:110px;padding:8px;border:1px solid #9db4a2;border-bottom-style:solid;border-bottom-color:#467952;border-radius:4px}.sequence-flow-step small{display:block}
+.loop-views{min-width:0;overflow:auto}.loop-views .loop-view+.loop-view{border-top:2px solid var(--line)}.layouts{flex-wrap:wrap}
+.sequence-bar-track{display:block;width:100%;height:8px;background:#e4eae0;border-radius:4px;overflow:hidden;margin-top:5px}.sequence-bar{display:block;height:100%;background:#467952}
+.graph-host{min-width:0;flex:1;display:flex}.graph-host>.workspace-graph{flex:1;min-width:0}.loop-views{flex:1}
+.workspace>:not(.workspace-canvas){flex-shrink:0}
+
+/* Journey investigation: population identity and evidence remain readable at narrow widths. */
+:root{--live-color:#0f766e;--baseline-color:#475569}
+.investigation-view{--population-color:var(--green);border-inline-start:4px solid var(--population-color);color:#203b34;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+[data-population="live"]{--population-color:var(--live-color)}
+[data-population="baseline"]{--population-color:var(--baseline-color)}
+.investigation-view[data-population="baseline"]{border-inline-start-style:dashed}
+.investigation-view>header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px}
+.investigation-view>header h2{margin:0;font-size:24px;line-height:1.3}
+.investigation-view>header p{margin:0}
+.population-badge{display:inline-grid;place-items:center;min-width:1.8em;min-height:1.8em;border:2px solid var(--population-color);border-radius:50%;font:700 13px/1 system-ui;color:#203b34;background:var(--surface)}
+[data-population="baseline"] .population-badge{border-style:dashed;border-radius:3px;background:repeating-linear-gradient(135deg,#47556916 0 3px,var(--surface) 3px 7px)}
+.investigation-orientation{padding:12px 26px;border-block:1px solid var(--line);color:#203b34;font-size:12px;line-height:1.55;flex-shrink:0}
+.investigation-orientation p{margin:4px 0}
+.investigation-controls{display:flex;align-items:end;flex-wrap:wrap;gap:12px 18px;margin:18px 0}
+.investigation-controls>label{flex:1 1 180px;min-width:0;max-width:100%;font-size:12px;color:#344d43}
+.investigation-controls input,.investigation-controls select,.investigation-view>label select{min-width:0;width:100%;font-size:14px}
+.investigation-controls button{flex-shrink:0}
+.investigation-view>label{max-width:100%;margin-block:12px}
+.investigation-view .text-button,.matching-examples .text-button,.journey-story .text-button{color:#234f42;font-size:13px;white-space:normal;text-align:start}
+.investigation-view summary,.journey-story summary,.matching-examples summary{min-height:36px;padding-block:6px;color:#203b34;font-size:13px;cursor:pointer;overflow-wrap:anywhere}
+.investigation-view details{margin-block:14px}
+.investigation-view small,.journey-story small,.matching-examples small{font-size:12px;color:#46594f}
+.stage-chips,.stage-search{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;padding:0;list-style:none}
+.stage-chips button{max-width:100%;overflow-wrap:anywhere;white-space:normal;font-size:12px}
+.investigation-view table{max-width:100%;font-size:12px;line-height:1.5}
+.investigation-view>table,.investigation-view>details>table{display:block;overflow-x:auto;min-width:0}
+.investigation-view th{color:#203b34}
+.investigation-view caption{padding:10px 0;color:#344d43;text-align:start;font-weight:600}
+.heatmap-region{max-height:min(65dvh,650px);max-width:100%;overflow:auto;isolation:isolate;border:1px solid var(--line);overscroll-behavior:contain}
+.investigation-view .heatmap{border-collapse:separate;border-spacing:0;min-width:max-content;max-width:none}
+.heatmap caption{position:sticky;left:0;background:var(--surface)}
+.heatmap th,.heatmap td{border-width:0 1px 1px 0}
+.heatmap thead th{position:sticky;top:0;z-index:2;background:var(--surface);max-width:180px;vertical-align:bottom}
+.heatmap tbody th{position:sticky;left:0;z-index:1;background:var(--surface);max-width:180px;min-width:100px}
+.heatmap thead th:first-child{left:0;z-index:3}
+.investigation-view .heatmap td{padding:0;min-width:64px;color:#172e29;text-align:center}
+.heatmap td button{display:block;width:100%;min-height:44px;padding:10px;background:transparent;border:2px solid transparent;border-radius:0;color:#172e29;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.heatmap td button:hover{border-color:#344d43;background:#ffffff26}
+.heatmap td.selected-cell button{border-color:#172e29;box-shadow:inset 0 0 0 2px var(--surface);text-decoration:underline;text-underline-offset:4px}
+.heatmap td button:focus-visible{position:relative;z-index:4;outline:3px solid #713c0b;outline-offset:-4px}
+.journey-story{min-width:0;max-width:100%;color:#203b34;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.journey-story h3{font-size:20px;line-height:1.4}
+.journey-story h4{font-size:13px;line-height:1.5}
+.journey-story .vertical-timeline{display:block;overflow:visible;padding:0 0 0 30px;margin:24px 0;list-style:decimal}
+.vertical-timeline>li{position:relative;min-width:0;max-width:100%;padding:14px 16px;margin:0 0 16px;border-inline-start:3px solid var(--population-color,var(--live-color));border-radius:4px;background:var(--surface)}
+.vertical-timeline>li::marker{font-weight:700;color:#203b34}
+.vertical-timeline>li:not(:last-child)::after{content:"";position:absolute;inset-inline-start:-3px;top:100%;height:17px;border-inline-start:3px solid var(--population-color,var(--live-color))}
+[data-population="baseline"] .vertical-timeline>li,[data-population="baseline"] .vertical-timeline>li::after{border-inline-start-style:dashed}
+.vertical-timeline>li>p{font-size:12px;font-variant-numeric:tabular-nums;margin:8px 0}
+.vertical-timeline>li>strong{overflow-wrap:anywhere}
+.evidence-clocks{display:grid;grid-template-columns:minmax(110px,1fr) minmax(0,3fr);gap:8px 16px;padding:12px;background:#f4f6ef;border:1px solid var(--line);font-size:12px}
+.evidence-clocks dt{color:#344d43;font-weight:600}
+.evidence-clocks dd{min-width:0;margin:0;overflow-wrap:anywhere}
+.evidence-clocks code{display:block;font-size:11px}
+.journey-story pre{font-size:12px;max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}
+.prefix-tree{list-style:none;padding:0;margin:18px 0;min-width:0}
+.prefix-tree>li{border-inline-start:3px solid var(--population-color);border-block-end:1px solid var(--line);padding:12px;min-width:0;overflow-wrap:anywhere}
+[data-population="baseline"] .prefix-tree>li{border-inline-start-style:dashed}
+.prefix-tree progress{display:block;width:min(280px,100%);height:12px;margin:8px 0;accent-color:var(--population-color)}
+.prefix-tree .text-button{margin-inline-end:12px}
+.prefix-tree small{display:inline-block;margin:4px 12px 0 0}
+.matching-examples{padding-inline-start:24px;min-width:0;color:#203b34;font-size:13px}
+.matching-examples>li{padding:12px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.matching-examples>li>button{width:100%;justify-content:flex-start;text-align:start;line-height:1.6;min-height:44px}
+.matching-examples>li>small{display:block}
+.matching-examples code{white-space:normal;overflow-wrap:anywhere}
+@media(max-width:760px){
+ .investigation-view{padding:16px 12px;font-size:13px}
+ .investigation-view>header h2{font-size:21px}
+ .investigation-orientation{padding:12px 14px}
+ .investigation-controls{gap:12px}
+ .investigation-controls>label{flex-basis:100%}
+ .investigation-controls>button{max-width:100%;white-space:normal}
+ .investigation-view .heatmap th{max-width:120px;min-width:80px;padding:8px}
+ .investigation-view>table,.investigation-view>details>table{width:100%;max-width:100%}
+ .prefix-tree>li{margin-inline-start:0!important;padding:12px 8px}
+ .journey-story .vertical-timeline{padding-inline-start:24px}
+ .vertical-timeline>li{padding:12px 10px}
+ .evidence-clocks{grid-template-columns:minmax(0,1fr);gap:4px}
+ .evidence-clocks dd{margin-bottom:8px}
+ .workspace-main:has(.investigation-view) .node-inspector{position:static;width:100%;flex-basis:auto;max-height:none;border:1px solid var(--line);border-radius:0;box-shadow:none}
+ .workspace-canvas:has(.investigation-view){flex-wrap:wrap;min-width:0;overflow:visible}
+ .workspace-canvas:has(.investigation-view)>.loop-views{flex-basis:100%;max-width:100%}
+ .workspace-main:has(.investigation-view){height:auto;min-height:calc(100dvh - 54px);overflow:visible}
+}
+@media(max-width:480px){
+ .workspace-toolbar .layouts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+ .workspace-toolbar .layouts button{white-space:normal;overflow-wrap:anywhere;font-size:12px;min-height:44px;padding:8px}
+ .workspace-context>label:has(select){flex:1 1 100%;min-width:0}
+ .workspace-context>label select{width:100%;min-width:0;font-size:14px}
+ .investigation-view .stage-chips button{min-height:44px}
+ .investigation-view .text-button,.journey-story .text-button,.matching-examples summary{min-height:44px}
+}
+
+.heatmap th.selected-axis{text-decoration:underline;box-shadow:inset 0 -3px 0 currentColor}
+.heatmap th.selected-axis small{display:block;font-size:0.75rem;line-height:1.3}

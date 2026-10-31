@@ -5,6 +5,10 @@ export function isCompletionGoal(active:Definition|undefined,mapping:Mapping):bo
  const selector=active.goalSelector;
  return !selector||(['event','source','service','signal','carrier','key','value'] as const).every(key=>(selector[key]??'')===(mapping[key]??''));
 }
+export function completionStage(active:Definition|undefined):string {
+ const stages=new Set(active?.mappings.filter(mapping=>isCompletionGoal(active,mapping)).map(mapping=>mapping.step));
+ return stages.size===1?[...stages][0]:'';
+}
 // A node edit is a copy of the complete active definition, never an isolated
 // replacement that accidentally drops other stages or changes the goal.
 export function editEventDefinition(active:Definition, mapping:Mapping, replace:number, makeGoal=false):Definition {

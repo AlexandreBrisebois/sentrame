@@ -67,13 +67,13 @@ task demo:workspace
 task demo:diagnostics
 ```
 
-These commands send actual standard OTLP through ingestion, storage and protected reads. They do not preload a separate graph database. `start:workspace` uses `.sentrame/workspace-review.db`; demonstrations expect the seeded mappings. See the [local guide](docs/LOCAL-REVIEW.md) before experimenting with definitions or resetting data.
+These commands send actual standard OTLP through ingestion, storage and protected reads. They do not preload a separate graph database. `start:workspace` uses `.sentrame/workspace-review/telemetry.db`; demonstrations expect the seeded mappings. See the [local guide](docs/LOCAL-REVIEW.md) before experimenting with definitions or resetting data.
 
 ## Connect your application
 
 .NET and Next.js **servers can export independently** to Sentrame using standard OpenTelemetry exporters. A shared OpenTelemetry Collector is optional; .NET does not need to relay every other application's telemetry. Browser telemetry needs a separate untrusted producer path and must never contain the server ingestion token or viewer passphrase.
 
-Use **OTLP/HTTP**, with ordinary authentication headers, at `/v1/logs`, `/v1/traces` or `/v1/metrics`. No Sentrame SDK or proprietary fields are required for valid reception. Meaningful journey maps depend on event mappings and sufficient safe correlation; technical records without that context remain accepted and unassigned. Metrics are receipt-only.
+Use **OTLP/HTTP**, with ordinary authentication headers, at `/v1/logs`, `/v1/traces` or `/v1/metrics`. No Sentrame SDK or proprietary fields are required for valid reception. An empty-definition app can show goal-free browser navigation from named browser logs with explicit anonymous session/tab and source order. Configured business meaning uses event-to-stage mappings and separately justified goals; native trace parents do not imply a business journey. Records without sufficient applicable context remain accepted and unassigned. Metrics are receipt-only.
 
 The [developer guide](docs/DEVELOPER-GUIDE.md) explains transport, credentials, .NET/Next.js setup, named events, exceptions and the path from first receipt to a useful journey. SDK-specific recipes and a deployed network route need their own verification; standard wire compatibility alone does not qualify every framework/exporter.
 
@@ -94,7 +94,7 @@ task container:smoke PLATFORM=linux/amd64
 task spec:validate        # Strict validation of the active OpenSpec change
 ```
 
-Core journey exploration, diagnostics, temporary app-wide viewers and container delivery are implemented. Multi-app workspace management, richer version comparisons/configuration and narrower visit-only invitation grants remain deferred. Local/container checks do not establish native Home Server capacity, shared Tunnel behavior, actual .NET/Next.js exporter qualification or a deployed WFS integration.
+Core journey exploration, diagnostics, temporary app-wide viewers and container delivery are implemented. Registered app workspaces are implemented. Richer version comparisons/configuration and narrower visit-only invitation grants remain deferred. Local/container checks do not establish native Home Server capacity or shared Tunnel behavior. [Exact producer qualification and WFS lessons](docs/DEVELOPER-GUIDE.md#9-lessons-from-the-wfs-integration) distinguish actual local Node and .NET integration, older disposable SDK samples and unqualified deployment routes.
 
 The [canonical specifications](openspec/specs/) define the baseline; the [archived standard OTel change](openspec/changes/archive/2026-10-29-standard-otel-default-integration/) records the completed implementation and qualification. The [archived synthetic baseline](openspec/changes/archive/2026-10-29-synthetic-journey-outcomes/) is historical. Planning/research documents record how decisions evolved. Use the user/developer/deployment guides for current operation and the [documentation index](docs/README.md) to find the underlying contracts and evidence.
 

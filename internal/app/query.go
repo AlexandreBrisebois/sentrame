@@ -207,6 +207,10 @@ func (s *Service) getViews() ([]SavedView, error) {
 		id := v.ID
 		json.Unmarshal([]byte(b), &v)
 		v.ID = id
+		if validatePresentation(v.Presentation) != "" {
+			v.Presentation = nil
+			v.PresentationWarning = "Unsupported presentation preferences; defaults applied."
+		}
 		out = append(out, v)
 	}
 	return out, rows.Err()
@@ -229,6 +233,7 @@ func (s *Service) views(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &v) {
 		return
 	}
+	v.PresentationWarning = ""
 	if safe(v.Name) == "" {
 		http.Error(w, "Name required", 400)
 		return
@@ -237,12 +242,20 @@ func (s *Service) views(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, 400)
 		return
 	}
+	if v.SelectionPolicy == "evidence-window" {
+		a, _ := parseTime(v.From, 0)
+		b, _ := parseTime(v.To, 0)
+		if b > s.Store.Now().UnixNano() || a < s.Store.Now().AddDate(-1, 0, 0).UnixNano() {
+			http.Error(w, "Choose historical evidence-window bounds within 12 months", 400)
+			return
+		}
+	}
 	if v.Mode == "trace" {
 		if v.Layout != "" && v.Layout != "tree" && v.Layout != "timeline" && v.Layout != "table" {
 			http.Error(w, "Choose a trace tree, timeline or table", 400)
 			return
 		}
-	} else if v.Layout != "" && v.Layout != "hierarchy" && v.Layout != "force" && v.Layout != "sankey" {
+	} else if v.Layout != "" && v.Layout != "hierarchy" && v.Layout != "force" && v.Layout != "sankey" && v.Layout != "journey-timeline" && v.Layout != "matrix" && v.Layout != "repeats" && v.Layout != "sequence" {
 		http.Error(w, "Choose a supported graph layout", 400)
 		return
 	}
@@ -406,6 +419,10 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Open this reference in trace exploration", 400)
 		return
 	}
+	if reference != nil && reference.SelectionPolicy != "" && reference.SelectionPolicy != "captured-start" && reference.SelectionPolicy != "evidence-window" {
+		http.Error(w, "Unsupported reference selection policy", 400)
+		return
+	}
 	// Saved filters are defaults, so opening a reference by ID restores its scope.
 	// Explicit query filters may refine the saved investigation without mutating it.
 	if reference != nil {
@@ -453,6 +470,7 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 		truncated = true
 	}
 
+	sourceTruncated := truncated
 	type Discovery struct {
 		Name     string   `json:"name"`
 		Count    int      `json:"count"`
@@ -507,7 +525,7 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Strings(appScopes)
 	full := Derive(retained, defs, now)
-	selectModel := func(a, b int64, scope string, clip bool) Model {
+	selectModel := func(a, b int64, scope string, clip bool) (Model, PopulationCoverage) {
 		js := []Journey{}
 		for _, j := range full.Journeys {
 			if (!clip && (j.Start < a || j.Start >= b)) || scope != "" && j.Scope != scope || !matchesVersion(j.Version, q.Get("version")) {
@@ -538,7 +556,9 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		out := Summarize(js, us, now)
+		cov := populationCoverage(out, a, b, scope, clip, sourceTruncated, cut)
 		if len(out.Nodes) > 100 {
+			cov.GraphNodesOmitted = len(out.Nodes) - 100
 			out.Nodes = out.Nodes[:100]
 			truncated = true
 		}
@@ -552,25 +572,31 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 				edges = append(edges, edge)
 			}
 		}
+		cov.GraphEdgesOmitted = len(out.Edges) - len(edges)
 		if len(edges) > 300 {
+			cov.GraphEdgesOmitted += len(edges) - 300
 			edges = edges[:300]
 			truncated = true
 		}
 		out.Edges = edges
-		return out
+		return out, cov
 	}
 	liveStart, err := parseTime(q.Get("liveStart"), now)
 	if err != nil || liveStart > now {
 		http.Error(w, "Invalid live start", 400)
 		return
 	}
-	model := selectModel(from, to, q.Get("scope"), false)
+	clipHistorical := reference != nil && reference.SelectionPolicy == "evidence-window"
+	model, currentCoverage := selectModel(from, to, q.Get("scope"), clipHistorical)
 	var base any = nil
 	var bounds any = nil
+	var baselineCoverage *PopulationCoverage
 	if q.Get("mode") == "live" {
-		model = selectModel(liveStart, now+1, q.Get("scope"), true)
+		model, currentCoverage = selectModel(liveStart, now+1, q.Get("scope"), true)
 		if q.Get("baseline") == "1" {
-			base = selectModel(liveStart-int64(7*24*time.Hour), liveStart, "", true)
+			baseModel, cov := selectModel(liveStart-int64(7*24*time.Hour), liveStart, "", true)
+			base = baseModel
+			baselineCoverage = &cov
 			bounds = map[string]int64{"from": liveStart - int64(7*24*time.Hour), "to": liveStart}
 		}
 	}
@@ -584,7 +610,9 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 			selected = append(selected, x)
 		}
 	}
+	evidenceOmitted := 0
 	if len(selected) > 2000 {
+		evidenceOmitted = len(selected) - 2000
 		selected = selected[len(selected)-2000:]
 		truncated = true
 	}
@@ -617,7 +645,7 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Store.Mu.Unlock()
 	locked = false
-	write(w, map[string]any{"mode": "journey", "revision": rev, "now": now, "contextualDiscovery": contextualDiscovery(retained), "discovered": discovered, "appVersions": appVersions, "appScopes": appScopes, "evidence": selected, "definitions": defs, "activeDefinition": defs[len(defs)-1], "views": views, "model": model, "baselineModel": base, "baselineBounds": bounds, "summary": summary, "health": map[string]any{"mode": "local synthetic", "collectionCompleteness": "unknown; exporter sampling/loss not observed", "transport": "origin HTTP only; Tunnel and gRPC unqualified", "privacy": diagnosticPolicyDescription, "detailFrom": cut, "summaryOnlyBefore": cut, "freshnessSeconds": 5, "summaryPolicy": "App-wide complete UTC days only, version/definition dimensions. Isolated-visit and partial-day summary queries are unsupported; no individual drilldown. Correction horizon ends captured start+30 days."}, "limits": map[string]any{"truncated": truncated, "modelRecordLimit": 10000, "evidenceLimit": 2000, "policy": "Captured start cohorts; follow-up to snapshot. Partial starts separate; supported summaries only after detail expires."}})
+	write(w, map[string]any{"mode": "journey", "coverage": map[string]any{"source": map[string]any{"truncated": sourceTruncated, "recordLimit": 10000, "collectionCompleteness": "unknown; exporter sampling/loss not observed"}, "current": currentCoverage, "baseline": baselineCoverage, "evidence": map[string]any{"limit": 2000, "omitted": evidenceOmitted}}, "revision": rev, "now": now, "contextualDiscovery": contextualDiscovery(retained), "discovered": discovered, "appVersions": appVersions, "appScopes": appScopes, "evidence": selected, "definitions": defs, "activeDefinition": defs[len(defs)-1], "views": views, "model": model, "baselineModel": base, "baselineBounds": bounds, "summary": summary, "health": map[string]any{"mode": "local synthetic", "collectionCompleteness": "unknown; exporter sampling/loss not observed", "transport": "origin HTTP only; Tunnel and gRPC unqualified", "privacy": diagnosticPolicyDescription, "detailFrom": cut, "summaryOnlyBefore": cut, "freshnessSeconds": 5, "summaryPolicy": "App-wide complete UTC days only, version/definition dimensions. Isolated-visit and partial-day summary queries are unsupported; no individual drilldown. Correction horizon ends captured start+30 days."}, "limits": map[string]any{"truncated": truncated, "modelRecordLimit": 10000, "evidenceLimit": 2000, "policy": "Captured start cohorts; follow-up to snapshot. Partial starts separate; supported summaries only after detail expires."}})
 }
 
 // DaySummary contains no individual membership. Quantiles use mergeable histogram counts.

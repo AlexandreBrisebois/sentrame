@@ -3,7 +3,7 @@
 ## Use and operate the application
 
 - [User guide](USER-GUIDE.md): graph views, selection, event mapping, time filters, highlights, references, errors, data lifecycle and temporary viewers.
-- [Developer integration guide](DEVELOPER-GUIDE.md): .NET and Next.js telemetry, direct export versus Collector/proxy routing, trust boundaries, exceptions and journey context.
+- [Developer integration guide](DEVELOPER-GUIDE.md): .NET and Next.js telemetry, direct export versus Collector/proxy routing, trust boundaries, exceptions, automatic versus configured journeys, a runnable native Node check, qualified WFS .NET setup and explicit runtime/deployment limits.
 - [OTel event/activity contract](integration/OTEL-CONTRACT.md): standard native spans/logs first, contextual mappings, optional stage hints and capability-specific scope/presence.
 - [Container deployment guide](NAS.md): Docker Hub workflow, Compose, environment configuration, filesystem bind storage, health and upgrades.
 - [Local setup and demonstrations](LOCAL-REVIEW.md): source startup, synthetic scenarios and VS Code REST Client requests.
@@ -12,6 +12,7 @@
 ## Contracts and implementation
 
 - [Canonical capability specifications](../openspec/specs/): current normative baseline.
+- [Archived journey investigation change](../openspec/changes/archive/2026-10-31-improve-journey-investigation-experience/): synced journey/live contracts and implemented investigation flow; three manual acceptance tasks remain unchecked and owned by Alex under an explicit archive exception.
 - [Archived standard OTel integration change](../openspec/changes/archive/2026-10-29-standard-otel-default-integration/): completed implementation, synced capability deltas and qualification tasks.
 - [Archived synthetic journey baseline](../openspec/changes/archive/2026-10-29-synthetic-journey-outcomes/): historical planning and implementation record.
 - [Implementation contract](../CONTRACT.md): API/data boundaries and current integration contracts.

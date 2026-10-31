@@ -203,6 +203,38 @@ func TestOverviewSavedWorkspacePreservesScopeFiltersAndPresentation(t *testing.T
 	if len(m.Journeys) != 1 || m.Journeys[0].Scope != "selected-visit" || m.Journeys[0].Status != "completed" || len(m.Journeys[0].Evidence) != 2 || len(m.Journeys[0].Path) != 2 {
 		t.Fatalf("saved overview lost filters/boundary: %+v", m)
 	}
+	for _, layout := range []string{"hierarchy", "force", "sankey", "journey-timeline", "matrix", "repeats", "sequence"} {
+		candidate := maps.Clone(payload)
+		candidate["layout"] = layout
+		code, body := post(candidate)
+		if code != 200 {
+			t.Fatalf("layout %s rejected: %d %s", layout, code, body)
+		}
+		var result SavedView
+		if err := json.Unmarshal(body, &result); err != nil || result.Layout != layout {
+			t.Fatalf("layout %s lost: %s", layout, body)
+		}
+		read := httptest.NewRequest("GET", "http://localhost/api/snapshot?reference="+fmt.Sprint(result.ID), nil)
+		read.AddCookie(cookie)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, read)
+		var savedSnapshot struct {
+			Views []SavedView `json:"views"`
+			Model Model       `json:"model"`
+		}
+		if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &savedSnapshot) != nil {
+			t.Fatalf("layout %s read failed: %d", layout, response.Code)
+		}
+		found := false
+		for _, view := range savedSnapshot.Views {
+			if view.ID == result.ID && view.Layout == layout {
+				found = true
+			}
+		}
+		if !found || len(savedSnapshot.Model.Journeys) != 1 || savedSnapshot.Model.Journeys[0].Scope != "selected-visit" {
+			t.Fatalf("layout %s failed to restore its reference", layout)
+		}
+	}
 	for _, field := range []string{"layout", "lens"} {
 		invalid := maps.Clone(payload)
 		invalid[field] = "unsupported"

@@ -67,7 +67,9 @@ func referenceJourney(j Journey, v SavedView) (Journey, bool) {
 		return j, false
 	}
 	original := j
-	j.CapturedStatus = j.Status
+	if j.CapturedStatus == "" {
+		j.CapturedStatus = j.Status
+	}
 	j.Evidence = append([]Evidence{}, original.Evidence[a:b+1]...)
 	j.Path = []string{}
 	j.Steps = []StepOccurrence{}
@@ -133,6 +135,22 @@ func referenceJourney(j Journey, v SavedView) (Journey, bool) {
 // validateReferenceQuery shares endpoint/occurrence rules between saved and
 // unsaved projections. Only saved workspace views can use overview mode.
 func validateReferenceQuery(v SavedView, allowOverview bool) string {
+	if v.SelectionPolicy != "" && v.SelectionPolicy != "captured-start" && v.SelectionPolicy != "evidence-window" {
+		return "Unsupported reference selection policy"
+	}
+	if v.SelectionPolicy == "evidence-window" && (v.Mode == "trace" || v.From == "" || v.To == "") {
+		return "Evidence-window references require fixed historical bounds"
+	}
+	if v.SelectionPolicy == "evidence-window" {
+		a, ae := parseTime(v.From, 0)
+		b, be := parseTime(v.To, 0)
+		if ae != nil || be != nil || a >= b {
+			return "Choose increasing ISO historical evidence-window bounds"
+		}
+	}
+	if message := validatePresentation(v.Presentation); message != "" {
+		return message
+	}
 	if v.Mode == "trace" {
 		if !allowOverview || !validTraceID(v.Trace) || v.Scope != "" || v.Start != "" || v.End != "" || v.Definition < 0 {
 			return "Choose one retained trace and an explicit definition context"

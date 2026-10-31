@@ -1,7 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { editEventDefinition, captureReferenceBounds, isCompletionGoal, mappingActivationBlocker } from './workspace.ts';
+import { editEventDefinition, captureReferenceBounds, isCompletionGoal, completionStage, mappingActivationBlocker } from './workspace.ts';
 const mapping=(event:string,step=event)=>({event,step,source:'server',kind:'step',key:'',value:''});
+test('graph goal stage respects conditioned selector rather than the first same-name mapping',()=>{
+ const home={...mapping('pwa.screen.presented','Home'),source:'browser',key:'stage.name',value:'home'};
+ const search={...home,step:'Search',value:'search'};
+ const active={version:2,goal:search.event,goalSelector:search,mappings:[home,search],fallbackTiming:false};
+ assert.equal(completionStage(active),'Search');
+ assert.equal(completionStage({...active,goalSelector:{...search,service:'other'}}),'');
+ assert.equal(completionStage({...active,goalSelector:undefined}), '');
+ assert.equal(completionStage({...active,goalSelector:undefined,mappings:[search]}),'Search');
+ assert.equal(completionStage({...active,goal:''}),'');
+ assert.equal(completionStage(undefined),'');
+});
 test('completion goal reflects the exact configured selector, not every same-name event',()=>{
  const goal={...mapping('saved'),service:'api',key:'stage.name',value:'planner'};
  const active={version:2,goal:'saved',goalSelector:goal,mappings:[goal],fallbackTiming:false};

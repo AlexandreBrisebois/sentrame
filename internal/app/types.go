@@ -72,20 +72,30 @@ type Definition struct {
 	Mappings       []Mapping `json:"mappings"`
 	FallbackTiming bool      `json:"fallbackTiming"`
 }
+type PresentationPreferences struct {
+	Version      int      `json:"version"`
+	Metric       string   `json:"metric,omitempty"`
+	Stages       []string `json:"stages,omitempty"`
+	Sort         string   `json:"sort,omitempty"`
+	GroupRepeats bool     `json:"groupRepeats"`
+}
 type SavedView struct {
-	Trace           string `json:"trace,omitempty"`
-	Scope           string `json:"scope,omitempty"`
-	Layout          string `json:"layout,omitempty"`
-	Lens            string `json:"lens,omitempty"`
-	StartOccurrence string `json:"startOccurrence"`
-	EndOccurrence   string `json:"endOccurrence"`
-	ID              int64  `json:"id"`
-	Name            string `json:"name"`
-	Mode            string `json:"mode"`
-	Start           string `json:"start"`
-	End             string `json:"end"`
-	Version         string `json:"version"`
-	Definition      int64  `json:"definition"`
-	From            string `json:"from"`
-	To              string `json:"to"`
+	SelectionPolicy     string                   `json:"selectionPolicy,omitempty"`
+	Presentation        *PresentationPreferences `json:"presentation,omitempty"`
+	PresentationWarning string                   `json:"presentationWarning,omitempty"`
+	Trace               string                   `json:"trace,omitempty"`
+	Scope               string                   `json:"scope,omitempty"`
+	Layout              string                   `json:"layout,omitempty"`
+	Lens                string                   `json:"lens,omitempty"`
+	StartOccurrence     string                   `json:"startOccurrence"`
+	EndOccurrence       string                   `json:"endOccurrence"`
+	ID                  int64                    `json:"id"`
+	Name                string                   `json:"name"`
+	Mode                string                   `json:"mode"`
+	Start               string                   `json:"start"`
+	End                 string                   `json:"end"`
+	Version             string                   `json:"version"`
+	Definition          int64                    `json:"definition"`
+	From                string                   `json:"from"`
+	To                  string                   `json:"to"`
 }

@@ -10,7 +10,7 @@ flowchart LR
   F -->|Standard OTLP/HTTP · browser credential| S
 ```
 
-This guide contains **source-checked configuration and example code**, with separately scoped runtime-qualified disposable samples listed below. A passed sample does not qualify every snippet, application or deployment route. Sentrame's current qualification covers the origin OTLP/HTTP combinations recorded in [local review](LOCAL-REVIEW.md), standard wire fixtures and the synthetic demonstrations. Actual SDK versions, browser behavior and the deployed HTTPS/tunnel route require their own checks. No WFS application was changed or contacted to write this guide.
+This guide contains **source-checked configuration and example code**, with separately scoped runtime-qualified disposable samples listed below. A passed sample does not qualify every snippet, application or deployment route. Sentrame's current qualification covers the origin OTLP/HTTP combinations recorded in [local review](LOCAL-REVIEW.md), standard wire fixtures and the synthetic demonstrations. Actual SDK versions, browser behavior and the deployed HTTPS/tunnel route require their own checks. The [2026-10-30–31 WFS integration lessons](#9-lessons-from-the-wfs-integration) below add actual local Node and .NET application evidence; earlier disposable samples remain separately identified.
 
 ## 1. Know which process is sending
 
@@ -34,6 +34,8 @@ Use your deployed Sentrame origin, for example `https://sentrame.your-domain.exa
 | Logs, named events, custom error messages | `https://sentrame.your-domain.example/v1/logs` |
 | Spans and span exceptions | `https://sentrame.your-domain.example/v1/traces` |
 | Metrics receipt | `https://sentrame.your-domain.example/v1/metrics` |
+
+For Protobuf use `Content-Type: application/x-protobuf`; OTLP JSON uses `application/json`, not an arbitrary application JSON envelope. The signal and envelope must agree: log records use `/v1/logs`, spans with their span events use `/v1/traces`. Do not post an `ILogger`/named-log envelope to the traces endpoint. HTTP Protobuf is not gRPC, and reception support does not qualify a proxy, compression option or deployed route.
 
 Send `Authorization: Bearer <producer-token>`. Do not put tokens in URLs or use the owner's viewer passphrase as an ingestion credential. Metrics are currently receipt-only; they do not create individual journey steps or supported application-metric arithmetic.
 
@@ -91,7 +93,7 @@ For frontend/backend components released together, use the same app release valu
 
 ## 3. .NET: collect logs, exceptions and request traces
 
-These snippets target ASP.NET Core with OpenTelemetry .NET **1.20.1**. Install compatible packages in the application you intend to instrument; these commands have not been executed against WFS:
+These illustrative snippets target ASP.NET Core with OpenTelemetry .NET **1.20.1**. They collect broad application logging and use ambient SDK configuration; they do not implement WFS's minimized, private export policy. For the separately qualified OTel **1.20.0** composition and its timeout limits, use [the WFS .NET recipe](#qualified-wfs-net-composition--2026-10-31). Install compatible packages in the application you intend to instrument; these commands have not been executed against WFS:
 
 ```sh
 dotnet add package OpenTelemetry.Extensions.Hosting --version 1.20.1
@@ -374,7 +376,7 @@ The fields and mapping Kinds below are Sentrame-supported application interpreta
 
 For concrete minimum envelopes and the distinction between .NET Activities, events and Sentrame activity/presence records, read the [OTel event/activity contract](integration/OTEL-CONTRACT.md). It also explains optional `stage.name`, native inclusive operation timing and explicit paired stage alternatives.
 
-Sentrame accepts ordinary valid standard telemetry **without** event IDs, session IDs, a custom schema or Sentrame fields. A useful exception can appear in Errors without any journey. A mapped event with insufficient journey context remains received/unassigned rather than fabricating a path.
+Sentrame accepts ordinary valid standard telemetry **without** event IDs, session IDs, a custom schema or Sentrame fields. A useful exception can appear in Errors without any journey. A mapped event with insufficient journey context remains received/unassigned rather than fabricating a path. With an **empty captured definition**, named non-diagnostic browser logs with explicit safe `session.id` and `tab.id` can already form a goal-free navigation path. That path uses retained `stage.name` or the event name, with positive unique `source.sequence` ordering where available. It does not manufacture a completion goal, conversion, stage duration or trust in a server outcome. Explicit event-to-stage mappings, including their exclusions, take precedence; they may also intentionally have no completion goal. Native span trees reconstruct technical parent relationships independently and do not become browser navigation paths. See [the current contract](integration/OTEL-CONTRACT.md#minimums-depend-on-the-question).
 
 | Optional field | What it supports | What to avoid |
 | --- | --- | --- |
@@ -382,6 +384,7 @@ Sentrame accepts ordinary valid standard telemetry **without** event IDs, sessio
 | Record `session.id` | A random visit or bounded server operation | User, household, email, device or persistent analytics identity |
 | Record `tab.id` | Keep browser tabs separate | One browser scope reused across tabs |
 | Record `event.id` | A string identifying one emitted record, stable for exact retry | Static logging-template ID, regenerating on retry, or reusing one ID for different events |
+| Record `source.sequence` | A positive, unique increasing integer within one source/service and anonymous browser scope/tab, for retained navigation order | Counting receipt order as source order, reusing sequence numbers or putting a person ID here |
 | Record `action.id` | Random action linkage across related evidence | Treating it as a record ID or a person's identity |
 | Record `stage.occurrence.id` | Pair one real stage start/end occurrence | Reusing it for repeated visits to the same stage |
 | `stage.name`, `stage.state`, `activity.state`, `reason` | Safe bounded mapping/timing/exit meaning | Customer text, arbitrary payload objects or sensitive labels |
@@ -395,7 +398,7 @@ An automatically recorded `GET /recipes` span is useful technical evidence. It i
 
 ## 7. First useful integration, one observation at a time
 
-1. Verify receipt using ordinary spans/logs through the intended authenticated route. Inspect service, carrier, name and safe fields; metrics remain receipt-only.
+1. Verify receipt using ordinary spans/logs through the intended authenticated route. Inspect service, carrier, name and safe fields; metrics remain receipt-only. For an empty-definition browser navigation question, first inspect the existing correlated goal-free path before adding mappings. For a business outcome, configure explicit meaning and a separately justified goal.
 2. Open **Traces** for native operation timing, parents, events, log context and links. A request needs no stage/session/occurrence attributes. Errors stay useful without a journey.
 3. On an operation or named event choose **Give business meaning**. Select exact service, trusted producer, carrier and name; optionally use one retained condition. Enter Stage/Kind and preview. Existing native span identity supplies an operation occurrence and inclusive duration, without paired logs or a custom ID. Point-event duration remains unavailable unless an explicit supported alternative is chosen.
 4. Activate prospectively. The default overlay retains receipt-time definitions; **Non-persisting preview** explicitly tries another version. Choose an exact goal mapping. A span goal evaluates at its valid completion/end; an event goal at its event time. A failed or missing-end span does not establish completed goal evidence.
@@ -474,3 +477,183 @@ A disposable Next 16.4.3 App Router sample on Node 26.12.0 with React 19.2.0 and
 ### Runtime-qualified isolated browser cell
 
 Chrome 156.0.8078.49 Guest on macOS ARM64 exercised the disposable Next 16.4.3 app-origin forwarder using API 1.10.0, `@opentelemetry/sdk-trace`, logs/resources/core 3.0.0 and HTTP Protobuf exporters 0.300.0, compression none. Reuse the existing app SDK; this test sample required one browser provider per signal because none existed. Explicit opt-in, bounded Origin/content-type/stream checks, browser authority, token-free bundles, CSP/CORS, real browser→Node W3C parentage, failure/retry/commit, visibility/idle and controlled flush passed through durable protected reads. An unended span was lost on navigation as expected. The sample uses a 1.5-second idle threshold for qualification, not a recommended production threshold. Abrupt shutdown, mobile browsers, Edge, serverless delivery and production consent policy are not qualified. See [the exact evidence and source hashes](verification/standard-otel.md).
+
+
+## 9. Lessons from the WFS integration
+
+These lessons are from isolated synthetic local integration on 2026-10-30–31, not production collection or a claim that the entire WFS integration is complete. The [qualification ledger](verification/standard-otel.md#wfs-net-m3-checkpoint--2026-10-31) records the new .NET M3 evidence and its boundaries; the earlier Node checkpoint remains separately scoped.
+
+| Area | Verified setup or lesson |
+| --- | --- |
+| Node compatibility | WFS Next **16.4.2**, Node **26.12.0**, npm **11.21.1**; official OTel API **1.10.0**, trace/log/resource/context SDK packages **3.0.0**, HTTP Protobuf exporters **0.300.0**. This differs from the earlier disposable Next16.4.3 sample. Keep the app's lock file and one existing initialization path; do not mix an older logging API family or install a second provider. |
+| HTTP field names | Next's native producer exposed legacy `http.method` and `http.status_code`. Those keys were dropped by Sentrame's projection even when HTTP200 intake and trace structure passed. The minimized producer projection now emits **`http.request.method`** and integer **`http.response.status_code`**. Use **`http.route`** only for an approved minimized template; do not fall back to URL/path/query. Verify values in protected reads, not just export status. |
+| Authority and context | WFS browser logs use browser authority and `wfs-pwa-browser`; native Node spans use server authority and `wfs-pwa-server`. Fixed resource `service.name`/release `service.version` identify components, while credentials select the registered app and trust role. Browser logs explicitly use `ROOT_CONTEXT`; this WFS policy does **not** join ambient browser traces, remote trace/baggage, cross-service calls or browser/server timing. A separate disposable browser→Node propagation test does not change that policy. |
+| Privacy before buffering | WFS projects allowed fixed resources, operation names and canonical fields **before** the batch queue. URL/path/query, content, span events/links, status text and host/process identity do not enter that queue. Export HTTP self-instrumentation is suppressed. Receiver filtering remains a second boundary, not permission to buffer secrets or arbitrary payloads upstream. Preserve native IDs/parent/times when minimizing allowed spans. |
+| Sampling and counts | WFS Node native capture samples approved GET/HEAD read roots at10% and excludes remote-parent roots; it is not an HTTP request counter. Fifteen retained native spans/eight traces and seven original browser logs are exact fixture evidence, not traffic totals or evidence of complete delivery. A missing parent remains missing; attempted320 is not received320. Always record sampling, queue drops, omitted projections and unexported-work uncertainty separately. |
+| Delivery bounds | WFS Node used queue256/batch64/delay1s, processor wait2s, exporter concurrency1 and Agent `maxSockets=1`/`maxTotalSockets=1` per exporter. These are finite per-pipeline settings, not a total process memory budget. In this Node stack, the caller/processor wait and socket inactivity timeout do **not** prove a hard end-to-end deadline: active requests or retry backoff can outlive the caller. Normal Next SIGTERM/SIGINT is best effort and can lose a tail; `beforeExit` is skipped by explicit exit. Do not add global HTTP patches, custom cancellation/transport or competing host signal handlers to claim stronger guarantees. |
+| Replay | Preserve the same log `event.id` or native trace/span identity and retained content for exact retry. The canonical WFS batches were replayed and read after receiver reopen without count/field changes. New IDs mean new evidence; changing an accepted immutable native identity is a conflict, not an update. A receiver acknowledgement does not prove that every SDK attempt was sent. |
+| Configuration and CI | Fail closed on invalid/missing enabled export configuration; preserve default-off/consent choices and existing business/log/metric pipelines. Validate endpoints, role separation, resource/version, bundle secrets, queue/timeout policy and supported package composition before runtime. Give every new browser test its explicit live receiver capability and owner; a helper that merely returns HTTP success must not silently replace durable receiver assertions. WFS native suites require private `WFS_NATIVE_RECEIVER_CREDENTIALS`. Its durable error fixture needs **both** `WFS_NAV_SENTRAME_BINARY` (the reviewed owned executable) and `WFS_ERROR_SENTRAME_ASSETS` (matching reviewed built `web/dist`), plus `WFS_ERROR_DURABLE=1`; binary-only configuration stops before observations/UI. Record binary and asset hashes together. These are WFS fixture settings, not Sentrame runtime requirements. |
+
+### Qualified WFS .NET composition — 2026-10-31
+
+WFS M3 now qualifies actual ASP.NET/HttpClient capture, saved facts, privacy, retry and protected retention/replay/reopen with official OTel **1.20.0** packages. WFS targets **net11.0** and pins SDK **11.0.100-rc.2.26504.105** / runtime **11.0.0-rc.2.26504.105** on Linux ARM64. The protected API/PostgreSQL fixture instead ran on macOS 26.7.2, SDK **11.0.100-rc.3.26522.148** / runtime **11.0.0-rc.3.26522.148**. The older disposable .NET10/OTel1.20.1 sample above remains a separate cell. These exact tested versions do not establish support for every .NET11 release or deployment.
+
+**Setup in WFS:** reuse its installed package graph and existing `builder.Services.AddWfsTelemetry(builder.Configuration)` registration in `api/src/RecipeApi/Telemetry/WfsTelemetry.cs`. `AddWfsTelemetry` is WFS application wiring, not a Sentrame SDK to install; another app should compose the same supported APIs in its existing startup. The host owns one standard trace provider in place of the previous hosted `.WithTracing`; do not add a second provider/agent. Native ASP.NET and HttpClient instrumentation remain. A separate private `ServiceCollection` owns `ILoggerFactory`/`LoggerProvider` for the typed saved fact; the general application logger is not attached to this export. Operational Serilog logging and metrics retain their destinations. The supported Serilog suppression callback and native destination filters prevent exporter self-capture; a broad operational destination colliding with the selected receiver (including known loopback aliases) is refused at startup.
+
+The API accepts only these four server-owned application settings; they are WFS names, not Sentrame deployment requirements:
+
+```dotenv
+WFS_TELEMETRY_ENABLED=true
+SENTRAME_OTLP_BASE=https://sentrame.your-domain.example
+SENTRAME_SERVER_TOKEN=REPLACE_WITH_SERVER_PRODUCER_TOKEN
+WFS_VERSION=synthetic-api-1
+```
+
+The flag defaults off and enables only for exact `true`. Use an HTTPS origin, or explicit loopback HTTP, with no userinfo/path/query/fragment. The token must be nonempty printable ASCII without whitespace, comma or percent (the pinned SDK header parser treats those specially). Obtain it privately from the synthetic app's generated server connection settings; never forward a browser token into API configuration. Invalid or disabled selected configuration creates no selected exporter. Settings are an **immutable process-start snapshot**: recreate the API process/container after changes. Node's runtime export checks do not imply API hot-disable or batch-entry reconfiguration.
+
+**SDK isolation:** the trace builder and private logging service collection each receive the same private `IConfiguration`, built with `AddInMemoryCollection` only. It selects `OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY=in_memory`; no environment providers are added. Endpoint, headers, protocol, compression, resource and bounds are explicit. This blocks ambient disk retry/resource/destination settings in the selected pipelines. Retry is an experimental SDK configuration input, not a public `OtlpExporterOptions` retry property. Direct `new OtlpTraceExporter(...)` can recreate ambient experimental options; named hosted options alone do not prove isolation. Use standard SDK registration, without environment mutation, reflection, a fork or custom retry. See the pinned [experimental configuration](https://github.com/open-telemetry/opentelemetry-dotnet/blob/core-1.20.0/src/OpenTelemetry.Exporter.OpenTelemetryProtocol/Implementation/ExperimentalOptions.cs) and [exporter options](https://github.com/open-telemetry/opentelemetry-dotnet/blob/core-1.20.0/src/OpenTelemetry.Exporter.OpenTelemetryProtocol/OtlpExporterOptions.cs).
+
+This compile-checked excerpt shows the private configuration/resource seam used by WFS. It intentionally stops before exporter registration: the actual integration also supplies its reviewed privacy processor, sampler, explicit exporters and host disposal. It is not a complete copy/paste production provider:
+
+```csharp
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+
+var privateConfiguration = new ConfigurationBuilder()
+    .AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY"] = "in_memory"
+    }).Build(); // No AddEnvironmentVariables or automatic resource detectors.
+
+ResourceBuilder Resource(string version) => ResourceBuilder.CreateEmpty()
+    .AddService("RecipeApi", serviceVersion: version,
+        autoGenerateServiceInstanceId: false)
+    .AddTelemetrySdk();
+
+var traces = Sdk.CreateTracerProviderBuilder()
+    .ConfigureServices(services =>
+        services.AddSingleton<IConfiguration>(privateConfiguration))
+    .SetResourceBuilder(Resource("synthetic-api-1"));
+
+var privateLogs = new ServiceCollection();
+privateLogs.AddSingleton<IConfiguration>(privateConfiguration);
+privateLogs.AddOpenTelemetry().WithLogging(logging =>
+{
+    logging.SetResourceBuilder(Resource("synthetic-api-1"));
+}, options =>
+{
+    options.IncludeScopes = false;
+    options.IncludeFormattedMessage = false;
+});
+```
+
+Both explicit signal exporters use `/v1/traces` or `/v1/logs`, `HttpProtobuf`, compression `None`, the server Bearer header and `TimeoutMilliseconds=2000`. Their supported `HttpClientFactory` supplies `SocketsHttpHandler` with `AllowAutoRedirect=false`, `MaxConnectionsPerServer=1`, `UseProxy=false`, connect/drain waits of 2s and drain size 0; the client timeout is 2s and response buffer/SDK diagnostic response limit 1024 bytes. Each standard batch processor has **256 waiting records plus at most 64 active**, batch 64, delay 1000ms and exporter wait 2000ms. Logging needs its own `BatchExportProcessorOptions` in the log exporter overload; the trace exporter options do not configure the log queue. Typed saved facts admit at most 100/minute; native traces have independent capacity. Standard SDK serialization/retry owns delivery. Actual hostile ambient disk settings created no disk queue, lost-ack 503 retry preserved identical bytes and same-origin 307 reached no redirect target.
+
+**Approved timeout limitation:** OTel1.20.0 exporter Error diagnostics can read an unsuccessful response body with no bytes for **over 3.2 seconds**, despite two-second exporter/client/processor settings and the 1 KiB response limit. `ForceFlush` can return `true` while that read is still active. These settings bound caller/processor waits; they do not establish a total network deadline, response-body inactivity bound, all-I/O termination or blocked-read shutdown cancellation. Healthy Linux Program SIGTERM exited 0 in a separate smoke test. That does not qualify shutdown while the diagnostic read is blocked. This .NET limitation is separate from Node's active-request/backoff limit and Next's best-effort signal shutdown; no global diagnostics patch, competing signal handler or custom transport was added.
+
+**Privacy and retained meaning:** a synchronous processor runs before standard batching. It keeps fixed `api.request`/`api.http` names, canonical `http.request.method` and integer `http.response.status_code`, native IDs/local parents/kind/times/status, and removes mutable raw tags, status descriptions, tracestate and baggage. It drops unknown source/kind, nonempty source version/tags/schema, immutable events/links and remote-root descendants by clearing `Recorded`; returning alone would still allow the next batch processor to enqueue. Standard parent-based 10% local-root sampling inherits local choices, with both sampled and unsampled remote parents off. WFS .NET does not emit `http.route`; the Node route policy is separate. This is sampled technical evidence, not a request count or browser journey.
+
+The resource starts empty without detectors or generated `service.instance.id`: exactly `service.name`, `service.version`, `telemetry.sdk.name`, `telemetry.sdk.language`, `telemetry.sdk.version` (OTel 1.20.0; schema 1.44.0). Protected Sentrame reads retain service/version/language but intentionally omit SDK name/version from projected attributes; maintained OTLP decoding checks all five original resource fields separately. Native instrumentation scopes carry no private version/tags/schema.
+
+The trusted persistence observer runs after an ordinary **confirmed save**, before later launch/read. It emits INFO 9, fixed body `WFS recipe issue saved`, fixed `event.name=wfs.recipe_issue.saved` and a fresh random UUID `event.id`. The pinned .NET exporter leaves OTLP's newer EventName field absent; Sentrame's retained `event.name` fallback is qualified. The private logger takes no scopes/exception and clears ambient `Activity.Current` synchronously for the call, restoring it in `finally`. The record has equal occurrence/observed server time and no trace/span/document/business context. Saved-before-launch/read failure remains a saved fact; rejected, uncertain and outer-transaction saves emit none. It does not assert resolution or user completion, and it does not create a browser journey.
+
+### Reproduce the owned WFS .NET fixture
+
+In an authorized WFS checkout, use its pinned dependencies and an already reviewed installed local Sentrame image. Set `WFS_TEST_POSTGRES_CONNECTION` privately for an **owned disposable synthetic PostgreSQL admin database**, and set `WFS_API_SENTRAME_IMAGE` to that image's local identity. No real data or shared receiver should be used. From the WFS repository root:
+
+```sh
+# Set both variables privately; never print the database connection or tokens.
+: "${WFS_TEST_POSTGRES_CONNECTION:?Set an owned synthetic PostgreSQL admin connection}"
+: "${WFS_API_SENTRAME_IMAGE:?Set a reviewed installed local Sentrame image}"
+task test:database -- --filter \
+  'FullyQualifiedName~RecipeIssueTelemetryPostgresTests|FullyQualifiedName~RecipeIssueTelemetryPersistencePostgresTests|FullyQualifiedName~RecipeImportReportPostgresTests'
+```
+
+The fixture owns its fresh receiver/container/network/volume/database, memory-only ephemeral credentials, protected reads, exact replay/reopen and cleanup; it has no image-pull fallback. It does not use retained receiver18986 or preview19010. The current run of these three selected classes passed **18/18, zero skips**: 17 persistence/report cases and one actual exporter/receiver case. Filtering only `RecipeIssueTelemetryPostgresTests` selects the single live case. That case retained three distinct saved facts and nine sampled native spans, including a real HttpClient child/local ASP.NET parent; six forwarded log copies included one identical retry of the three-record batch. Independent SQL and protected retained fields were checked. Default PostgreSQL gates exclude `LiveReceiver_`; ordinary API tests may skip it. Missing live prerequisites block explicit acceptance, so an ordinary green/skipped run is not a substitute. The command is a maintained WFS example verified from its source and retained result; this Sentrame documentation update did not rerun it or create resources.
+
+The pinned Linux production Program smoke separately issued 185 requests (25 foreign-context controls), exported 16 native spans/16 traces in two batches and verified safe canonical fields and all five resource attributes; baseline Program exported none. **That is Linux wire proof; protected host RC3 retention is a separate result.** The [dated ledger](verification/standard-otel.md#wfs-net-m3-checkpoint--2026-10-31) records exact identities, full-gate evidence and remaining deployment gaps.
+
+### Minimal runnable native Node check
+
+Use a **new disposable local app**, its server producer token, and a loopback receiver. This standalone synthetic process initializes its own SDK because none exists; in an application, reuse the existing provider instead. It emits one native span and one named log with explicit technical context, no session/tab, no business commitment and no automatic journey. The actual check passed on Node26.12.0/npm11.20.0 using the exact versions below; this npm runtime differs from the WFS application setup above.
+
+In a new scratch folder:
+
+```sh
+npm init -y
+npm install --save-exact @opentelemetry/api@1.10.0 \
+  @opentelemetry/sdk-node@0.300.0 @opentelemetry/sdk-trace@3.0.0 \
+  @opentelemetry/sdk-logs@3.0.0 @opentelemetry/resources@3.0.0 \
+  @opentelemetry/exporter-trace-otlp-proto@0.300.0 \
+  @opentelemetry/exporter-logs-otlp-proto@0.300.0
+# Set SENTRAME_OTLP_BASE and SENTRAME_SERVER_TOKEN privately from App settings.
+node synthetic-node.mjs
+```
+
+Save this as `synthetic-node.mjs`:
+
+```js
+// Standalone synthetic process only. Reuse an existing provider in an application.
+import { randomUUID } from 'node:crypto';
+import { ROOT_CONTEXT, trace, logs, SeverityNumber } from '@opentelemetry/api';
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { AlwaysOnSampler, BatchSpanProcessor } from '@opentelemetry/sdk-trace';
+import { BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
+import { resourceFromAttributes } from '@opentelemetry/resources';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
+import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-proto';
+
+const base = new URL(process.env.SENTRAME_OTLP_BASE ?? '');
+if (base.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname)
+    || base.username || base.password || base.pathname !== '/' || base.search || base.hash)
+  throw new Error('Use a plain loopback HTTP origin for this synthetic example');
+const token = process.env.SENTRAME_SERVER_TOKEN;
+if (!token) throw new Error('Set the new synthetic app server producer token privately');
+const exporter = (signal) => ({
+  url: new URL('/v1/' + signal, base).href,
+  headers: { Authorization: `Bearer ${token}` },
+  compression: 'none', timeoutMillis: 2000, concurrencyLimit: 1,
+  httpAgentOptions: { keepAlive: false, maxSockets: 1, maxTotalSockets: 1 },
+});
+const bounds = {
+  maxQueueSize: 256, maxExportBatchSize: 64,
+  scheduledDelayMillis: 1000, exportTimeoutMillis: 2000,
+};
+const sdk = new NodeSDK({
+  autoDetectResources: false, instrumentations: [], textMapPropagator: null,
+  resource: resourceFromAttributes({
+    'service.name': 'sentrame-native-demo', 'service.version': 'synthetic-1',
+  }),
+  sampler: new AlwaysOnSampler(), // Small synthetic check, not a production policy.
+  spanProcessors: [new BatchSpanProcessor({
+    exporter: new OTLPTraceExporter(exporter('traces')), ...bounds,
+  })],
+  logRecordProcessors: [new BatchLogRecordProcessor({
+    exporter: new OTLPLogExporter(exporter('logs')), ...bounds,
+  })], metricReaders: [],
+});
+sdk.start();
+const span = trace.getTracer('synthetic-check').startSpan('demo.operation', {}, ROOT_CONTEXT);
+logs.getLogger('synthetic-check').emit({
+  eventName: 'demo.operation.observed', severityNumber: SeverityNumber.INFO,
+  context: trace.setSpan(ROOT_CONTEXT, span),
+  attributes: { 'event.id': randomUUID() },
+});
+span.end();
+await sdk.shutdown(); // Best effort; abrupt termination can still lose telemetry.
+console.log('Synthetic native span and correlated named log submitted; verify protected reads.');
+```
+
+The sample uses only official SDK processors/exporters and ordinary Node Agent options. Its explicit sampling and small bounds are for this synthetic check, not universal production defaults. For the pinned APIs see [Node SDK configuration](https://github.com/open-telemetry/opentelemetry-js/blob/v3.0.0/experimental/packages/opentelemetry-sdk-node/src/sdk.ts), [batch span processor](https://github.com/open-telemetry/opentelemetry-js/blob/v3.0.0/packages/sdk-trace/src/export/BatchSpanProcessorBase.ts) and [batch log processor](https://github.com/open-telemetry/opentelemetry-js/blob/v3.0.0/packages/sdk-logs/src/export/BatchLogRecordProcessorBase.ts).
+
+Verify before broadening collection:
+
+1. In the new app, **Traces** shows `demo.operation`, service `sentrame-native-demo`, version `synthetic-1`, native start/end and one `demo.operation.observed` log with matching trace/span context. The actual local run retained one operation/one log and two unassigned records; **Journeys remains empty** because this example deliberately has no journey correlation/mapping.
+2. Inspect the protected projection for expected canonical fields and absence of a controlled private sentinel in a separately designed privacy test. A successful POST or screenshot alone does not establish storage, privacy or field preservation.
+3. For automatic browser navigation, separately emit named browser logs with fresh anonymous session/tab, positive source sequence and stable record IDs under browser authority, with an empty captured definition. Expect goal-free observed order. To assert a business outcome, configure prospective event-to-stage mappings and an explicit trusted goal, then verify its real commit boundary.
+4. Exercise the app's actual sampling/drop, unavailable endpoint, redirect, retry, queue pressure and host shutdown behavior. Verify receiver replay/reopen separately with exact identified fixture bytes; rerunning this script creates new IDs and is not an idempotency test. The maintained `task demo:standard` / `task demo:standard:verify` commands provide the richer local wire demonstration after the [local setup](LOCAL-REVIEW.md); they are not SDK qualification and must use their own synthetic app/registry.
+5. Keep failed, blocked and unrun cells visible. Current gaps include protected Linux-container retention, blocked .NET diagnostic-read shutdown/cancellation, cross-service propagation under the chosen WFS policy, lossless shutdown, Collector/Tunnel/production routes, physical-device behavior and exporter completeness. Update this checkpoint when new evidence arrives; do not infer those results from Node or wire success.

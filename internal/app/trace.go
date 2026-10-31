@@ -178,6 +178,10 @@ func (s *Service) traces(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Trace reference unavailable", 404)
 			return
 		}
+		if message := validateReferenceQuery(*reference, true); message != "" {
+			http.Error(w, message, 400)
+			return
+		}
 		trace = reference.Trace
 		for k, v := range map[string]string{"from": reference.From, "to": reference.To, "version": reference.Version} {
 			if !q.Has(k) && v != "" {

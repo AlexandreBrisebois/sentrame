@@ -4,13 +4,13 @@ Current multi-app setup: register/select the app in the owner UI, obtain generat
 
 Use these instructions when a developer asks you to prepare or add Sentrame journey evidence to **their application**. They are separate from Sentrame's own [engineering harness proposal](../proposals/sentrame-engineering-harness.md). Sentrame stays deterministic; discovery assistance runs in the developer's coding agent, not a new AI runtime service.
 
-This guide is a planning deliverable. It has not instrumented any application or installed a package. Examples are semantic plans, not tested runnable SDK recipes. Read the application's own instructions and current SDK documentation before choosing real APIs.
+This is an integration workflow, not standing authorization to modify or collect from another application. The WFS plan below remains illustrative; actual isolated WFS Node and .NET evidence with their runtime/deployment limits are now recorded in the [developer guide](../DEVELOPER-GUIDE.md#9-lessons-from-the-wfs-integration). Its [minimal native Node check](../DEVELOPER-GUIDE.md#minimal-runnable-native-node-check) is separately runtime-qualified. Read the application's own instructions, locked SDK versions and official APIs before choosing real changes.
 
 ## Standard telemetry and application interpretation
 
 Read the [standard OTel versus Sentrame convention boundary](OTEL-CONTRACT.md#what-is-standard-and-what-is-sentrame-specific) before proposing fields. OTel spans/logs/events and applicable semantic conventions remain the producer foundation. Sentrame Kind **activity**, `stage.name`, `stage.occurrence.id` and `activity.state` are optional application conventions, not official OTel user-journey semantics or mandatory reception fields.
 
-Use the contract's [activity decision examples](OTEL-CONTRACT.md#activity-examples-when-to-use-each-meaning) and [stage-value naming convention](OTEL-CONTRACT.md#naming-convention-for-stagename-values). Choose a graph step versus supporting activity according to the developer's question; do not call every click a .NET Activity, manufacture attention from a click, or require stage tags on ordinary logs/spans. Existing valid standard telemetry must remain accepted even when journey context is missing.
+Use the contract's [activity decision examples](OTEL-CONTRACT.md#activity-examples-when-to-use-each-meaning) and [stage-value naming convention](OTEL-CONTRACT.md#optional-stagename-suggestions). Choose a graph step versus supporting activity according to the developer's question; do not call every click a .NET Activity, manufacture attention from a click, or require stage tags on ordinary logs/spans. Existing valid standard telemetry must remain accepted even when journey context is missing.
 
 ## 1. Discover the app before proposing emitters
 
@@ -39,6 +39,8 @@ Prioritize a small useful plan. Explain uncertainties in text; no confidence bad
 ## 3. Separate standard intake from sufficient journey evidence
 
 **Base reception:** valid supported OTLP can ingest with standard SDK/exporter configuration and configured app attribution, without custom visit/event fields, a Sentrame SDK or both a browser and server. Missing enrichment is not a protocol error.
+
+**Automatic navigation versus configured meaning:** an empty captured definition can reconstruct goal-free paths from named non-diagnostic browser logs with safe explicit session/tab, retained labels and source ordering. Native trace parent trees are a separate technical reconstruction, not an inferred browser path or success. Explicit mappings override automatic navigation and an explicit trusted goal is required to claim completion.
 
 **Journey interpretation:** enough context is needed to group and order the intended logical journey. Propose that context through the developer's existing SDK and agreed safe field mappings; missing context stays unassigned/partial rather than being invented.
 
@@ -111,3 +113,12 @@ Report tested SDK/config/content identity and passed, failed, blocked, not-run o
 5. Add explicit random scope/tab only for the multi-request question; server-only workflows need no fabricated browser tab. `session.id` is an opt-in Development client convention with a separate Sentrame server-workflow interpretation. Approved propagation must explicitly emit it; baggage and shared trace IDs do not automatically create journeys.
 6. Add real page boundaries/presence only if that question remains unanswered. Visibility/idle observations under the60-second cap do not establish attention. Keep browser forwarding under browser authority, review collection/CSP/CORS/lifecycle loss and keep server tokens out of bundles.
 7. Exercise missing evidence, replay, late arrivals, privacy, browser forgery, failed attempt/retry/commit and recovery through the actual exporter → receiver → SQLite → protected read path. Record exact versions/route/protocol/compression and batching/flush behavior. Wire fixtures, source review and mocks cannot qualify .NET, Next.js, browser or deployment routes. No external application instrumentation, collection or deployment follows this checklist without its own authorization.
+
+
+### Apply the WFS lessons to the next integration
+
+Use the [single developer-guide checkpoint](../DEVELOPER-GUIDE.md#9-lessons-from-the-wfs-integration) for package versions, transport limits and the [qualified private .NET composition](../DEVELOPER-GUIDE.md#qualified-wfs-net-composition--2026-10-31). During discovery, explicitly check canonical retained HTTP keys (legacy export success hid attribute loss), source/resource version, browser/server role separation and anonymous source sequence/record identity. Inspect SDK ambient configuration before promising isolation. Projection must happen before buffering; opaque Activity events/links may require dropping an unsafe operation rather than trying to mutate immutable data. Preserve the native SDK/provider, IDs and business behavior.
+
+Plan tests for the exact host lifecycle, not only `forceFlush`: a caller wait is not proof that its underlying request/retry was cancelled. Keep SDK retry/backoff and queue settings finite using supported public configuration, and disclose unsupported bounds without forks, global environment mutation or custom transport. Do not label attempted records as received. Native sampled HTTP evidence and explicit browser navigation remain different populations. CI must provision each suite's receiver capability and private owner configuration explicitly and verify protected durable reads; fake HTTP-success fixtures are a different test class.
+
+For .NET, use private in-memory `IConfiguration` in the standard trace builder and isolated typed-log service collection; named options or direct exporters alone do not block ambient experimental disk retry. Keep operational logs/metrics separate, disable redirects and test hostile ambient settings. The approved OTel 1.20.0 diagnostic-body read can outlive two seconds even when `ForceFlush` returns true; do not promise a total deadline or blocked-read shutdown. Use the developer guide's explicit owned PostgreSQL/receiver fixture command; missing resources or opt-in skips do not qualify it. API settings are a process-start snapshot requiring recreation, unlike the Node runtime checks. Preserve the distinction between protected host RC3 retention and Linux RC2 wire smoke when reporting new deployment evidence.
