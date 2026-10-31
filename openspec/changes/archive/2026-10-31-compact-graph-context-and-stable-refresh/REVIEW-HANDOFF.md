@@ -1,0 +1,27 @@
+# Graph viewport review — 2026-10-31
+
+**Ready for Alex’s design approval; implementation pending.** New change: `compact-graph-context-and-stable-refresh`. Proposal, design, journey-exploration delta and tasks are complete; every implementation task remains unchecked. Strict OpenSpec validation passed. See [design.md](design.md) for source references, measurements, alternatives and scope.
+
+## Recommended result
+
+Remove “Choose an investigation task”; its connections option returns to lastGraph and its other four destinations already have direct buttons among the seven views (`web/src/Workspace.svelte:334`). Keep all buttons, their selected state and stable saved-view destinations. Replace the removed investigation-task focus fallbacks in trace/dialog recovery. The trade-off is losing question-first navigation and a last-graph shortcut; named view help preserves question wording and graph buttons preserve access.
+
+Use compact “About this view ⓘ · Coverage ▸” inline disclosures. Move persistent instructional prose into help and the complete scan/population/graph/record-list details into Coverage. Keep population/bounds, units with values, evidence actions and concise material caveats visible. Unknown collection completeness must not become a complete-traffic claim. Distinguish source caps from graph/list display omissions; retain authoritative ordered-journey denominators. Alternative: a dialog keeps graph geometry steady while open but adds modal focus/close handling and mobile scrolling; inline disclosure is recommended for the smaller implementation. Full keyboard, touch and screen-reader expectations are in design/specs.
+
+## Evidence
+
+Entry and final branch/HEAD: `main`, `44e4f1430ec3f923a5e5934a1dda0b624cf80bad`. Entry tracked/untracked state clean, index empty. Final changes only this new untracked proposal directory; no staging, commits, pushes or branch switch. No runtime or canonical/archive files edited. No applicable project/ancestor AGENTS.md or designer skill found; read local OpenSpec guidance, canonical exploration/live specs, visual-language guidance and current archive/preview handoffs.
+
+Read-only preview identity verification succeeded: 19010 belongs to retained Sentrame stage5 container `d29a9c9f…`, image `sha256:5ff1b05e…`, matching documented loopback mapping and asset names. Current host JS SHA256 `55907e4159441ebfee34366a8f1fc3fcec1fddddf489ed5646dbbe04164bc4f9`; CSS `b820bffdc3d5e8e1eccc7c4f338703aed2e26569d5fd98a89bde251a66ee3af0`. Workspace/CoverageDisclosure/Graph/InvestigationView/style source hashes all match the stage5 build identity. No login, credential read, fixture ingestion or receiver mutation.
+
+Separate Chrome156 headless process/profile and ephemeral loopback mock API reproduced unchanged historical polling against these built assets. Synthetic read delay700ms; three reads; 210 samples/50ms. Canvas top moved475.578125→513.828125px while loading (38.25px), height260px, SVG identity and deliberately panned camera transform unchanged. Root cause supported for this case: inserted loading paragraph above canvas (`Workspace.svelte:359`), not remount/camera reset. Historical validation retains prior evidence (`:235`); explicit Refresh clears snapshot (`:354`) and remains an additional source-supported empty-geometry risk, not a reproduced cause. Plan: allocated status space plus retain successful same-context evidence, preserving valid selection/focus/scroll/camera; lifecycle/access invalidation still wins.
+
+Sequence checkbox measured605px wide in605px label at1280px and362px in362px label at390px; label height409.0625px. Full-width investigation input rule (`style.css:108`) plus shared flex sizing supports intrinsic checkbox/nonshrinking spacing and wrapping-label fix for timeline/sequence. No runtime CSS was changed.
+
+## Verification and limits
+
+`openspec status`:4/4 planning artifacts. `openspec validate compact-graph-context-and-stable-refresh --strict`:pass. `git diff --check`:pass; new Markdown also checked for trailing whitespace. Browser synthetic harness exited successfully and its Chrome/server were closed. Temporary diagnostic harness remains at `/tmp/sentrame-viewport-review.cjs`; no dependency installed or existing profile used. No WFS ports, containers or files used, no interactive UI slot taken, no production/real telemetry tested.
+
+Unperformed: selected-evidence/focus preservation during refresh, changed revisions/expiry, explicit-refresh reproduction, French layout, native zoom and physical screen reader. These are scoped implementation checks, not passed observations. The prior archived change remains closed and its three manual checks remain Alex-owned/unpassed. Open follow-up: whether Alex also sees jumping during explicit refresh or changed evidence; only broaden a graph fix with another supported reproduction.
+
+No remaining execution blocker, denied action, pending approval request or uncertain mutation. Initial sandbox Docker-socket/loopback reads were blocked; exact read-only escalated checks succeeded. Isolated headless reproduction was also approved and completed. Native interactive QA requires coordination with the separate WFS owner before any future shared UI use. Alex’s approval is required before implementation, per the authorized planning-only scope and [openspec-propose skill](../../../../.agents/skills/openspec-propose/SKILL.md): “Do not edit project code.”

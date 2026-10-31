@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
   import Graph from './Graph.svelte';
+  import Disclosure from './Disclosure.svelte';
+  import InvestigationHelp from './InvestigationHelp.svelte';
   import CoverageDisclosure from './CoverageDisclosure.svelte';
   import JourneyViews from './InvestigationView.svelte';
   import MatchingExamples from './MatchingExamples.svelte';
- import {contextKey,defaultPreferences,comparisonReason,transitionMetrics,lostEvidence,safeInvestigationSummary,investigationObservation,type InvestigationObservation,type Preferences,type Population,type Criterion,type ReturnFrame} from './investigation';
+ import {contextKey,defaultPreferences,comparisonReason,transitionMetrics,lostEvidence,safeInvestigationSummary,investigationObservation,type InvestigationObservation,type Preferences,type PopulationCoverage,type Population,type Criterion,type ReturnFrame} from './investigation';
  import {defaultInvestigationState,defaultExampleState,returnAllowed} from './investigationNavigation';
  import {CoalescedRefresh,SerializedRefresh,snapshotFreshness} from './liveInvestigation';
   import {coveragePartial} from './journeyViews';
@@ -31,7 +33,7 @@
   import { errorEvidence } from './graphEvidence';
   import { editEventDefinition, captureReferenceBounds, referenceBound, removeEventMapping, mappingActivationBlocker, isCompletionGoal, completionStage, currentMappingPreview } from './workspace';
   import { edgeKey, transitions, lensEvidence, type Layout, type Lens } from './graph';
-  import { acceptsSnapshot, dateTime, duration, isoLocal, histogramQuantile, mergeSummaryGroups, discoveryChoices, evidenceCopy, receiptLagMilliseconds } from './helpers';
+  import { acceptsSnapshot, dateTime, timestampMilliseconds, duration, isoLocal, histogramQuantile, mergeSummaryGroups, discoveryChoices, evidenceCopy, receiptLagMilliseconds } from './helpers';
   import { translate, type Language } from './i18n';
   import type { Snapshot, Definition, Mapping, SavedView, Model, Journey, Evidence, DiscoveryContext, MappingEvidencePreview } from './types';
   let language = $state<Language>('en');
@@ -61,7 +63,7 @@
   let exploration=$state<{mode:string;start:string;end:string}|null>(null);
   type JourneyView = Layout|'journey-timeline'|'matrix'|'repeats'|'sequence';
   let layout=$state<JourneyView>('hierarchy'), lastGraph=$state<Layout>('hierarchy'), lens=$state<Lens>('none');
-  function setLayout(next:JourneyView){layout=next;if(next==='hierarchy'||next==='force'||next==='sankey')lastGraph=next}
+  function setLayout(next:JourneyView){layout=next;if(next==='hierarchy'||next==='force'||next==='sankey')lastGraph=next;void tick().then(()=>document.getElementById('investigation-view-'+next)?.scrollIntoView({block:'nearest',inline:'nearest'}))}
   let timelineJourney=$state(''), baselineTimelineJourney=$state('');
  let preferences=$state<Preferences>(defaultPreferences()),matrixStages=$state<string[]>([]),matrixStagesInitialized=$state(false),expandedCurrent=$state<string[]>([]),expandedBaseline=$state<string[]>([]);
  let investigationCopyText=$state('');
@@ -101,12 +103,12 @@
   const frame=traceReturn;traceReturn=null;explorationMode='journey';history.replaceState(null,'',appURL(appID,{generation:appGeneration}));
   const retained=frame?.population==='baseline'?snapshot?.baselineModel:model;
   if(!frame||!returnAllowed(frame,investigationContext(frame.population),retained?.journeys??[],retained?.unassigned??[])){
-   resetInvestigation();notice=t('Evidence unavailable');await tick();document.getElementById('investigation-task')?.focus();return;
+   resetInvestigation();notice=t('Evidence unavailable');await tick();document.getElementById('investigation-view-'+layout)?.focus();return;
   }
   setLayout(frame.view as JourneyView);selectedPopulation=frame.population;
   if(frame.population==='baseline')baselineCriterion=frame.criterion;else currentCriterion=frame.criterion;
   await tick();document.getElementById('investigation-views')?.scrollTo({top:frame.scroll});window.scrollTo({top:frame.pageScroll??0});
-  (document.getElementById(frame.focus)??document.getElementById('investigation-task'))?.focus({preventScroll:true});
+  (document.getElementById(frame.focus)??document.getElementById('investigation-view-'+layout))?.focus({preventScroll:true});
  }
  function showJourneys(){if(traceReturn){void returnFromTrace();return;}explorationMode='journey';history.replaceState(null,'',appURL(appID,{generation:appGeneration}));}
  async function copyInvestigation(c:Criterion,p:Population,observation:InvestigationObservation){
@@ -160,8 +162,10 @@
   async function saveMapping(){if(busy||mappingBlocker)return;const result=await mutate('definitions',mappingDefinition(),'Definition activated');if(result){mappingOpen=false;draftLoaded=false;await refresh()}}
   function exploreReference(next:string,start='',end=''){selectedReference=null;exploration={mode:next,start,end};applyFilters()}
   function exploreNode(next:string){exploreReference(next,next==='origin-forward'?eventForStage(selectedStep):'',next==='goal-backward'?eventForStage(selectedStep):'')}
-  function referenceDialog(next='overview'){viewMode=next;viewName='';viewStart=next==='origin-forward'?eventForStage(selectedStep):'';viewEnd=next==='goal-backward'?eventForStage(selectedStep):'';if(next==='overview'&&exploration){viewMode=exploration.mode;viewStart=exploration.start;viewEnd=exploration.end}if(next==='overview'&&selectedReference){viewMode=selectedReference.mode;viewStart=selectedReference.start;viewEnd=selectedReference.end}tool='references';menuOpen=false}
-  function openTool(next:string){if(next==='evidence')evidenceJourneyId='';if(readOnly&&['configuration','invitations'].includes(next))return;tool=next;menuOpen=false;if(next==='configuration'){if(active)draft={...active,mappings:active.mappings.map(m=>({...m}))};preview=null}}
+  function referenceDialog(next='overview'){dismissFlyouts();viewMode=next;viewName='';viewStart=next==='origin-forward'?eventForStage(selectedStep):'';viewEnd=next==='goal-backward'?eventForStage(selectedStep):'';if(next==='overview'&&exploration){viewMode=exploration.mode;viewStart=exploration.start;viewEnd=exploration.end}if(next==='overview'&&selectedReference){viewMode=selectedReference.mode;viewStart=selectedReference.start;viewEnd=selectedReference.end}tool='references';menuOpen=false}
+  function dismissFlyouts(){document.querySelectorAll<HTMLElement>('[popover]:popover-open').forEach(el=>el.hidePopover())}
+  function shortBounds(cov:PopulationCoverage|undefined){if(!cov)return t('Unavailable');const day=(v:string|number)=>{const d=typeof v==='string'&&!/^\d+$/.test(v)?new Date(v):new Date(timestampMilliseconds(v));return Number.isFinite(d.getTime())?d.toLocaleDateString(language==='fr'?'fr-FR':'en-GB',{day:'numeric',month:'short',timeZone:'UTC'}):'—'};return day(cov.from)+'–'+day(cov.to)+' UTC'}
+  function openTool(next:string){dismissFlyouts();if(next==='evidence')evidenceJourneyId='';if(readOnly&&['configuration','invitations'].includes(next))return;tool=next;menuOpen=false;if(next==='configuration'){if(active)draft={...active,mappings:active.mappings.map(m=>({...m}))};preview=null}}
 
   let requestGeneration=0, stream:EventSource|null=null, reconnectTimer:ReturnType<typeof setTimeout>|undefined, poll:ReturnType<typeof setInterval>|undefined;
   const emptyModel:Model={journeys:[],nodes:[],edges:[],stats:{},diagnostics:[],unassigned:[],policy:'',warnings:[]};
@@ -230,13 +234,25 @@
       }else{delete data.baselineModel;delete data.baselineBounds;if(data.coverage)data.coverage={...data.coverage,baseline:undefined};baselineReadError='';baselineDisplayed=0;}
       const invalidated=lostEvidence(previous?.model,data.model)||lostEvidence(previous?.baselineModel,data.baselineModel);
       if((paused||(validationOnly&&mode==='historical'))&&previous&&!invalidated){updatesAvailable=String(data.revision)!==String(previous.revision)||!!baselineData&&JSON.stringify(data.baselineModel)!==JSON.stringify(previous.baselineModel);return}
-      if(invalidated){resetInvestigation();currentCriterion=null;baselineCriterion=null;evidenceJourneyId='';tool=tool==='evidence'?'':tool;notice=t('Evidence changed under retention or deletion; unavailable detail was removed.');follow=false;}
+      const priorFocus=document.activeElement;
+      if(invalidated){
+        // Transient state contains IDs and presentation preferences, never cached raw detail.
+        // Keep surviving investigations; the components resolve their targets from this new model.
+        investigationCopyText='';follow=false;
+        const selected=selectedPopulation==='baseline'?data.baselineModel:data.model;
+        if(selectedStep&&!selected?.nodes.some(n=>n.id===selectedStep)&&!(selectedStep.startsWith('event:')&&data.evidence.some(e=>'event:'+e.name===selectedStep)))selectedStep='';
+        if(selectedEdge&&!selected?.edges.some(e=>edgeKey(e.from,e.to)===selectedEdge))selectedEdge='';
+        if(evidenceJourneyId&&!(evidenceJourneyBaseline?data.baselineModel:data.model)?.journeys.some(j=>j.id===evidenceJourneyId)){evidenceJourneyId='';if(tool==='evidence')tool='';}
+        notice=t('Evidence changed under retention or deletion; unavailable detail was removed.');
+      }
       if(previous&&mode==='live'){
         if(baselineData){const before=JSON.stringify(previous.baselineModel?.journeys.map(j=>[j.id,j.steps,j.status]));baselineCorrected=before!==JSON.stringify(data.baselineModel?.journeys.map(j=>[j.id,j.steps,j.status]));}
         const changed=!!currentData&&JSON.stringify(previous.model.journeys.map(j=>[j.id,j.steps]))!==JSON.stringify(data.model.journeys.map(j=>[j.id,j.steps]));
         if(changed){recentUntil=Date.now()+3000;setTimeout(()=>{if(recentUntil<=Date.now())recentUntil=0},3000);}
       }
-      snapshot=data;if(currentData)lastDisplayed=Date.now();if(baselineData)baselineDisplayed=Date.now();
+      snapshot=data;
+      if(invalidated)void tick().then(()=>{if(priorFocus&&!priorFocus.isConnected&&document.activeElement===document.body){const target=document.querySelector<HTMLButtonElement>('dialog[open] button')??document.getElementById('investigation-view-'+layout);target?.focus({preventScroll:true});}});
+      if(currentData)lastDisplayed=Date.now();if(baselineData)baselineDisplayed=Date.now();
       if(currentData&&(!wantsBaseline||baselineData)&&(mode!=='live'||connection==='Connected'))continuityGap=false;
       updatesAvailable=false;if(!currentFailure&&!baselineFailure)error='';
       if(currentData&&follow&&mode==='live')timelineJourney=[...data.model.journeys].sort((a,b)=>BigInt(a.start)>BigInt(b.start)?-1:1)[0]?.id??'';
@@ -306,12 +322,18 @@
 <svelte:window onpointerdowncapture={()=>{document.documentElement.dataset.pointerFocus='true'}} onkeydowncapture={e=>{if(e.key==='Tab')delete document.documentElement.dataset.pointerFocus}} onkeydown={e=>{if(e.target instanceof HTMLElement&&e.target.closest('.workspace-canvas'))follow=false;if(e.key==='Escape')menuOpen=false}}/>
 <svelte:head><title>Sentrame · {t('Journey explorer')}</title></svelte:head>
 <a class="skip" href="#main">Skip to content / Aller au contenu</a>
-<header class="masthead" class:compact={authenticated&&!invitationToken}>
+<header class="masthead" class:compact={authenticated&&!invitationToken} class:graph-first={authenticated&&!invitationToken}>
   <div class="brand"><svg width="34" height="34" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M6 9h10a7 7 0 0 1 0 14H6m20-14H16a7 7 0 0 0 0 14h10" stroke="currentColor" stroke-width="2.5"/><circle cx="6" cy="9" r="3" fill="currentColor"/><circle cx="26" cy="23" r="3" fill="currentColor"/></svg><span>sentrame</span></div>
   <span class="tagline">{t('The thread between events')}</span>
-  <div class="mast-actions">{#if authenticated&&!readOnly}<select class="app-selector" aria-label={t('Selected app')} value={appID} onchange={e=>onselect(e.currentTarget.value)}><option value="" disabled>{t('Choose an app')}</option>{#each apps.filter(a=>a.state==='active') as a}<option value={a.id}>{a.name}</option>{/each}</select>{#if appID}<button class="header-button" onclick={()=>appSettings=true}>{t('App settings')}</button>{/if}{:else if authenticated}<span class="workspace-badge">{appName}</span>{/if}<div class="languages" aria-label="Language / Langue"><button class:active={language==='en'} onclick={()=>setLanguage('en')} lang="en" aria-pressed={language==='en'}>EN</button><button class:active={language==='fr'} onclick={()=>setLanguage('fr')} lang="fr" aria-pressed={language==='fr'}>FR</button></div>{#if authenticated}<button class="header-button" onclick={logout}>{t('Sign out')}</button>{/if}</div>
+  {#if authenticated&&!invitationToken&&appID}<nav class="exploration-mode" aria-label={t('Exploration mode')}><button aria-pressed={explorationMode==='journey'} onclick={showJourneys}>{t('Journeys')}</button><button aria-pressed={explorationMode==='trace'} onclick={()=>explorationMode='trace'}>{t('Traces')}</button></nav>{/if}
+  <div class="mast-actions">
+   {#if authenticated&&!invitationToken}
+    {#if !readOnly}<select class="app-selector" aria-label={t('Selected app')} value={appID} onchange={e=>onselect(e.currentTarget.value)}><option value="" disabled>{t('Choose an app')}</option>{#each apps.filter(a=>a.state==='active') as a}<option value={a.id}>{a.name}</option>{/each}</select>{:else}<span class="workspace-badge">{appName}</span>{/if}
+    <Disclosure label="Account" icon="⋯" {language}><div class="account-actions">{#if appID&&!readOnly}<button class="secondary" onclick={()=>{dismissFlyouts();appSettings=true}}>{t('App settings')}</button>{/if}<div class="languages" aria-label="Language / Langue"><button class:active={language==='en'} onclick={()=>setLanguage('en')} lang="en" aria-pressed={language==='en'}>EN</button><button class:active={language==='fr'} onclick={()=>setLanguage('fr')} lang="fr" aria-pressed={language==='fr'}>FR</button></div><button class="secondary" onclick={logout}>{t('Sign out')}</button></div></Disclosure>
+   {:else}<div class="languages" aria-label="Language / Langue"><button onclick={()=>setLanguage('en')} lang="en">EN</button><button onclick={()=>setLanguage('fr')} lang="fr">FR</button></div>{/if}
+  </div>
 </header>
-<main id="main" class:workspace-main={authenticated&&!invitationToken}>
+<main id="main" class:workspace-main={authenticated&&!invitationToken} class:graph-first={authenticated&&!invitationToken}>
   {#if invitationToken}
     <section class="login-layout"><div><p class="eyebrow">SENTRAME · {t('Temporary viewer')}</p><h1>{t('Explore together.')}<br/><em>{t('Read-only access.')}</em></h1><p class="lede">{t('This invitation grants temporary access to the whole application: historical and live journeys, references, errors and sanitized diagnostics. It does not allow changes.')}</p></div><div class="login-card"><h2>{t('Temporary invitation')}</h2>{#if authenticated&&role==='owner'}<p>{t('You are signed in as the owner. Sign out before accepting a viewer invitation, or open the link in a separate browser profile.')}</p><button onclick={logout} disabled={busy}>{t('Sign out')}</button>{:else}<p class="muted">{t('The link can be redeemed once. The owner can revoke access at any time.')}</p><button onclick={redeemInvitation} disabled={busy||!sessionReady}>{t(!sessionReady?'Checking access…':busy?'Opening…':'Open read-only workspace')}</button>{/if}{#if error}<p class="error" role="alert">{error}</p>{/if}</div></section>
   {:else if !authenticated&&invitationEnded}
@@ -326,43 +348,52 @@
     {#if error}<p class="error" role="alert">{error}</p>{/if}
   {:else}
     {#if appSettings&&!readOnly}<Modal title={t(appID?'App settings':'Add app')} onclose={()=>appSettings=false}><Apps {apps} selected={appID} {language} request={api} {onselect} onclose={()=>appSettings=false}/></Modal>{/if}
-    {#if traceReturn}<button class="secondary" onclick={returnFromTrace}>{t('Back to journey investigation')}</button>{/if}<nav class="button-row" aria-label={t('Exploration mode')}><button aria-pressed={explorationMode==='journey'} onclick={showJourneys}>{t('Journeys')}</button><button aria-pressed={explorationMode==='trace'} onclick={()=>explorationMode='trace'}>{t('Traces')}</button></nav>
+    {#if traceReturn}<button class="secondary" onclick={returnFromTrace}>{t('Back to journey investigation')}</button>{/if}
     {#if explorationMode==='trace'}<Traces oninspect={()=>{showJourneys();openTool('evidence')}} appID={appID} generation={appGeneration} request={api} revision={snapshot?.revision??0} {language} {readOnly} onconfigure={openEvidenceMapping}/>{:else}
     <section class="workspace" aria-label={t('Journey workspace')}>
       <div class="workspace-toolbar">
-        <div class="workspace-title"><span class="eyebrow">{appName}</span><strong>{selectedReference?.name??t('Journey workspace')}</strong></div>
-        <label>{t('Choose an investigation task')}<select id="investigation-task" value={['hierarchy','force','sankey'].includes(layout)?'connections':layout} onchange={e=>setLayout((e.currentTarget.value==='connections'?lastGraph:e.currentTarget.value) as JourneyView)}><option value="connections">{t('How do observed stages connect?')}</option><option value="matrix">{t('Where do journeys go next?')}</option><option value="repeats">{t('Which activities repeat?')}</option><option value="sequence">{t('Which ordered routes are shared?')}</option><option value="journey-timeline">{t('What happened in one journey?')}</option></select></label><div class="segmented layouts" aria-label={t('Graph view')}>{#each [['hierarchy','Hierarchy'],['force','Force'],['sankey','Sankey'],['journey-timeline','Journey timeline'],['matrix','Transition matrix'],['repeats','Repeats and returns'],['sequence','Sequence flow']] as [id,label]}<button data-investigation-focus class:chosen={layout===id} aria-pressed={layout===id} onclick={()=>setLayout(id as JourneyView)}>{t(label)}</button>{/each}</div>
+        <div class="segmented layouts" aria-label={t('Graph view')}>{#each [['hierarchy','Hierarchy'],['force','Force'],['sankey','Sankey'],['journey-timeline','Journey timeline'],['matrix','Transition matrix'],['repeats','Repeats and returns'],['sequence','Sequence flow']] as [id,label]}<button id={'investigation-view-'+id} data-investigation-focus class:chosen={layout===id} aria-pressed={layout===id} onclick={()=>setLayout(id as JourneyView)}>{t(label)}</button>{/each}</div>
         <div class="workspace-tools">
           <button class="quiet-button" onclick={()=>openTool('filters')}>{t(mode==='live'?'Live':'Historical')} <span aria-hidden="true">⌄</span></button>
-          {#if graphLensAvailable}<label class="lens-control"><span>{t('Highlight')}</span><select aria-label={t('Graph highlight')} bind:value={lens} disabled={!lastDisplayed}><option value="none">{t('None')}</option><option value="rare">{t('Rare paths')}</option><option value="endings">{t('Endings')}</option><option value="exceptions">{t('Warnings & exceptions')}</option><option value="recovery">{t('Recovery')}</option></select></label>{/if}
-          <button class="quiet-button" onclick={()=>referenceDialog()}>{t('References')}</button>
-          <div class="workspace-menu"><button class="icon-button" aria-label={t('Workspace menu')} aria-expanded={menuOpen} onclick={()=>menuOpen=!menuOpen}>☰</button>{#if menuOpen}<div class="menu-popover"><button onclick={()=>{showDiscovery=!showDiscovery;menuOpen=false}}>{t(showDiscovery?'Hide discovered events':'Show discovered events')}</button><button onclick={()=>openTool('discovery')}>{t('Unmapped events')}</button>{#if !readOnly}<button onclick={()=>openTool('configuration')}>{t('Mappings & goal')}</button><button onclick={()=>referenceDialog('overview')}>{t('Save current view…')}</button><button onclick={()=>openTool('invitations')}>{t('Temporary viewers')}</button>{/if}<button onclick={()=>openTool('errors')}>{t('Errors & exceptions')}</button><button onclick={()=>openTool('lifecycle')}>{t('Data lifecycle')}</button><button onclick={()=>openTool('about')}>{t('About this evidence')}</button></div>{/if}</div>
+          <div class="workspace-menu"><button id="workspace-menu-button" class="icon-button" aria-label={t('Workspace menu')} aria-expanded={menuOpen} onclick={()=>menuOpen=!menuOpen}>☰</button>{#if menuOpen}<div class="menu-popover">          {#if graphLensAvailable}<label class="lens-control"><span>{t('Highlight')}</span><select aria-label={t('Graph highlight')} bind:value={lens} disabled={!lastDisplayed}><option value="none">{t('None')}</option><option value="rare">{t('Rare paths')}</option><option value="endings">{t('Endings')}</option><option value="exceptions">{t('Warnings & exceptions')}</option><option value="recovery">{t('Recovery')}</option></select></label>{/if}
+          <button onclick={()=>referenceDialog()}>{t('References')}</button>
+<button onclick={()=>{showDiscovery=!showDiscovery;menuOpen=false}}>{t(showDiscovery?'Hide discovered events':'Show discovered events')}</button><button onclick={()=>openTool('discovery')}>{t('Unmapped events')}</button>{#if !readOnly}<button onclick={()=>openTool('configuration')}>{t('Mappings & goal')}</button><button onclick={()=>referenceDialog('overview')}>{t('Save current view…')}</button><button onclick={()=>openTool('invitations')}>{t('Temporary viewers')}</button>{/if}<button onclick={()=>openTool('errors')}>{t('Errors & exceptions')}</button><button onclick={()=>openTool('lifecycle')}>{t('Data lifecycle')}</button><button onclick={()=>openTool('about')}>{t('About this evidence')}</button></div>{/if}</div>
         </div>
       </div>
       <div class="workspace-context">
-        {#if scope}<button class="context-chip selected-scope" aria-label={t('Clear selected visit')+': '+scope} onclick={()=>{scope='';selectedStep='';selectedEdge='';applyFilters()}}><span>{t('Visit / operation')} · {scope.slice(0,8)}</span><span aria-hidden="true">×</span></button>{:else}<span class="context-chip">{t('All app traffic')}</span>{/if}{#if version}<button class="context-chip" onclick={()=>{version='';applyFilters()}}>{version} ×</button>{/if}{#if definition}<button class="context-chip" onclick={()=>{definition='';applyFilters()}}>v{definition} ×</button>{/if}
+       <div class="context-summary" aria-label={t('Analysis population')}><span>{scope?t('Selected visit'):t('All app traffic')}</span><span>{shortBounds(snapshot?.coverage?.current)}</span><span class="population-count"><strong>{mode==='live'?'L':t('Current selection')}</strong> {snapshot?.coverage?.current?.journeys??'—'} {t('Journeys')}</span>{#if mode==='live'&&baseline}<span class="population-count"><strong>B</strong> {t('App-wide baseline')} · {snapshot?.coverage?.baseline?.journeys??'—'} {t('Journeys')}</span>{/if}</div>
+       {#if scope||version||definition||exploration||selectedReference||segmentStart}<div class="context-narrowing">        {#if scope}<button class="context-chip selected-scope" aria-label={t('Clear selected visit')+': '+scope} onclick={()=>{scope='';selectedStep='';selectedEdge='';applyFilters()}}><span>{t('Visit / operation')} · {scope.slice(0,8)}</span><span aria-hidden="true">×</span></button>{/if}{#if version}<button class="context-chip" onclick={()=>{version='';applyFilters()}}>{version} ×</button>{/if}{#if definition}<button class="context-chip" onclick={()=>{definition='';applyFilters()}}>v{definition} ×</button>{/if}
         {#if exploration}<button class="context-chip" onclick={()=>{exploration=null;applyFilters()}}>{t(exploration.mode==='goal-backward'?'Paths into here':exploration.mode==='origin-forward'?'Paths from here':'Between stages')} · {exploration.start||exploration.end} ×</button>{/if}
-        {#if selectedReference}<button class="context-chip" onclick={()=>{selectedReference=null;applyFilters()}}>{t('Clear reference')} ×</button>{/if}
+        {#if selectedReference}<button class="context-chip" onclick={()=>{selectedReference=null;applyFilters()}}>{selectedReference.name} ×</button>{/if}
         {#if segmentStart}<span class="context-chip">{t('Select an end stage')} · {segmentStart}<button class="text-button" onclick={()=>segmentStart=''}>{t('Cancel')}</button></span>{/if}
-        {#if mode==='live'}<label class="toggle"><input type="checkbox" bind:checked={baseline} onchange={toggleBaseline}/>{t('Seven-day baseline')}</label><button class="text-button" onclick={togglePause}>{t(paused?'Resume updates':'Pause updates')}</button>{/if}
-        {#if readOnly}<span class="context-chip" role="status">{t('Read-only access')} · {t('Expires')}: {dateTime(accessExpires)}</span>{/if}
-        {#if mode==='live'}<label>{t('Show population')}<select bind:value={populationVisibility}><option value="both">{t('Both')}</option><option value="live">{t('Live')}</option><option value="baseline" disabled={!baseline||!snapshot?.baselineModel}>{t('Baseline')}</option></select></label><button class="text-button" aria-pressed={follow} onclick={()=>{follow=!follow;if(follow){paused=false;void refresh()}}}>{t(follow?'Following latest':'Follow latest')}</button>{/if}
-        <span class="workspace-freshness"><span class="status-dot" class:paused></span>{t(paused?'Paused · collection continues':connection)}{loading?' · '+t('Refreshing'):''} · {t(snapshotFreshness(lastDisplayed,freshnessNow))}{lastDisplayed?' · '+new Date(lastDisplayed).toLocaleTimeString():''}</span>
+</div>{/if}
+       <div class="context-actions">
+        <Disclosure label="Context" {language}>
+         <p><strong>{appName}</strong>{selectedReference?' · '+selectedReference.name:''}</p>
+         {#each [{label:mode==='live'?'Live observation':'Current selection',cov:snapshot?.coverage?.current,displayed:lastDisplayed},...(mode==='live'&&baseline?[{label:'App-wide baseline',cov:snapshot?.coverage?.baseline,displayed:baselineDisplayed}]:[])] as pop}
+          <p><strong>{t(pop.label)}</strong>: {pop.cov?dateTime(pop.cov.from)+' → '+dateTime(pop.cov.to):t('Unavailable')} · {pop.cov?.scope?t('Selected visit'):t('All app traffic')} · {version||t('All versions')} · {t('Definition')} {pop.cov?.definitions.join(', ')||'—'} · {pop.cov?.journeys??'—'} {t('Journeys')}</p><p>{t('Last successful population read')}: {pop.displayed?dateTime(pop.displayed):t('Unavailable')}</p>
+         {/each}
+         <p>{t(paused?'Paused · collection continues':connection)} · {t(snapshotFreshness(lastDisplayed,freshnessNow))}</p>
+         {#if model.journeys.some(j=>j.navigationOnly)}<p>{t('Correlated navigation · no completion goal. Connections show observed order; these paths are excluded from goal conversion.')}</p>{/if}
+         {#if mode==='live'}<div class="live-context-controls"><label class="toggle"><input type="checkbox" bind:checked={baseline} onchange={toggleBaseline}/>{t('Seven-day baseline')}</label><label>{t('Show population')}<select bind:value={populationVisibility}><option value="both">{t('Both')}</option><option value="live">{t('Live')}</option><option value="baseline" disabled={!baseline||!snapshot?.baselineModel}>{t('Baseline')}</option></select></label><button class="text-button" aria-pressed={follow} onclick={()=>{follow=!follow;if(follow){paused=false;void refresh()}}}>{t(follow?'Following latest':'Follow latest')}</button></div>{#if baseline}<p>{t(comparisonUnavailable??'Compatible outgoing shares may be compared in percentage points; windows remain unequal.')}</p>{/if}{/if}
+         {#if readOnly}<p>{t('Read-only access')} · {t('Expires')}: {dateTime(accessExpires)}</p>{/if}
+        </Disclosure>
+        <InvestigationHelp {layout} {language} live={mode==='live'}/><CoverageDisclosure {snapshot} {language} live={mode==='live'} {baseline} hideWarnings/>
+        <button type="button" class="refresh-control" aria-label={t(mode==='live'?(paused?'Resume updates':'Pause updates'):loading?'Refreshing':updatesAvailable?'Updates available; notifications are not record counts.':'Refresh')} aria-busy={loading} onclick={()=>{if(mode==='live')togglePause();else if(!loading)void refresh()}}>{t(mode==='live'?(paused?'Resume':'Pause'):loading?'Refreshing':updatesAvailable?'Updates':'Refresh')}</button>
+        <span class="visually-hidden" role="status">{updatesAvailable?t('Updates available; notifications are not record counts.'):baselineCorrected?t('Baseline corrected within its fixed bounds.'):recentUntil>freshnessNow?t('Updated live evidence'):''}</span>
+       </div>
       </div>
       {#if investigationCopyText}<section class="investigation-copy"><label>{t('Copy sanitized context')}<textarea readonly value={investigationCopyText} rows="10"></textarea></label><button class="text-button" onclick={()=>investigationCopyText=''}>{t('Close / Fermer')}</button></section>{/if}
-      {#if continuityGap}<p class="warning" role="status">{t('Continuity gap; reconciling an authorized snapshot.')}</p>{/if}{#if updatesAvailable}<p role="status">{t('Updates available; notifications are not record counts.')} {#if mode==='historical'}<button class="text-button" onclick={()=>{snapshot=null;void refresh()}}>{t('Refresh')}</button>{/if}</p>{/if}{#if baselineCorrected}<p role="status">{t('Baseline corrected within its fixed bounds.')}</p>{/if}{#if recentUntil>freshnessNow}<p role="status">{t('Updated live evidence')}</p>{/if}
+      {#if continuityGap}<p class="warning" role="status">{t('Continuity gap; reconciling an authorized snapshot.')}</p>{/if}
       {#if error}<div class="workspace-alert error-banner" role="alert">{error}<button class="text-button" onclick={()=>void refresh()}>{t('Refresh')}</button></div>{/if}
       {#if notice}<div class="workspace-alert notice" role="status">{notice}<button class="text-button" onclick={()=>notice=''}>×</button></div>{/if}
-      <div class="population-context">{#each [{name:'current',label:mode==='live'?'Live observation':'Current selection',cov:snapshot?.coverage?.current,failure:currentReadError,pending:currentReadLoading,displayed:lastDisplayed},...(mode==='live'&&baseline?[{name:'baseline',label:'App-wide baseline',cov:snapshot?.coverage?.baseline,failure:baselineReadError,pending:baselineReadLoading,displayed:baselineDisplayed}]:[])] as pop}
-        <section class="population-read-state" data-read-population={pop.name} aria-label={t(pop.label)}>
-          <p><strong>{t(pop.label)}</strong>: {pop.cov?dateTime(pop.cov.from)+' → '+dateTime(pop.cov.to):t('Unavailable')} · {pop.cov?.scope?t('Selected visit'):t('All app traffic')} · {version||t('All versions')} · {t('Definition')} {pop.cov?.definitions.join(', ')||'—'} · {pop.cov?.journeys??'—'} {t('Journeys')}{#if pop.cov?.sourcePartial} · {t('Observed partial evidence')}{/if}</p>
-          {#if pop.pending}<p role="status">{t('Loading population…')}</p>{/if}
-          {#if pop.failure}<p class="warning" role="alert">{t(pop.displayed?'Population read failed; last successful evidence is stale.':'Population unavailable; no successful read.')} {pop.failure} <button class="text-button" disabled={loading} onclick={()=>void refresh(false,pop.name==='baseline'?'baseline':'current')}>{t(pop.name==='baseline'?'Retry baseline population':mode==='live'?'Retry live population':'Retry current population')}</button></p>{/if}
-          {#if pop.displayed&&pop.failure}<p>{t('Last successful population read')}: {dateTime(pop.displayed)}</p>{/if}
-        </section>
+      <div class="population-context">{#each [{name:'current',label:mode==='live'?'Live observation':'Current selection',failure:currentReadError,displayed:lastDisplayed},...(mode==='live'&&baseline?[{name:'baseline',label:'App-wide baseline',failure:baselineReadError,displayed:baselineDisplayed}]:[])] as pop}
+       <section class="population-read-state" data-read-population={pop.name} aria-label={t(pop.label)}>
+        {#if pop.failure}<p class="warning" role="alert"><strong>{t(pop.label)}</strong>: {t(pop.displayed?'Population read failed; last successful evidence is stale.':'Population unavailable; no successful read.')} {pop.failure} <button class="text-button" disabled={loading} onclick={()=>void refresh(false,pop.name==='baseline'?'baseline':'current')}>{t(pop.name==='baseline'?'Retry baseline population':mode==='live'?'Retry live population':'Retry current population')}</button></p>{/if}
+       </section>
       {/each}</div>
-      {#if model.journeys.some(j=>j.navigationOnly)}<p class="canvas-explanation">{t('Correlated navigation · no completion goal. Connections show observed order; these paths are excluded from goal conversion.')}</p>{/if}
-      <div class="investigation-orientation"><p><strong>{t(layout==='matrix'?'Where do journeys go next?':layout==='repeats'?'Which activities repeat?':layout==='sequence'?'Which ordered routes are shared?':layout==='journey-timeline'?'What happened in one journey?':'How do observed stages connect?')}</strong> · {t(layout==='sequence'?'Unit: journeys sharing an ordered prefix':layout==='journey-timeline'?'Unit: ordered stage occurrences':'Unit: observed occurrences, journeys and visits')}</p><p>{t('Select a stage, transition or matching journey to inspect supporting evidence.')}</p><p>{t('Live uses L and solid contributions; Baseline uses B and patterned contributions. Error evidence is separate from population.')}</p>{#if mode==='live'&&baseline}<p>{t(comparisonUnavailable??'Compatible outgoing shares may be compared in percentage points; windows remain unequal.')}</p>{/if}</div>
+      <CoverageDisclosure {snapshot} {language} live={mode==='live'} {baseline} warningsOnly/>
+      {#if mode==='live'&&baseline&&comparisonUnavailable}<p class="material-comparison">{t(comparisonUnavailable)}</p>{/if}
       <div class="workspace-canvas" class:inspecting={!!selectedStep||!!selectedEdge} onwheel={()=>follow=false} onpointerdown={()=>follow=false} role="region" aria-label={t('Journey investigation')}>
         <div class="graph-host" style:display={layout===lastGraph?'':'none'}>
         <Graph liveMode={mode==='live'} liveVisible={mode!=='live'||populationVisibility!=='baseline'} model={mode==='live'&&populationVisibility==='baseline'?emptyModel:model} oninspect={()=>openTool('evidence')} baseline={mode==='live'&&baseline&&populationVisibility!=='live'?snapshot?.baselineModel:null} {language} selected={selectedStep} onselect={id=>chooseNode(id)} {selectedEdge} onedge={chooseEdge} layout={lastGraph} lens={mode==='live'&&populationVisibility==='baseline'?'none':lens} discovery={mode==='live'&&populationVisibility==='baseline'?[]:discoveryNodes} goal={completionStage(active)}/>
@@ -375,9 +406,9 @@
         {/if}
         {#if graphExamplesOpen&&layout===lastGraph}
           {#if selectedPopulation==='baseline'&&baselineCriterion&&snapshot?.baselineModel}
-            <Modal title={t('Matching journeys')} wide returnFocusId={baselineTransient.examples.invoker} fallbackFocusId="investigation-task" onclose={()=>{graphExamplesOpen=false;baselineCriterion=null}}><MatchingExamples model={snapshot.baselineModel} criterion={baselineCriterion} {language} population="App-wide baseline" group={preferences.groupRepeats} ontrace={(trace,journey)=>openTrace(trace,'baseline',journey)} bind:transient={baselineTransient.examples}/></Modal>
+            <Modal title={t('Matching journeys')} wide returnFocusId={baselineTransient.examples.invoker} fallbackFocusId={'investigation-view-'+layout} onclose={()=>{graphExamplesOpen=false;baselineCriterion=null}}><MatchingExamples model={snapshot.baselineModel} criterion={baselineCriterion} {language} population="App-wide baseline" group={preferences.groupRepeats} ontrace={(trace,journey)=>openTrace(trace,'baseline',journey)} bind:transient={baselineTransient.examples}/></Modal>
           {:else if selectedPopulation!=='baseline'&&currentCriterion}
-            <Modal title={t('Matching journeys')} wide returnFocusId={currentTransient.examples.invoker} fallbackFocusId="investigation-task" onclose={()=>{graphExamplesOpen=false;currentCriterion=null}}><MatchingExamples {model} criterion={currentCriterion} {language} population={mode==='live'?'Live observation':'Current selection'} group={preferences.groupRepeats} ontrace={(trace,journey)=>openTrace(trace,mode==='live'?'live':'current',journey)} bind:transient={currentTransient.examples}/></Modal>
+            <Modal title={t('Matching journeys')} wide returnFocusId={currentTransient.examples.invoker} fallbackFocusId={'investigation-view-'+layout} onclose={()=>{graphExamplesOpen=false;currentCriterion=null}}><MatchingExamples {model} criterion={currentCriterion} {language} population={mode==='live'?'Live observation':'Current selection'} group={preferences.groupRepeats} ontrace={(trace,journey)=>openTrace(trace,mode==='live'?'live':'current',journey)} bind:transient={currentTransient.examples}/></Modal>
           {/if}
         {/if}
         {#if selectedStep||selectedEdge}
@@ -413,7 +444,6 @@
       </div>
       <div class="canvas-status"><span>{lastDisplayed?stats.journeys??0:'—'} {t('Journeys')} · {lastDisplayed?stats.completed??0:'—'} {t('Completed goals')} · {lastDisplayed?stats.inactive??0:'—'} {t('Inactive')}<span class="status-extra"> · {lastDisplayed?stats.unassigned??0:'—'} {t('Unassigned records')}</span>{#if mode==='live'&&baseline} · {baselineDisplayed?snapshot?.baselineModel?.stats?.journeys??0:'—'} {t('Baseline journeys')}{/if}</span><div><button class="text-button" onclick={()=>openTool('errors')}>{t('Errors')}</button><button class="text-button" onclick={()=>openTool('table')}>{t('Table')}</button><button class="text-button" onclick={()=>openTool('evidence')}>{t('Journeys & evidence')}</button></div></div>
       {#if graphLensAvailable&&lens==='rare'}<p class="canvas-explanation">{t('Rare: at most 10% of comparable complete paths, with at least 20 closed journeys per definition and version. Low support is not a defect.')} <button class="text-button" onclick={()=>openTool('paths')}>{t('Path counts')}</button></p>{:else if graphLensAvailable&&lens!=='none'}<p class="canvas-explanation">{t(lens==='endings'?'Endings distinguish completed, inactive, explicit exit and pending evidence.':lens==='recovery'?'Recovered journeys retain their earlier warnings and later continuation.':'Warnings and exceptions highlight linked journeys; proximity is not cause.')} <button class="text-button" onclick={()=>openTool('evidence')}>{t('Inspect evidence')}</button></p>{/if}
-      <CoverageDisclosure {snapshot} {language} live={mode==='live'} {baseline}/>
     </section>
     {/if}
     {#if mappingOpen&&!readOnly}
@@ -451,7 +481,7 @@
       </Modal>
     {/if}
     {#if tool}
-      <Modal title={t(({filters:'Time & filters',references:'Reference views',table:'Map and timing table',evidence:'Ordered journeys',paths:'Observed paths',discovery:'Unmapped events',configuration:'Mappings & goal',invitations:'Temporary viewers',lifecycle:'Data lifecycle',about:'About this evidence',errors:'Errors & exceptions'} as Record<string,string>)[tool]??tool)} wide={['errors','filters','table','evidence','paths','lifecycle','configuration','references','invitations'].includes(tool)} onclose={()=>tool=''}>
+      <Modal fallbackFocusId="workspace-menu-button" title={t(({filters:'Time & filters',references:'Reference views',table:'Map and timing table',evidence:'Ordered journeys',paths:'Observed paths',discovery:'Unmapped events',configuration:'Mappings & goal',invitations:'Temporary viewers',lifecycle:'Data lifecycle',about:'About this evidence',errors:'Errors & exceptions'} as Record<string,string>)[tool]??tool)} wide={['errors','filters','table','evidence','paths','lifecycle','configuration','references','invitations'].includes(tool)} onclose={()=>tool=''}>
         {#if error}<p class="error" role="alert">{error}</p>{/if}
         {#if tool==='invitations'&&!readOnly}<Invitations appName={appName} {language} request={api}/>{:else if tool==='filters'}
           <div class="segmented"><button class:chosen={mode==='historical'} onclick={()=>setMode('historical')}>{t('Historical')}</button><button class:chosen={mode==='live'} onclick={()=>setMode('live')}>{t('Live')}</button></div>

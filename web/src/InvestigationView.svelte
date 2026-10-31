@@ -55,7 +55,7 @@
  {#if !model.journeys.length}<p>{t('No retained journey detail in this selection.')}</p><p>{t('Inspect received records, clear restrictive filters or choose retained dates. Summaries cannot reconstruct ordered detail.')}</p>{/if}
  {#if view==='journey-timeline'}
   <label>{t('Choose a journey')}<select bind:value={chosen} onchange={()=>{transient.story={expanded:[]};oncriterion?.({kind:'all'},population)}}><option value="">{t('Choose a journey')}</option>{#each model.journeys as j}<option value={j.id}>{dateTime(j.start)} · {j.path.slice(0,5).join(' → ')} · {j.id.slice(-12)}</option>{/each}</select></label>
-  <label class="toggle"><input type="checkbox" bind:checked={preferences.groupRepeats}/>{t('Group consecutive repeats')}</label>
+  <label class="toggle"><input type="checkbox" bind:checked={preferences.groupRepeats}/><span>{t('Group consecutive repeats')}</span></label>
   {#if selected}<JourneyStory journey={selected} {model} {language} group={preferences.groupRepeats} ontrace={trace} bind:transient={transient.story}/>{:else}<p>{t('Choose an available journey to see its ordered steps. Expired detail cannot be reconstructed.')}</p><button id={'browse-journeys-'+population} class="secondary" onclick={()=>examples({kind:'all'})}>{t('Browse matching journeys')}</button>{/if}
  {:else if view==='matrix'}
   <p>{t('Where do journeys go directly after a stage? Select a cell for matching examples.')}</p>
@@ -76,7 +76,7 @@
   <h3>{t('Return transitions')}</h3>{#if !returns.length}<p>{t('No qualifying non-self returns observed in retained evidence.')}</p>{:else}<ul>{#each returns.slice(0,100) as r}<li>{r.from} → {r.to} · {r.occurrences} {t('Occurrences')} · <button id={invokerId({kind:'return',from:r.from,to:r.to})} class="text-button" onclick={()=>examples({kind:'return',from:r.from,to:r.to})}>{r.journeyIds.length} {t('Matching journeys')}</button></li>{/each}</ul>{/if}
  {:else if view==='sequence'}
   <p>{t('Which ordered beginnings do journeys share? Prefix support is not exact path-group membership.')}</p>
-  <div class="investigation-controls"><label class="toggle"><input type="checkbox" bind:checked={preferences.groupRepeats}/>{t('Group consecutive repeats')}</label><label>{t('Initial ordinal steps')}<select bind:value={transient.maxDepth}><option value={3}>3</option><option value={8}>8</option><option value={32}>32</option></select></label></div>
+  <div class="investigation-controls"><label class="toggle"><input type="checkbox" bind:checked={preferences.groupRepeats}/><span>{t('Group consecutive repeats')}</span></label><label>{t('Initial ordinal steps')}<select bind:value={transient.maxDepth}><option value={3}>3</option><option value={8}>8</option><option value={32}>32</option></select></label></div>
   <button class="secondary" onclick={()=>transient.prefixOrder=[]}>{t('Reorder explicitly')}</button>
   <p>{t('Bounded path exploration')}: 32 {t('steps')} · 200 {t('visible prefix nodes')} · 5 {t('initial children per parent')}</p>
   {#if tree.rootBranches>5}<button class="text-button" onclick={()=>toggle('[]/*')}>{t('More starting branches')} ({tree.rootBranches})</button>{/if}
@@ -90,5 +90,5 @@
  {/if}
  <InvestigationSummary {model} {criterion} {population} {coverage} metric={preferences.metric} {language} {selectedStep} {selectedEdge} onexamples={examples} {oncopy}/>
 </section>
-{#if criterion}<Modal title={t('Matching journeys')} wide returnFocusId={transient.examples.invoker} fallbackFocusId="investigation-task" onclose={()=>criterion=null}><MatchingExamples {model} {criterion} {language} population={label} group={preferences.groupRepeats} ontrace={trace} bind:transient={transient.examples}/></Modal>{/if}
+{#if criterion}<Modal title={t('Matching journeys')} wide returnFocusId={transient.examples.invoker} fallbackFocusId={'investigation-view-'+view} onclose={()=>criterion=null}><MatchingExamples {model} {criterion} {language} population={label} group={preferences.groupRepeats} ontrace={trace} bind:transient={transient.examples}/></Modal>{/if}
 

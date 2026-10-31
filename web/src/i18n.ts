@@ -662,3 +662,9 @@ Object.assign(fr, {"Relative timing unavailable: missing, fallback or inconsiste
 Object.assign(fr, {"More starting branches":"Plus de branches de départ", "Inactive; no captured closure":"Inactif ; aucune clôture capturée", "Browse all retained paths":"Parcourir tous les chemins conservés", "Exact captured-path members":"Membres du chemin capturé exact", "Inspect exact captured paths":"Inspecter les chemins capturés exacts", "Group share uses all retained journeys. Prefix support and exact captured-path support overlap; do not add them.":"La part du groupe utilise tous les parcours conservés. Les supports du préfixe et du chemin capturé exact se chevauchent ; ne les additionnez pas."});
 
 Object.assign(fr, {"Error markers: retained error evidence":"Marqueurs d’erreur : preuves d’erreur conservées"});
+
+Object.assign(fr, {"About this view":"À propos de cette vue", "Coverage":"Couverture", "collection unknown":"collecte inconnue", "Display only; ordered-journey denominators unchanged.":"Affichage uniquement ; dénominateurs des parcours ordonnés inchangés."});
+
+Object.assign(fr, {"Help":"Aide", "Context":"Contexte", "Account":"Compte", "Analysis population":"Population analysée", "Updates":"Mises à jour", "Pause":"Pause", "Resume":"Reprendre"});
+
+Object.assign(fr, {"Source scan capped.":"Analyse de la source plafonnée."});
