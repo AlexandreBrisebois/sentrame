@@ -182,15 +182,6 @@ func (s *Service) traces(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, message, 400)
 			return
 		}
-		compatible, err := s.Store.ClientReferenceCompatible(*reference)
-		if err != nil {
-			http.Error(w, "Compatibility unavailable; retry this reference", 503)
-			return
-		}
-		if !compatible {
-			http.Error(w, "Legacy reference is non-comparable; return or explicitly select a current client period", 409)
-			return
-		}
 		trace = reference.Trace
 		for k, v := range map[string]string{"from": reference.From, "to": reference.To, "version": reference.Version} {
 			if !q.Has(k) && v != "" {
@@ -355,9 +346,7 @@ type BusinessOccurrence struct {
 func traceBusiness(es []Evidence, defs []Definition, preview int64) []BusinessOccurrence {
 	by := map[int64]Definition{}
 	for _, d := range defs {
-		if compatible, ok := compatibleClientDefinition(d); ok {
-			by[d.Version] = compatible
-		}
+		by[d.Version] = d
 	}
 	out := []BusinessOccurrence{}
 	for _, e := range es {

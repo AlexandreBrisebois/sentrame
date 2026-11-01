@@ -393,7 +393,6 @@
        </section>
       {/each}</div>
       <CoverageDisclosure {snapshot} {language} live={mode==='live'} {baseline} warningsOnly/>
-      {#if snapshot?.compatibility}<p class="warning" role="status">{t(snapshot.compatibility.message)} <button class="text-button" onclick={()=>openTool('filters')}>{t('Choose a current client period')}</button></p>{/if}
       {#if mode==='live'&&baseline&&comparisonUnavailable}<p class="material-comparison">{t(comparisonUnavailable)}</p>{/if}
       <div class="workspace-canvas" class:inspecting={!!selectedStep||!!selectedEdge} onwheel={()=>follow=false} onpointerdown={()=>follow=false} role="region" aria-label={t('Journey investigation')}>
         <div class="graph-host" style:display={layout===lastGraph?'':'none'}>

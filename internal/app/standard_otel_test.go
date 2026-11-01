@@ -226,7 +226,7 @@ func TestStandardOTelRejectsOldSchemaWithoutReset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = db.Exec("CREATE TABLE evidence(data TEXT); INSERT INTO evidence VALUES('preserve-synthetic-sentinel')"); err != nil {
+	if _, err = db.Exec("PRAGMA user_version=4; CREATE TABLE evidence(data TEXT); INSERT INTO evidence VALUES('preserve-synthetic-sentinel')"); err != nil {
 		t.Fatal(err)
 	}
 	db.Close()

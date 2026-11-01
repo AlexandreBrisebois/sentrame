@@ -1,6 +1,6 @@
 # App workspaces
 
-Fresh installations use a private persistent directory. Existing two-key managed installations require the explicit reviewed offline transition; the default server startup does not silently migrate credentials or history. Unsupported singleton data remains preserved and rejected.
+Fresh installations use a private persistent directory. Older two-key and singleton installations are unsupported. Use a fresh data directory; startup preserves and rejects old state without migrating it.
 
 Sign in as the owner, choose **Add app**, enter a unique name (1–80 characters) and register. Sentrame generates one random telemetry key and opens **App settings**. Each app begins with empty valid mappings. Journeys is the first and default view, including after switching apps and ordinary invitation entry. Empty Journeys explains connection/mapping/correlation prerequisites. Choose Traces explicitly for native operations; `/?app=<id>&trace=<trace>` and `/?app=<id>&reference=<trace-reference>` preserve explicit trace targets.
 
@@ -16,14 +16,14 @@ Producer environment tokens have no authority in the Sentrame process. Only the 
 
 ## Storage and private access
 
-The data directory is the parent of `SENTRAME_DB` (default `.sentrame/workspaces/telemetry.db`; Docker `/data`). The configured filename is an initialization guard against accidental reuse of old singleton data. App databases live only at `apps/<opaque-id>/telemetry.db`. No app name becomes a path. Schema 3 store semantics are reused independently for each app.
+The data directory is the parent of `SENTRAME_DB` (default `.sentrame/workspaces/telemetry.db`; Docker `/data`). The configured filename is an initialization guard against accidental reuse of old singleton data. App databases live only at `apps/<opaque-id>/telemetry.db`. No app name becomes a path. SQLite schema 5 is used independently for each app.
 
 The current `apps.json` is version 2 with `version`, monotonically increasing `revision` and an `apps` array. Each entry has `id`, `generation`, `name`, `state` (`active` or `deleting`), `storage`, `telemetryKey`. IDs, generations and generated credentials use checked 32-byte cryptographic randomness encoded as 64 hex characters. Credentials are recoverable owner secrets and never copied into SQLite. File storage is private access control, not encryption at rest.
 
 The exact initial validator-compatible registry is:
 
 ```json
-{"version":1,"revision":1,"apps":[]}
+{"version":2,"revision":1,"apps":[]}
 ```
 
 Do not hand-author working credential entries. Registration generates them. Unix data directories are mode 0700; registry, marker, temporary files and leases are mode 0600. Use equivalent owner-only ACLs on other hosts; the current process lease uses Unix flock. Docker bind folders must be owned by UID/GID 10001 with mode 0700. Never serve the data directory as web content. Protect backups to the same standard. Symlinks at or within the data root, unsafe locators and mismatched database identities are rejected.
@@ -48,9 +48,3 @@ Old binaries cannot operate this registry. Rollback requires a matching old snap
 Owner sessions are instance-wide. Every browser data/configuration request names `/api/apps/<app-id>/…`; two tabs never change each other's app. Old unscoped data routes return a selection error. Viewer sessions bind app ID, generation and local invitation ID. Invitations name the selected app, read-only scope and lifetime; viewers cannot list/register apps or obtain credentials. Expiry, revocation and removal deny subsequent reads and close streams on the five-second heartbeat. Previously copied information cannot be recalled. SSE cursors include app ID, generation and revision and reject another app's cursor. Generated browser links carry `generation`; data requests carry it in `X-Sentrame-App-Generation` (SSE uses the query parameter). Mismatched generations reject access. Known registered credential values in projected telemetry reject the batch before SQLite commit.
 
 There are at most **32** registry entries/open app stores, including pending removals. One receiver and shared limits of eight intake requests, eight streams and eight data queries apply across apps. Cleanup visits one app each second in round-robin order. Existing per-app record, query, SQLite page and 896 MiB pre-write byte guards remain; 32 times that byte guard is 28 GiB before bounded write/WAL/metadata overhead. This is a configured bound, not a measured aggregate storage ceiling or NAS capacity guarantee. See the [qualification report](verification/multi-app-workspaces.md) for exact checked and unqualified environments.
-
-## Existing two-key managed installations
-
-Stop the service and take a private coordinated backup before any separately authorized cutover. `go run ./cmd/migrate-client --db <data-dir>/telemetry.db` performs preflight only; it requires stopped-service leases and does not authorize changing real state. A future explicitly approved apply uses `--apply --backup-confirmed`. Do not run apply as routine startup or during this code review.
-
-The converter retains the old browser key as `telemetryKey`, retires the old server key and preserves app identity/generation. Staged copies preserve originals; interrupted migration markers keep startup closed pending recovery. Unsupported singleton state remains rejected. Mixed legacy journeys and inseparable summaries are non-comparable, not silently filtered into new client paths. Old mappings/references are preserved, with explicit compatibility recovery and prospective owner-reviewed replacements. Restore must reconcile latest retired/rotated keys and deletion barriers; an old image/snapshot alone is not a safe rollback.

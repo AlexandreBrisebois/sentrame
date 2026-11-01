@@ -97,7 +97,7 @@ The initial direct receiver SHALL prevalidate and atomically accept or reject ea
 - **THEN** atomicity applies only to each resulting direct storage-receiver request and the original envelopes are not described as atomic through that pipeline
 
 ### Requirement: Honest delivery identity
-The system SHALL preserve source IDs and deduplicate supported identities within app, generation and signal under its published identity policy. Record identity, action correlation and semantic occurrence SHALL remain distinct. Basic reception SHALL NOT require custom IDs or claim exactly-once counts without them. Conflicts SHALL NOT overwrite accepted evidence. Removing roles SHALL NOT collapse legacy identity domains.
+The system SHALL preserve source IDs and deduplicate supported identities within app, generation and signal under its published identity policy. Record identity, action correlation and semantic occurrence SHALL remain distinct. Basic reception SHALL NOT require custom IDs or claim exactly-once counts without them. Conflicts SHALL NOT overwrite accepted evidence.
 
 #### Scenario: Retry with stable identity
 - **WHEN** unchanged identified observations are retransmitted before or after restart or app-key rotation
@@ -107,10 +107,6 @@ The system SHALL preserve source IDs and deduplicate supported identities within
 - **WHEN** identical-looking logs have no reliable source identity
 - **THEN** intake does not silently collapse healthy repeated actions and discloses retry-related count uncertainty
 
-#### Scenario: Equal IDs from different producers
-- **WHEN** old client and server records shared the same local ID
-- **THEN** compatibility preserves their distinct identities and only eligible client evidence can contribute to current analysis
-- **AND** replay under the retained app key cannot resurrect excluded server evidence or duplicate already accepted client contributions
 
 ### Requirement: Bounded metric receipt without unsafe arithmetic
 The system SHALL receive supported metrics but initially limit their analysis to bounded sanitized receipt inspection. Metric arithmetic SHALL remain unavailable unless retained identity, type, temporality and interval semantics support it. Forbidden fields SHALL NOT be retained to rescue analysis, and privacy projection SHALL NOT silently merge distinct streams.
@@ -175,7 +171,7 @@ The app key SHALL authorize bounded writes to its app only. Observations SHALL r
 - **THEN** it remains an untrusted app observation and cannot gain stronger assurance or bypass identity validation
 
 ### Requirement: Standard sender configuration and restart continuity
-Registered apps SHALL use existing qualified OTLP endpoints, bearer headers and wire behavior with one app key. Restart and registering another app SHALL preserve settings. Existing two-key installations SHALL require the explicit lifecycle cutover before role removal. Subsequent rotation SHALL be an explicit owner action.
+Registered apps SHALL use existing qualified OTLP endpoints, bearer headers and wire behavior with one app key. Restart and registering another app SHALL preserve settings. Older two-key installations SHALL use a fresh data directory. Subsequent rotation SHALL be an explicit owner action.
 
 #### Scenario: Unchanged sender across restart
 - **WHEN** an eligible client sender uses a qualified request before and after restart

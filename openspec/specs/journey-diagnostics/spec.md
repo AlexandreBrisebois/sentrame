@@ -79,4 +79,4 @@ The owner SHALL discover retained errors and exceptions independently of visit c
 
 #### Scenario: Projection upgrade and replay
 - **WHEN** identified diagnostic evidence accepted by the new model is retransmitted unchanged
-- **THEN** one retained record remains without overwriting or backfilling accepted data, and conflicting retained fields reject atomically; pre-cutover evidence follows the explicit non-destructive lifecycle cutover and replay policy
+- **THEN** one retained record remains without overwriting or backfilling accepted data, and conflicting retained fields reject atomically

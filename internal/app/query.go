@@ -420,17 +420,6 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if reference != nil {
-		compatible, err := s.Store.ClientReferenceCompatible(*reference)
-		if err != nil {
-			http.Error(w, "Compatibility unavailable; retry this reference", 503)
-			return
-		}
-		if !compatible {
-			http.Error(w, "Legacy reference is non-comparable; return or explicitly select a current client period", 409)
-			return
-		}
-	}
 	if reference != nil && reference.Mode == "trace" {
 		http.Error(w, "Open this reference in trace exploration", 400)
 		return
@@ -641,15 +630,8 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 			rows.Scan(&b)
 			json.Unmarshal([]byte(b), &d)
 			dayStart, _ := time.Parse("2006-01-02", d.Day)
-			if s.Store.ClientCutover > 0 && !dayStart.After(time.Unix(0, s.Store.ClientCutover).UTC()) {
-				continue
-			}
 			if q.Get("scope") == "" && q.Get("mode") != "live" && !dayStart.Before(time.Unix(0, from)) && !dayStart.Add(24*time.Hour).After(time.Unix(0, to)) {
-				for key, group := range d.Groups {
-					if s.Store.ClientCutover > 0 && group.Computation != "journey-client-v5" {
-						delete(d.Groups, key)
-						continue
-					}
+				for key := range d.Groups {
 					parts := strings.SplitN(key, "/version:", 2)
 					versionValue := ""
 					if len(parts) == 2 {
@@ -668,7 +650,7 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Store.Mu.Unlock()
 	locked = false
-	write(w, map[string]any{"mode": "journey", "compatibility": s.Store.ClientCompatibility(), "coverage": map[string]any{"source": map[string]any{"truncated": sourceTruncated, "recordLimit": 10000, "collectionCompleteness": "unknown; exporter sampling/loss not observed"}, "current": currentCoverage, "baseline": baselineCoverage, "evidence": map[string]any{"limit": 2000, "omitted": evidenceOmitted}}, "revision": rev, "now": now, "contextualDiscovery": contextualDiscovery(retained), "discovered": discovered, "appVersions": appVersions, "appScopes": appScopes, "evidence": selected, "definitions": defs, "activeDefinition": defs[len(defs)-1], "views": views, "model": model, "baselineModel": base, "baselineBounds": bounds, "summary": summary, "health": map[string]any{"mode": "local synthetic", "collectionCompleteness": "unknown; exporter sampling/loss not observed", "transport": "origin HTTP only; Tunnel and gRPC unqualified", "privacy": diagnosticPolicyDescription, "detailFrom": cut, "summaryOnlyBefore": cut, "freshnessSeconds": 5, "summaryPolicy": "App-wide complete UTC days only, version/definition dimensions. Isolated-visit and partial-day summary queries are unsupported; no individual drilldown. Correction horizon ends captured start+30 days."}, "limits": map[string]any{"truncated": truncated, "modelRecordLimit": 10000, "evidenceLimit": 2000, "policy": "Captured start cohorts; follow-up to snapshot. Partial starts separate; supported summaries only after detail expires."}})
+	write(w, map[string]any{"mode": "journey", "coverage": map[string]any{"source": map[string]any{"truncated": sourceTruncated, "recordLimit": 10000, "collectionCompleteness": "unknown; exporter sampling/loss not observed"}, "current": currentCoverage, "baseline": baselineCoverage, "evidence": map[string]any{"limit": 2000, "omitted": evidenceOmitted}}, "revision": rev, "now": now, "contextualDiscovery": contextualDiscovery(retained), "discovered": discovered, "appVersions": appVersions, "appScopes": appScopes, "evidence": selected, "definitions": defs, "activeDefinition": defs[len(defs)-1], "views": views, "model": model, "baselineModel": base, "baselineBounds": bounds, "summary": summary, "health": map[string]any{"mode": "local synthetic", "collectionCompleteness": "unknown; exporter sampling/loss not observed", "transport": "origin HTTP only; Tunnel and gRPC unqualified", "privacy": diagnosticPolicyDescription, "detailFrom": cut, "summaryOnlyBefore": cut, "freshnessSeconds": 5, "summaryPolicy": "App-wide complete UTC days only, version/definition dimensions. Isolated-visit and partial-day summary queries are unsupported; no individual drilldown. Correction horizon ends captured start+30 days."}, "limits": map[string]any{"truncated": truncated, "modelRecordLimit": 10000, "evidenceLimit": 2000, "policy": "Captured start cohorts; follow-up to snapshot. Partial starts separate; supported summaries only after detail expires."}})
 }
 
 // DaySummary contains no individual membership. Quantiles use mergeable histogram counts.

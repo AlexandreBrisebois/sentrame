@@ -150,9 +150,6 @@ func (s *Store) Cleanup() error {
 		return e
 	}
 	n, _ := res.RowsAffected()
-	if _, e = tx.Exec(`DELETE FROM legacy_excluded WHERE evidence_id NOT IN (SELECT id FROM evidence)`); e != nil {
-		return e
-	}
 	if _, e = tx.Exec(`DELETE FROM summaries WHERE day<?`, now.AddDate(-1, 0, 0).UTC().Format("2006-01-02")); e != nil {
 		return e
 	}
@@ -160,9 +157,6 @@ func (s *Store) Cleanup() error {
 		return e
 	}
 	if _, e = tx.Exec(`DELETE FROM boundaries WHERE until<=?`, now.UnixNano()); e != nil {
-		return e
-	}
-	if _, e = tx.Exec(`DELETE FROM legacy_scope_barriers WHERE until<=?`, now.UnixNano()); e != nil {
 		return e
 	}
 	state, _ := json.Marshal(model.Stats)

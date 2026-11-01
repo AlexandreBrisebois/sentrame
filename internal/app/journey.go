@@ -138,24 +138,9 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 	m := Model{Computation: "journey-client-v5", Journeys: []Journey{}, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: []Evidence{}, Warnings: []string{}, Policy: "Correlated client navigation or first mapped occurrence / optional goal / 30-minute inactivity; event-time display is not causal order. Transition occurrences, journeys and anonymous scopes are separate units. Timings never measure attention."}
 	defs := map[int64]Definition{}
 	for _, d := range definitions {
-		if compatible, ok := compatibleClientDefinition(d); ok {
-			defs[d.Version] = compatible
-		}
+		defs[d.Version] = d
 	}
 	groups := map[string][]Evidence{}
-	// A legacy/unknown record makes its bounded visit incompatible. Filtering only
-	// the old record would manufacture a direct transition across missing history.
-	incompatible := map[string]bool{}
-	incompatibleScope := map[string]bool{}
-	for _, e := range evidence {
-		if e.Source != "client" && e.Scope != "" {
-			if e.Tab == "" {
-				incompatibleScope[e.Scope] = true
-			} else {
-				incompatible[e.Scope+"\x00"+e.Tab] = true
-			}
-		}
-	}
 	seen := map[string]bool{}
 	for _, e := range evidence {
 		definition := e.Definition
@@ -163,8 +148,8 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 			definition = e.CaptureDefinition
 		}
 		_, compatible := defs[definition]
-		if e.Source != "client" || !compatible || incompatibleScope[e.Scope] || incompatible[e.Scope+"\x00"+e.Tab] {
-			m.Warnings = appendUnique(m.Warnings, "Legacy mixed or unsupported history is non-comparable; select a current client period.")
+		if e.Source != "client" || !compatible {
+			m.Warnings = appendUnique(m.Warnings, "Unsupported evidence or definition was omitted.")
 			continue
 		}
 		if e.Record != "" {
@@ -383,32 +368,6 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 	})
 	summarizeModel(&m)
 	return m
-}
-
-// compatibleClientDefinition provides an analysis-only view of old client rules.
-// Originals remain stored unchanged. A server/unknown role cannot be widened
-// into a current client rule or accidentally fall back to automatic navigation.
-func compatibleClientDefinition(d Definition) (Definition, bool) {
-	d.Mappings = append([]Mapping(nil), d.Mappings...)
-	for i := range d.Mappings {
-		switch d.Mappings[i].Source {
-		case "", "browser":
-			d.Mappings[i].Source = ""
-		default:
-			return Definition{}, false
-		}
-	}
-	if d.GoalSelector != nil {
-		goal := *d.GoalSelector
-		switch goal.Source {
-		case "", "browser":
-			goal.Source = ""
-		default:
-			return Definition{}, false
-		}
-		d.GoalSelector = &goal
-	}
-	return d, true
 }
 
 func mappingFor(e Evidence, d Definition) (Mapping, bool, bool) {

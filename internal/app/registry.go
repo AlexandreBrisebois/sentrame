@@ -329,16 +329,13 @@ func OpenRegistry(dbPath string) (*Registry, error) {
 	if safePath(registryPath) != nil || safePath(marker) != nil {
 		return nil, registryError()
 	}
-	if _, err := os.Stat(filepath.Join(root, ".client-migration.json")); !os.IsNotExist(err) {
-		return nil, errors.New("client migration incomplete; keep intake stopped and resume the reviewed offline migration")
-	}
 	b, err := os.ReadFile(registryPath)
 	if err == nil {
 		var version struct {
 			Version int `json:"version"`
 		}
 		if json.Unmarshal(b, &version) == nil && version.Version == 1 {
-			return nil, errors.New("two-key registry requires explicit offline client migration; existing state was preserved")
+			return nil, errors.New("unsupported two-key registry; select a fresh data directory (existing state was preserved)")
 		}
 		decoder := json.NewDecoder(bytes.NewReader(b))
 		decoder.DisallowUnknownFields()

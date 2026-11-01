@@ -47,19 +47,15 @@ Send controlled technical messages and safe exception details, not request bodie
 
 Errors may be explored without journey correlation. Link an exception to a journey only through supported explicit context/relationships; time proximity does not establish cause. A shared stack is a grouping category, not proof that two records represent one exception. Missing source maps remain missing.
 
-## Legacy managed state and recovery
+## Fresh installation and recovery
 
-The single-key release does not silently adopt old two-key managed state. Follow the reviewed offline migration mechanism only after separately authorizing a real cutover and taking a private coordinated backup. The recommended transition retains the old browser key as the app key and rejects the old server key. Do not import an old server key as an alias or expose it through connection settings.
-
-Mixed historical journeys and inseparable old summaries are non-comparable to current client results. Removing B from A→B→C must not fabricate A→C. Compatible pure-client history can remain usable only with unchanged capture meaning and replay identity. Unsupported references explain the compatibility boundary; they must not broaden filters or become fake zero traffic. Existing retention/deletion rules still apply.
-
-Back up registry, app stores, initialization/migration markers and latest revocation/deletion state together. Restoring an older image or snapshot alone can revive retired authority. Keep intake stopped when current deny state cannot be reconciled. See [app workspaces](MULTI-APP.md) and [deployment guidance](NAS.md).
+Use a fresh data directory and register the app to obtain its new key. Older two-key state is not migrated or reset. Back up the registry, app stores and current revocation/deletion state together; reconcile authority before restoring a backup. See [app workspaces](MULTI-APP.md) and [deployment guidance](NAS.md).
 
 ## Verify the actual path
 
-Use isolated synthetic data and the actual supported exporter → receiver → durable store → protected read seam. Cover uncorrelated receipt; visit/tab isolation; optional goals; repeated events; warning/error/recovery; replay before/after restart and rotation; missing/late timestamps; privacy; and current/legacy history boundaries. Wire fixtures, source snippets and mocked views do not qualify actual SDKs, browser lifecycle, Home Server capacity or Tunnel routes.
+Use isolated synthetic data and the actual supported exporter → receiver → durable store → protected read seam. Cover uncorrelated receipt; visit/tab isolation; optional goals; repeated events; warning/error/recovery; replay before/after restart and rotation; missing/late timestamps; privacy; and unsupported older-state rejection. Wire fixtures, source snippets and mocked views do not qualify actual SDKs, browser lifecycle, Home Server capacity or Tunnel routes.
 
-`task test`, `task test:delivery` and the isolated fixture commands provide repeatable local checks. Do not run reset, registration, migration or fixture commands against real retained state without separate authorization. Tests should report passed, failed, blocked and not-run cells distinctly.
+`task test`, `task test:delivery` and the isolated fixture commands provide repeatable local checks. Do not run reset, registration or fixture commands against real retained state without separate authorization. Tests should report passed, failed, blocked and not-run cells distinctly.
 
 The [coding-agent guide](integration/AGENT-INTEGRATION.md), [OTel contract](integration/OTEL-CONTRACT.md) and [synthetic demonstration](integration/synthetic-demo.md) use this same client-only boundary. [Historical server integration evidence](verification/historical-server-integration.md) preserves earlier .NET/Node results and limitations; those older recipes are not active server support or qualification of this release.
 

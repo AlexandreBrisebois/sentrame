@@ -685,11 +685,10 @@ The active workspace SHALL expose no browser/server selector, trusted-producer c
 - **THEN** Tools/Outils, all seven direct journey views, keyboard/focus/dismissal behavior and stable graph presentation remain available within the existing compact header budgets
 - **AND** server-role removal adds no permanent header rows or dead-end controls
 
-#### Scenario: Retired role filter or old reference
-- **WHEN** an API query or saved reference depends on removed role semantics or non-comparable legacy evidence
-- **THEN** the API reports an explicit unsupported compatibility state rather than ignoring the filter or widening results
-- **AND** the UI explains the limit and offers return, clear-filter or current-client-period selection without overwriting the saved reference
+#### Scenario: Retired role filter
+- **WHEN** an API query requests a removed role filter
+- **THEN** the API reports an unsupported filter instead of silently widening results
 
 #### Scenario: Live and historical context
 - **WHEN** the viewer changes between historical and live client populations
-- **THEN** existing bounds, baseline separation, occurrence/receipt times, partial evidence and retention warnings remain explicit, with no implicit mixing of legacy history
+- **THEN** existing bounds, baseline separation, occurrence/receipt times, partial evidence and retention warnings remain explicit

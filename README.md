@@ -1,6 +1,6 @@
 # Sentrame
 
-See [App workspaces](docs/MULTI-APP.md) for registration, one-key connection settings, isolation and coordinated backup/restore. Existing two-key managed state requires an explicitly reviewed offline transition; startup never resets old data.
+See [App workspaces](docs/MULTI-APP.md) for registration, one-key connection settings, isolation and coordinated backup/restore. Use a fresh data directory; unsupported older state is not reset or migrated.
 
 **Find the meaning between events.** Pronounced “sen-tram,” inspired by *sens* and *trame*: meaning, direction, and the thread connecting events.
 
@@ -103,6 +103,6 @@ The [canonical specifications](openspec/specs/) define the baseline; the [archiv
 
 Register an app in the owner UI and configure its existing standard exporter with the generated settings. **Journeys** is the first and default navigation option, including on app switches. Choose **Traces** explicitly to inspect standard logs/spans. The local trace explorer needs native trace/span IDs and no `stage.name`, session or occurrence attributes. Tree/timeline/table views preserve parents, events, log context and bounded links; inclusive operation duration comes from native start/end. **Journeys** is the default chronological business view requiring owner mappings and explicit correlation. A request duration does not measure page dwell or prove a vote persisted.
 
-Use the [progressive voting fixture](docs/integration/synthetic-demo.md#standard-otel-voting-operations) and [trace controls](docs/USER-GUIDE.md#trace-exploration). Service/carrier business mapping and native trace business occurrences are qualified locally. Optional hint suggestions require explicit owner acceptance. Span-backed occurrences are also available for explicitly scoped journeys, with separate native, paired and presence distributions. [Qualification](docs/verification/standard-otel.md) separates local wire evidence from unrun .NET/Next/browser exporters and deployment routes. Existing managed two-key state requires the reviewed offline transition; unsupported state is never reset automatically. Mixed historical journeys remain non-comparable rather than being filtered into invented client paths.
+Use the [progressive voting fixture](docs/integration/synthetic-demo.md#standard-otel-voting-operations) and [trace controls](docs/USER-GUIDE.md#trace-exploration). Service/carrier business mapping and native trace business occurrences are qualified locally. Optional hint suggestions require explicit owner acceptance. Span-backed occurrences are also available for explicitly scoped journeys, with separate native, paired and presence distributions. [Qualification](docs/verification/standard-otel.md) separates local wire evidence from unrun .NET/Next/browser exporters and deployment routes. Use a fresh data directory; unsupported older state is not reset or migrated.
 
 [Multi-app qualification](docs/verification/multi-app-workspaces.md)

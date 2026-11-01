@@ -331,6 +331,6 @@ Graph error markers keep the affected population visible as `L!` and/or `B!` bes
 
 ## Existing history after the single-key transition
 
-App settings exposes one Telemetry key and whole-key rotation. Updating every sender is required after rotation; the client key grants writes only and cannot authenticate a real action or certify persistence. Existing two-key installations need the explicit offline migration described in [App workspaces](MULTI-APP.md#existing-two-key-managed-installations), not automatic startup conversion.
+App settings exposes one Telemetry key and whole-key rotation. Updating every sender is required after rotation; the client key grants writes only and cannot authenticate a real action or certify persistence. Older installations require a fresh data directory and app registration; existing data is not reset or migrated.
 
-Mixed historical journeys and old summaries that cannot isolate client evidence are non-comparable to current results. Preserved records do not mean a legacy server explorer remains available. Unsupported old references explain the compatibility boundary and offer return or a current-client period; they must not silently widen filters or show missing history as zero traffic. New mapping definitions apply prospectively.
+New mapping definitions apply prospectively.

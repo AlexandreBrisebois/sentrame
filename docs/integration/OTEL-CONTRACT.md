@@ -63,8 +63,6 @@ Direct requests validate atomically under bounded request/decompression/record/c
 
 Ordered detail retains its existing 30-day lifecycle; supported text-free summaries retain their existing twelve-month lifecycle. Summary-only periods cannot reconstruct paths. Detail reads, linked navigation and copies obey app/session authorization, expiry, revocation and deletion. Links and replay never extend retention. A sample/query/display cap is not a claim of complete application traffic.
 
-The reviewed offline two-key transition preserves app identity/generation and retains the old browser key as the single app key while retiring the old server key. Real cutover needs separate operational authorization and a private coordinated backup. Legacy identity aliases preserve compatible client replay; old server namespaces never join the current client domain.
-
-Mixed legacy captures and inseparable old summaries remain preserved under lifecycle but non-comparable to current client results. Removing B from A→B→C must not invent A→C. Preserve old definitions/references, reject unsupported role filters explicitly and activate reviewed role-free definitions prospectively. Unavailable compatibility results need a clear return/current-period action; never broaden old queries or display fake zero traffic. Recovery cannot revive retired keys or deleted generations from a stale image/snapshot.
+Existing two-key data is unsupported. Start with a fresh data directory and register the app for a new key; older state is not reset or migrated.
 
 Use [the developer guide](../DEVELOPER-GUIDE.md), [agent checklist](AGENT-INTEGRATION.md) and [app workspaces](../MULTI-APP.md). The [historical qualification ledger](../verification/standard-otel.md) describes earlier tested cells and limitations; source snippets and wire fixtures are not current real-browser, deployment or server support claims.

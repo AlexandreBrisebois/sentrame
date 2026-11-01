@@ -58,7 +58,7 @@ Trace lists, detail, relationship navigation and copy SHALL enforce the same app
 - **THEN** access is denied even when the requester knows a valid trace identifier
 
 ### Requirement: Client diagnostic trace boundary
-Trace detail SHALL retain supported native span timing, events, logs and links as diagnostic context for app observations. It SHALL NOT present a server dependency map, backend persistence assurance or automatic server-workflow journey. Physical producer origin SHALL NOT be inferred from span kind. Legacy excluded records SHALL follow lifecycle compatibility rules.
+Trace detail SHALL retain supported native span timing, events, logs and links as diagnostic context for app observations. It SHALL NOT present a server dependency map, backend persistence assurance or automatic server-workflow journey. Physical producer origin SHALL NOT be inferred from span kind.
 
 #### Scenario: Client request trace
 - **WHEN** client spans expose overlapping operations and an error

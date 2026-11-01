@@ -25,10 +25,6 @@ The system SHALL derive client journeys within one registered app and bounded ex
 - **WHEN** a received record lacks the required visit or tab context
 - **THEN** it remains received evidence without a fabricated journey or a server-operation fallback
 
-#### Scenario: Combined client and server evidence
-- **WHEN** retained evidence previously formed a mixed journey
-- **THEN** the lifecycle cutover marks it non-comparable rather than flattening it into a new client path
-
 ### Requirement: Self-explanatory event classification
 The system SHALL list sanitized discovered events and fields so an authorized owner can map emitted events to stable journey steps, optionally choose a completion goal and define explicit start/exit conditions. A valid definition with mappings SHALL NOT require a completion goal. It SHALL preview matches, missing context and conflicts before definition activation. Ordinary standard OTel instrumentation SHALL suffice; a custom SDK, executable script or AI SHALL NOT be required.
 

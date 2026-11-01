@@ -13,11 +13,10 @@ import (
 )
 
 type Store struct {
-	Path          string
-	DB            *sql.DB
-	Mu            sync.Mutex
-	Now           func() time.Time
-	ClientCutover int64
+	Path string
+	DB   *sql.DB
+	Mu   sync.Mutex
+	Now  func() time.Time
 }
 
 func Open(path string) (*Store, error) {
@@ -40,7 +39,7 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("unsupported database schema %d; select a fresh synthetic data directory (existing data was not reset)", version)
 	}
 
-	_, e = db.Exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=3000; PRAGMA max_page_count=200000; PRAGMA journal_size_limit=16777216; CREATE TABLE IF NOT EXISTS legacy_excluded(evidence_id INTEGER PRIMARY KEY); CREATE TABLE IF NOT EXISTS legacy_scope_barriers(scope_hash TEXT PRIMARY KEY,until INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS evidence(id INTEGER PRIMARY KEY, data TEXT NOT NULL, identity TEXT UNIQUE, at INTEGER NOT NULL, scope TEXT NOT NULL); CREATE INDEX IF NOT EXISTS evidence_time ON evidence(at); CREATE INDEX IF NOT EXISTS evidence_scope ON evidence(scope); CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL); INSERT OR IGNORE INTO settings VALUES('revision','0'); CREATE TABLE IF NOT EXISTS definitions(version INTEGER PRIMARY KEY,data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS views(id INTEGER PRIMARY KEY,data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS invitations(id INTEGER PRIMARY KEY AUTOINCREMENT,label TEXT NOT NULL,created INTEGER NOT NULL,expires INTEGER NOT NULL,token_hash TEXT NOT NULL UNIQUE,app_id TEXT NOT NULL,generation TEXT NOT NULL,redeemed INTEGER NOT NULL DEFAULT 0,revoked INTEGER NOT NULL DEFAULT 0); CREATE TABLE IF NOT EXISTS tombstones(scope TEXT PRIMARY KEY,until INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS summaries(day TEXT PRIMARY KEY,data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS boundaries(scope TEXT,tab TEXT,start INTEGER, end INTEGER,until INTEGER,PRIMARY KEY(scope,tab,start));`)
+	_, e = db.Exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=3000; PRAGMA max_page_count=200000; PRAGMA journal_size_limit=16777216; CREATE TABLE IF NOT EXISTS evidence(id INTEGER PRIMARY KEY, data TEXT NOT NULL, identity TEXT UNIQUE, at INTEGER NOT NULL, scope TEXT NOT NULL); CREATE INDEX IF NOT EXISTS evidence_time ON evidence(at); CREATE INDEX IF NOT EXISTS evidence_scope ON evidence(scope); CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL); INSERT OR IGNORE INTO settings VALUES('revision','0'); CREATE TABLE IF NOT EXISTS definitions(version INTEGER PRIMARY KEY,data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS views(id INTEGER PRIMARY KEY,data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS invitations(id INTEGER PRIMARY KEY AUTOINCREMENT,label TEXT NOT NULL,created INTEGER NOT NULL,expires INTEGER NOT NULL,token_hash TEXT NOT NULL UNIQUE,app_id TEXT NOT NULL,generation TEXT NOT NULL,redeemed INTEGER NOT NULL DEFAULT 0,revoked INTEGER NOT NULL DEFAULT 0); CREATE TABLE IF NOT EXISTS tombstones(scope TEXT PRIMARY KEY,until INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS summaries(day TEXT PRIMARY KEY,data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS boundaries(scope TEXT,tab TEXT,start INTEGER, end INTEGER,until INTEGER,PRIMARY KEY(scope,tab,start));`)
 	if e != nil {
 		db.Close()
 		return nil, e
@@ -50,16 +49,6 @@ func Open(path string) (*Store, error) {
 		return nil, e
 	}
 	s := &Store{DB: db, Now: time.Now, Path: path}
-	var cutover string
-	if err := db.QueryRow(`SELECT value FROM settings WHERE key='client_cutover'`).Scan(&cutover); err == nil {
-		if _, err = fmt.Sscan(cutover, &s.ClientCutover); err != nil || s.ClientCutover <= 0 {
-			db.Close()
-			return nil, fmt.Errorf("invalid client cutover; coordinated recovery required")
-		}
-	} else if err != sql.ErrNoRows {
-		db.Close()
-		return nil, err
-	}
 	if _, e = db.Exec(`INSERT OR IGNORE INTO settings VALUES('app_id',?),('generation',?)`, random(), random()); e != nil {
 		db.Close()
 		return nil, e
@@ -184,7 +173,7 @@ func (s *Store) Insert(es []Evidence) error {
 		}
 		key := any(nil)
 		if x.Record != "" {
-			key = identitySource(x.Source) + "/" + x.Signal + "/" + x.Record
+			key = x.Source + "/" + x.Signal + "/" + x.Record
 		}
 		raw, _ := json.Marshal(x)
 		if key != nil {
@@ -197,10 +186,6 @@ func (s *Store) Insert(es []Evidence) error {
 				var prev Evidence
 				if err := json.Unmarshal([]byte(old), &prev); err != nil {
 					return fmt.Errorf("invalid retained identity")
-				}
-				if prev.Source == "browser" && x.Source == "client" {
-					prev.Source = "client"
-					prev.Projection = x.Projection
 				}
 				if prev.Attrs == nil {
 					prev.Attrs = map[string]string{}
@@ -228,38 +213,15 @@ func (s *Store) Insert(es []Evidence) error {
 				continue
 			}
 		}
-		legacyBlocked := 0
-		if s.ClientCutover > 0 && x.Scope != "" {
-			if err := tx.QueryRow(`SELECT count(*) FROM legacy_scope_barriers WHERE scope_hash=?`, digest(x.Scope)).Scan(&legacyBlocked); err != nil {
-				return err
-			}
-			if legacyBlocked > 0 {
-				if x.Attrs == nil {
-					x.Attrs = map[string]string{}
-				}
-				x.Attrs["_partial_start"] = "true"
-				raw, _ = json.Marshal(x)
-			}
-		}
 		if n >= 100000 {
 			return fmt.Errorf("storage record limit")
 		}
 		n++
-		res, e := tx.Exec(`INSERT INTO evidence(data,identity,at,scope) VALUES(?,?,?,?)`, string(raw), key, x.Time, x.Scope)
+		_, e := tx.Exec(`INSERT INTO evidence(data,identity,at,scope) VALUES(?,?,?,?)`, string(raw), key, x.Time, x.Scope)
 		if e != nil {
 			return fmt.Errorf("writer unavailable")
 		}
-		if s.ClientCutover > 0 && x.Time <= s.ClientCutover {
-			if legacyBlocked > 0 {
-				id, err := res.LastInsertId()
-				if err != nil {
-					return err
-				}
-				if _, err = tx.Exec(`INSERT INTO legacy_excluded VALUES(?)`, id); err != nil {
-					return err
-				}
-			}
-		}
+
 	}
 	_, e = tx.Exec(`UPDATE settings SET value=CAST(value AS INTEGER)+1 WHERE key='revision'`)
 	if e != nil {
@@ -267,7 +229,7 @@ func (s *Store) Insert(es []Evidence) error {
 	}
 	return tx.Commit()
 }
-func (s *Store) rawEvidence() ([]Evidence, error) {
+func (s *Store) Evidence() ([]Evidence, error) {
 	rows, e := s.DB.Query(`SELECT id,data FROM evidence ORDER BY at,id LIMIT 100001`)
 	if e != nil {
 		return nil, e
@@ -316,7 +278,7 @@ func InitialDefinition() Definition {
 	return Definition{Version: 1, Goal: "completion.entered", Mappings: []Mapping{{Event: "discovery.entered", Step: "Discovery", Kind: "step"}, {Event: "vote.requested", Step: "Intent", Kind: "step"}, {Event: "vote.result.observed", Step: "Vote", Kind: "step"}, {Event: "publication.failed", Step: "Publication error", Kind: "step"}, {Event: "publication.recovered", Step: "Recovered", Kind: "step"}, {Event: "completion.entered", Step: "Completion", Kind: "step"}, {Event: "journey.exited", Step: "Exit", Kind: "exit"}, {Event: "stage.entered", Step: "Stage", Kind: "stage-start"}, {Event: "stage.exited", Step: "Stage", Kind: "stage-end"}, {Event: "activity.changed", Step: "Activity", Kind: "activity"}}}
 }
 
-// EvidenceLimit applies compatibility before display/query limits.
+// EvidenceLimit bounds the retained evidence returned to callers.
 func (s *Store) EvidenceLimit(limit int) ([]Evidence, error) {
 	es, err := s.Evidence()
 	if err != nil {

@@ -684,9 +684,7 @@ Object.assign(fr, {
  "Examples use retained app-wide history for the selected event, service and carrier, independent of the graph time range.":"Les exemples utilisent l’historique conservé de l’application pour l’événement, le service et le support sélectionnés, indépendamment de la période du graphique.",
  "No retained records match this event context. Choose a received context above or check the exact service and carrier.":"Aucun enregistrement conservé ne correspond à ce contexte. Choisissez un contexte reçu ci-dessus ou vérifiez le service et le support exacts.",
  "Client observations":"Observations du client", "All services":"Tous les services", "Signal":"Signal", "Service":"Service",
- "Choose a current client period":"Choisir une période client actuelle"
 });
 
-Object.assign(fr, {"Legacy history is preserved. Mixed journeys and incompatible definitions or summaries are unavailable in client analysis.":"L’historique est conservé. Les parcours mixtes ainsi que les définitions ou synthèses incompatibles ne sont pas disponibles dans l’analyse client."});
 
 Object.assign(fr, {"Step: adds an occurrence to the journey path. Use this for a meaningful action or milestone, such as Vote result shown.":"Étape : ajoute une occurrence au chemin du parcours. Utilisez ce type pour une action ou un jalon significatif, comme Résultat du vote affiché."});

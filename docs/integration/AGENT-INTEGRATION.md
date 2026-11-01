@@ -38,7 +38,7 @@ Exercise real standard exporter → receiver → storage → protected read seam
 
 Report exact SDK/version, route, signal, encoding/compression, batching/flush behavior and passed/failed/blocked/not-run checks. A wire test or source snippet does not qualify a framework, actual browser shutdown delivery, Home Server or deployed Tunnel. Use bounded supported processor/exporter options; no global ambient configuration changes, forks or custom transport to hide unsupported limits.
 
-Existing two-key data needs the explicit reviewed offline transition. Do not operate on real retained state, read/reveal credentials, retire keys, delete data or restore snapshots merely because this guide describes the mechanism. Preserve mixed history without inventing client transitions, and never broaden old role-dependent mappings/references silently.
+Use a fresh data directory and register the app for a new key. Existing two-key data is not migrated or reset.
 
 See [the developer guide](../DEVELOPER-GUIDE.md), [OTel contract](OTEL-CONTRACT.md) and [app workspaces](../MULTI-APP.md). Historical server integration reports are evidence of an earlier product boundary, not current integration instructions.
 
