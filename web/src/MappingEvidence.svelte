@@ -8,14 +8,14 @@
 </script>
 <section class="mapping-evidence" aria-label={t('Received records for this mapping')} aria-busy={loading}>
  <h3>{t('Received records for this mapping')}</h3>
- <p>{t('Examples use retained app-wide history for the selected event, service, carrier and producer, independent of the graph time range.')}</p>
+ <p>{t('Examples use retained app-wide history for the selected event, service and carrier, independent of the graph time range.')}</p>
  {#if loading}<p role="status">{t('Loading received records…')}</p>
  {:else if error}<p class="error" role="alert">{error}</p>
  {:else if preview}
  {#if preview.truncated}<p class="warning">{t('Results are partial. Some retained records were omitted.')}</p>{/if}
  <p class="match-count" role="status"><strong>{preview.matches} {t('Matching records')}</strong> · {preview.candidates} {t('before the optional condition')}</p>
- {#if preview.matches&&preview.missingContext}<p class="warning">{preview.missingContext} {t('matching records are missing a session ID or, for browser events, a tab ID. You can save this mapping, but these records cannot be connected into journeys.')}</p>{:else if preview.matches}<p>{t('All matching records have the IDs needed to connect them into journeys.')}</p>{/if}
- {#if !preview.candidates}<p class="warning">{t('No retained records match this event context. Choose a received context above or check the exact service, carrier and producer.')}</p>
+ {#if preview.matches&&preview.missingContext}<p class="warning">{preview.missingContext} {t('matching records are missing a visit or tab ID. You can save this mapping, but these records cannot be connected into journeys.')}</p>{:else if preview.matches}<p>{t('All matching records have the IDs needed to connect them into journeys.')}</p>{/if}
+ {#if !preview.candidates}<p class="warning">{t('No retained records match this event context. Choose a received context above or check the exact service and carrier.')}</p>
  {:else}
   {#if !preview.matches}<p class="warning">{t('This condition matches no records. The examples and available values below show this event context before applying the condition.')}</p>{/if}
   <h4>{t('Pick a condition from received data (optional)')}</h4>
@@ -24,7 +24,7 @@
   {#if hasCondition}<button type="button" class="text-button" onclick={()=>oncondition('','')}>{t('Clear condition')}</button>{/if}
   {#if preview.conditionsTruncated}<p>{t('Available values are bounded. Some values are omitted.')}</p>{/if}
   <details open><summary>{t(preview.matches?'Matching examples':'Examples before the condition')} · {examples.length}/{preview.matches||preview.candidates}</summary>
-   {#each examples as record}<article><p><strong>{record.service||t('unknown')}</strong> · {record.source} / {record.signal}<br/>{dateTime(record.time)} · {record.version||t('unknown')}</p>
+   {#each examples as record}<article><p><strong>{record.service||t('unknown')}</strong> · {record.signal}<br/>{dateTime(record.time)} · {record.version||t('unknown')}</p>
     <dl>{#each Object.entries(record.attrs??{}) as [key,value]}<div><dt>{key}</dt><dd>{value}</dd></div>{:else}<div><dt>{t('Attributes')}</dt><dd>{t('No retained attributes')}</dd></div>{/each}</dl>
    </article>{/each}
   </details>

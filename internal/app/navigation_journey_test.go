@@ -13,16 +13,16 @@ import (
 
 func TestCorrelatedNavigationWithoutMappingOrGoal(t *testing.T) {
 	d := Definition{Version: 1}
-	home := ev(1, "pwa.app.opened", "browser", 0)
+	home := ev(1, "pwa.app.opened", "client", 0)
 	home.Attrs["stage.name"] = "home"
 	home.Sequence = 1
-	search := ev(2, "pwa.screen.presented", "browser", 1)
+	search := ev(2, "pwa.screen.presented", "client", 1)
 	search.Attrs["stage.name"] = "search"
 	search.Sequence = 2
-	bad := ev(3, "pwa.error", "browser", 2)
+	bad := ev(3, "pwa.error", "client", 2)
 	bad.Severity = 17
 	bad.Sequence = 3
-	planner := ev(4, "pwa.screen.presented", "browser", 3)
+	planner := ev(4, "pwa.screen.presented", "client", 3)
 	planner.Attrs["stage.name"] = "planner"
 	planner.Sequence = 4
 	m := Derive([]Evidence{planner, bad, home, search}, []Definition{d}, epoch+int64(10*time.Second))
@@ -46,24 +46,25 @@ func TestCorrelatedNavigationWithoutMappingOrGoal(t *testing.T) {
 }
 
 func TestCorrelatedNavigationIsolationAndConfiguredPrecedence(t *testing.T) {
-	a := ev(1, "screen", "browser", 0)
+	a := ev(1, "screen", "client", 0)
 	a.Attrs["stage.name"] = "home"
-	b := ev(2, "screen", "browser", 1)
+	b := ev(2, "screen", "client", 1)
 	b.Tab = "another-tab"
-	c := ev(3, "screen", "browser", 2)
+	c := ev(3, "screen", "client", 2)
 	c.Scope = "another-session"
-	noTab := ev(4, "screen", "browser", 3)
+	noTab := ev(4, "screen", "client", 3)
 	noTab.Tab = ""
-	server := ev(5, "screen", "server", 4)
-	metric := ev(6, "screen", "browser", 5)
+	server := ev(5, "screen", "client", 4)
+	server.Scope = ""
+	metric := ev(6, "screen", "client", 5)
 	metric.Signal = "metrics"
-	trace := ev(7, "screen", "browser", 6)
+	trace := ev(7, "screen", "client", 6)
 	trace.Signal = "traces"
 	m := Derive([]Evidence{a, b, c, noTab, server, metric, trace}, []Definition{{Version: 1}}, epoch+int64(10*time.Second))
 	if len(m.Journeys) != 3 || len(m.Unassigned) != 4 {
 		t.Fatalf("navigation must isolate tabs/scopes and not infer trace/server/metric paths: %+v", m)
 	}
-	d := Definition{Version: 1, Goal: "screen", Mappings: []Mapping{{Event: "screen", Step: "Owner label", Kind: "step", Source: "browser"}}}
+	d := Definition{Version: 1, Goal: "screen", Mappings: []Mapping{{Event: "screen", Step: "Owner label", Kind: "step"}}}
 	m = Derive([]Evidence{a}, []Definition{d}, epoch+int64(time.Second))
 	if len(m.Journeys) != 1 || m.Journeys[0].Path[0] != "Owner label" || m.Stats.Completed != 1 {
 		t.Fatal("configured meaning and completion must take precedence")
@@ -71,11 +72,11 @@ func TestCorrelatedNavigationIsolationAndConfiguredPrecedence(t *testing.T) {
 }
 
 func TestMappingWithoutCompletionGoal(t *testing.T) {
-	d := Definition{Version: 1, Mappings: []Mapping{{Event: "screen", Step: "Screen", Kind: "step", Source: "browser"}}}
+	d := Definition{Version: 1, Mappings: []Mapping{{Event: "screen", Step: "Screen", Kind: "step"}}}
 	if msg := validateDefinition(d); msg != "" {
 		t.Fatalf("goal-free mapping must be valid: %s", msg)
 	}
-	m := Derive([]Evidence{ev(1, "screen", "browser", 0)}, []Definition{d}, epoch+int64(time.Second))
+	m := Derive([]Evidence{ev(1, "screen", "client", 0)}, []Definition{d}, epoch+int64(time.Second))
 	if len(m.Journeys) != 1 || m.Stats.Completed != 0 || m.Stats.EligibleJourneys != 0 {
 		t.Fatal("goal-free mappings must not imply conversion")
 	}
@@ -103,7 +104,7 @@ func TestManagedNavigationIntakeSnapshotReplayAndGoalFreeActivation(t *testing.T
 		l.Attributes().PutInt("source.sequence", int64(i+1))
 	}
 	for attempt := 0; attempt < 2; attempt++ {
-		if status := requestLogs(t, c, server.URL, a.Browser, ls); status != 200 {
+		if status := requestLogs(t, c, server.URL, a.Key, ls); status != 200 {
 			t.Fatalf("intake: %d", status)
 		}
 	}
@@ -125,7 +126,7 @@ func TestManagedNavigationIntakeSnapshotReplayAndGoalFreeActivation(t *testing.T
 	if code != 200 || json.Unmarshal(raw, &snapshot) != nil || len(snapshot.Model.Journeys) != 0 {
 		t.Fatal("navigation crossed app boundary")
 	}
-	d := Definition{Mappings: []Mapping{{Event: "pwa.screen.presented", Step: "Screen", Source: "browser", Kind: "step"}}}
+	d := Definition{Mappings: []Mapping{{Event: "pwa.screen.presented", Step: "Screen", Kind: "step"}}}
 	code, raw = appRequest(t, c, server.URL, "POST", base+"/definitions", csrf, d)
 	if code != 200 {
 		t.Fatalf("goal-free definition activation: %d %s", code, raw)
@@ -137,12 +138,12 @@ func TestManagedNavigationIntakeSnapshotReplayAndGoalFreeActivation(t *testing.T
 }
 
 func TestCorrelatedNavigationMissingSequenceAndInactivityBoundary(t *testing.T) {
-	a := ev(1, "opened", "browser", 0)
-	b := ev(2, "screen", "browser", 1)
-	c := ev(3, "screen", "browser", 1900)
-	missingScope := ev(4, "screen", "browser", 2)
+	a := ev(1, "opened", "client", 0)
+	b := ev(2, "screen", "client", 1)
+	c := ev(3, "screen", "client", 1900)
+	missingScope := ev(4, "screen", "client", 2)
 	missingScope.Scope = ""
-	bad := ev(5, "error", "browser", -1)
+	bad := ev(5, "error", "client", -1)
 	bad.Severity = 17
 	m := Derive([]Evidence{c, b, a, missingScope, bad}, []Definition{{Version: 1}}, epoch+int64(1901*time.Second))
 	if len(m.Journeys) != 2 || m.Journeys[0].Status != "inactive" || m.Journeys[1].Status != "active" || len(m.Unassigned) != 2 {

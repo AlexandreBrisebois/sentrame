@@ -70,7 +70,7 @@ func validTraceID(value string) bool {
 	return false
 }
 
-// All relationships describe observed context. They confer no source authority.
+// All relationships describe untrusted client observations, not persistence assurance.
 // The candidate index lives only for this bounded read, never beyond retention.
 func traceDetail(es []Evidence, trace, revision string, truncated bool) TraceDetail {
 	d := TraceDetail{Mode: "trace", Trace: trace, Revision: revision, Computation: nativeTimingPolicy, Unit: "observed spans", Completeness: "unknown: sampling and unexported work cannot establish completeness", Truncated: truncated, Operations: []TraceOperation{}, Events: []Evidence{}, Logs: []Evidence{}, Relationships: []TraceRelationship{}}
@@ -180,6 +180,15 @@ func (s *Service) traces(w http.ResponseWriter, r *http.Request) {
 		}
 		if message := validateReferenceQuery(*reference, true); message != "" {
 			http.Error(w, message, 400)
+			return
+		}
+		compatible, err := s.Store.ClientReferenceCompatible(*reference)
+		if err != nil {
+			http.Error(w, "Compatibility unavailable; retry this reference", 503)
+			return
+		}
+		if !compatible {
+			http.Error(w, "Legacy reference is non-comparable; return or explicitly select a current client period", 409)
 			return
 		}
 		trace = reference.Trace
@@ -346,7 +355,9 @@ type BusinessOccurrence struct {
 func traceBusiness(es []Evidence, defs []Definition, preview int64) []BusinessOccurrence {
 	by := map[int64]Definition{}
 	for _, d := range defs {
-		by[d.Version] = d
+		if compatible, ok := compatibleClientDefinition(d); ok {
+			by[d.Version] = compatible
+		}
 	}
 	out := []BusinessOccurrence{}
 	for _, e := range es {

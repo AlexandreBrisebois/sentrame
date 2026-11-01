@@ -7,10 +7,10 @@ Help a developer inspect relevant exceptions and subsequent recovery using avail
 ## Requirements
 
 ### Requirement: Evidence-based exception linkage
-The system SHALL associate client/server exceptions with a journey point only through valid configured context, such as explicit app/visit/action correlation or a verified trace/span relationship. Proximity alone SHALL NOT establish linkage or cause. Unlinked exceptions SHALL remain identified as unlinked, and ambiguity SHALL remain visible.
+The system SHALL associate client exceptions with a journey point only through valid configured context, such as explicit app/visit/action correlation or a verified trace/span relationship. Proximity alone SHALL NOT establish linkage or cause. Unlinked exceptions SHALL remain identified as unlinked, and ambiguity SHALL remain visible.
 
 #### Scenario: Related technical execution
-- **WHEN** an exception shares a verified request trace with an action already linked to the app visit
+- **WHEN** an exception shares a supported client request trace with an action already linked to the app visit
 - **THEN** it can be shown at that action with the linkage basis and available context
 
 #### Scenario: Nearby unrelated exception
@@ -79,4 +79,4 @@ The owner SHALL discover retained errors and exceptions independently of visit c
 
 #### Scenario: Projection upgrade and replay
 - **WHEN** identified diagnostic evidence accepted by the new model is retransmitted unchanged
-- **THEN** one retained record remains without overwriting or backfilling accepted data, and conflicting retained fields reject atomically; loading or replaying pre-cutover legacy projections is not required
+- **THEN** one retained record remains without overwriting or backfilling accepted data, and conflicting retained fields reject atomically; pre-cutover evidence follows the explicit non-destructive lifecycle cutover and replay policy

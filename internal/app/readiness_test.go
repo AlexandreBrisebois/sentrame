@@ -12,7 +12,7 @@ func TestReadinessRequiresStartedReceiverAndUsableStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.DB.Close()
-	svc, err := New(store, "synthetic owner passphrase", "browser-test", "server-test", "http://localhost")
+	svc, err := New(store, "synthetic owner passphrase", "client-test", "http://localhost")
 	if err != nil {
 		t.Fatal(err)
 	}

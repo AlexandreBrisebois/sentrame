@@ -8,7 +8,7 @@ import (
 )
 
 func def() Definition {
-	return Definition{Version: 1, Goal: "completion.entered", Mappings: []Mapping{{Event: "discovery.entered", Step: "Discovery", Kind: "step"}, {Event: "vote.requested", Step: "Intent", Kind: "step", Source: "browser"}, {Event: "vote.committed", Step: "Vote", Kind: "step", Source: "server"}, {Event: "completion.entered", Step: "Completion", Kind: "step", Source: "browser"}, {Event: "journey.exited", Step: "Exit", Kind: "exit"}, {Event: "stage.entered", Step: "Viewing", Kind: "stage-start"}, {Event: "stage.exited", Step: "Viewing", Kind: "stage-end"}, {Event: "activity.changed", Kind: "activity"}}}
+	return Definition{Version: 1, Goal: "completion.entered", Mappings: []Mapping{{Event: "discovery.entered", Step: "Discovery", Kind: "step"}, {Event: "vote.requested", Step: "Intent", Kind: "step"}, {Event: "vote.committed", Step: "Vote", Kind: "step"}, {Event: "completion.entered", Step: "Completion", Kind: "step"}, {Event: "journey.exited", Step: "Exit", Kind: "exit"}, {Event: "stage.entered", Step: "Viewing", Kind: "stage-start"}, {Event: "stage.exited", Step: "Viewing", Kind: "stage-end"}, {Event: "activity.changed", Kind: "activity"}}}
 }
 
 var epoch = time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC).UnixNano()
@@ -17,14 +17,14 @@ func ev(id int, name, source string, seconds int) Evidence {
 	return Evidence{ID: int64(id), Name: name, Signal: "logs", Source: source, Time: epoch + int64(seconds)*int64(time.Second), Receipt: epoch + int64(seconds)*int64(time.Second), Scope: "visit-a", Tab: "tab-a", Record: fmt.Sprint(id), Definition: 1, Attrs: map[string]string{}}
 }
 func TestJourneyHealthyLoopRecoveryAndBoundaries(t *testing.T) {
-	es := []Evidence{ev(1, "discovery.entered", "browser", 0)}
+	es := []Evidence{ev(1, "discovery.entered", "client", 0)}
 	for i := 0; i < 10; i++ {
-		es = append(es, ev(2+i, "vote.committed", "server", i+1))
+		es = append(es, ev(2+i, "vote.committed", "client", i+1))
 	}
-	bad := ev(12, "publication.failed", "server", 12)
+	bad := ev(12, "publication.failed", "client", 12)
 	bad.Severity = 17
 	bad.Attrs["exception.type"] = "PublicationError"
-	es = append(es, bad, ev(13, "completion.entered", "browser", 14), ev(14, "discovery.entered", "browser", 15))
+	es = append(es, bad, ev(13, "completion.entered", "client", 14), ev(14, "discovery.entered", "client", 15))
 	m := Derive(es, []Definition{def()}, epoch+int64(20*time.Second))
 	if len(m.Journeys) != 2 {
 		t.Fatalf("goal must close first journey and new mapped event restart: %#v", m.Journeys)
@@ -45,27 +45,27 @@ func TestJourneyHealthyLoopRecoveryAndBoundaries(t *testing.T) {
 }
 
 func TestJourneyInactivityLateCorrectionAndReplay(t *testing.T) {
-	a := ev(1, "discovery.entered", "browser", 0)
+	a := ev(1, "discovery.entered", "client", 0)
 	m := Derive([]Evidence{a}, []Definition{def()}, epoch+int64(31*time.Minute))
 	if len(m.Journeys) != 1 || m.Journeys[0].Status != "inactive" || m.Journeys[0].Reason != "" {
 		t.Fatalf("silence must become inactive without invented reason: %#v", m.Journeys)
 	}
-	goal := ev(2, "completion.entered", "browser", 20)
+	goal := ev(2, "completion.entered", "client", 20)
 	goal.Receipt = epoch + int64(time.Hour)
 	m = Derive([]Evidence{a, goal, goal}, []Definition{def()}, epoch+int64(time.Hour))
 	if len(m.Journeys) != 1 || m.Stats.Completed != 1 || len(m.Journeys[0].Evidence) != 2 {
 		t.Fatalf("late actual goal and supported replay should revise one journey: %#v", m)
 	}
 }
-func TestJourneyAuthorityTabIsolationAndServerOnly(t *testing.T) {
-	browserCommit := ev(1, "vote.committed", "browser", 0)
-	b := ev(2, "discovery.entered", "browser", 1)
+func TestJourneyClientTabIsolationAndMissingContext(t *testing.T) {
+	browserCommit := ev(1, "vote.committed", "client", 0)
+	b := ev(2, "discovery.entered", "client", 1)
 	b.Tab = "tab-b"
-	c := ev(3, "completion.entered", "browser", 2)
+	c := ev(3, "completion.entered", "client", 2)
 	c.Tab = "tab-c"
-	noTab := ev(4, "discovery.entered", "browser", 3)
+	noTab := ev(4, "discovery.entered", "client", 3)
 	noTab.Tab = ""
-	server := ev(5, "vote.committed", "server", 4)
+	server := ev(5, "vote.committed", "client", 4)
 	server.Tab = ""
 	server.Scope = "operation-a"
 	m := Derive([]Evidence{browserCommit, b, c, noTab, server}, []Definition{def()}, epoch+int64(10*time.Second))
@@ -82,21 +82,21 @@ func TestJourneyOngoingDefinitionPinnedAndNextUsesNewVersion(t *testing.T) {
 	d2 := def()
 	d2.Version = 2
 	d2.Goal = "vote.committed"
-	a := ev(1, "discovery.entered", "browser", 0)
-	b := ev(2, "vote.committed", "server", 1)
+	a := ev(1, "discovery.entered", "client", 0)
+	b := ev(2, "vote.committed", "client", 1)
 	b.Definition = 2
-	c := ev(3, "completion.entered", "browser", 2)
+	c := ev(3, "completion.entered", "client", 2)
 	c.Definition = 2
-	next := ev(4, "vote.committed", "server", 3)
+	next := ev(4, "vote.committed", "client", 3)
 	next.Definition = 2
 	m := Derive([]Evidence{a, b, c, next}, []Definition{def(), d2}, epoch+int64(time.Minute))
 	if len(m.Journeys) != 2 || m.Journeys[0].Definition != 1 || m.Journeys[0].Status != "completed" || len(m.Journeys[0].Evidence) != 3 || m.Journeys[1].Definition != 2 || m.Journeys[1].Status != "completed" {
 		t.Fatalf("version activation changed captured boundary: %#v", m.Journeys)
 	}
 }
-func TestJourneyDiagnosticsIdentityNoProximityAndSourceAuthority(t *testing.T) {
-	a := ev(1, "discovery.entered", "browser", 0)
-	bad := ev(2, "error", "server", 1)
+func TestJourneyDiagnosticsIdentityNoProximityAndClientAssurance(t *testing.T) {
+	a := ev(1, "discovery.entered", "client", 0)
+	bad := ev(2, "error", "client", 1)
 	bad.Severity = 17
 	bad.Attrs["exception.type"] = "SameError"
 	bad.Attrs["exception.occurrence.id"] = "failure-a"
@@ -110,14 +110,14 @@ func TestJourneyDiagnosticsIdentityNoProximityAndSourceAuthority(t *testing.T) {
 	secondFailure.Attrs = map[string]string{"exception.type": "SameError", "exception.occurrence.id": "failure-b"}
 	browserFailure := bad
 	browserFailure.ID = 5
-	browserFailure.Source = "browser"
+	browserFailure.Source = "client"
 	browserFailure.Record = "5"
-	nearby := ev(6, "error", "server", 2)
+	nearby := ev(6, "error", "client", 2)
 	nearby.Scope = ""
 	nearby.Severity = 17
-	goal := ev(7, "completion.entered", "browser", 3)
+	goal := ev(7, "completion.entered", "client", 3)
 	m := Derive([]Evidence{a, bad, secondCarrier, secondFailure, browserFailure, nearby, goal}, []Definition{def()}, epoch+int64(time.Minute))
-	if m.Stats.DiagnosticRecords != 5 || m.Stats.QualifiedExceptionOccurrences != 3 || m.Stats.AffectedVisits != 1 {
+	if m.Stats.DiagnosticRecords != 5 || m.Stats.QualifiedExceptionOccurrences != 2 || m.Stats.AffectedVisits != 1 {
 		t.Fatalf("records/occurrences/source authority counts wrong: %#v", m.Stats)
 	}
 	for _, d := range m.Diagnostics {
@@ -127,16 +127,16 @@ func TestJourneyDiagnosticsIdentityNoProximityAndSourceAuthority(t *testing.T) {
 	}
 }
 func TestJourneyExplicitStageTimingActivityAndMissingEnd(t *testing.T) {
-	es := []Evidence{ev(1, "discovery.entered", "browser", 0)}
-	active := ev(2, "activity.changed", "browser", 1)
+	es := []Evidence{ev(1, "discovery.entered", "client", 0)}
+	active := ev(2, "activity.changed", "client", 1)
 	active.Attrs["activity.state"] = "active"
-	start := ev(3, "stage.entered", "browser", 2)
+	start := ev(3, "stage.entered", "client", 2)
 	start.Occurrence = "stage-a"
-	hidden := ev(4, "activity.changed", "browser", 7)
+	hidden := ev(4, "activity.changed", "client", 7)
 	hidden.Attrs["activity.state"] = "hidden"
-	end := ev(5, "stage.exited", "browser", 12)
+	end := ev(5, "stage.exited", "client", 12)
 	end.Occurrence = "stage-a"
-	missing := ev(6, "stage.entered", "browser", 13)
+	missing := ev(6, "stage.entered", "client", 13)
 	missing.Occurrence = "stage-b"
 	es = append(es, active, start, hidden, end, missing)
 	m := Derive(es, []Definition{def()}, epoch+int64(20*time.Second))
@@ -170,10 +170,10 @@ func TestJourneyTimingKindsSupportAndNoNegativeClock(t *testing.T) {
 			t.Fatal("low support p90 shown")
 		}
 	}
-	a := ev(1, "stage.entered", "browser", 10)
+	a := ev(1, "stage.entered", "client", 10)
 	a.Occurrence = "a"
 	a.Sequence = 1
-	b := ev(2, "stage.exited", "browser", 5)
+	b := ev(2, "stage.exited", "client", 5)
 	b.Occurrence = "a"
 	b.Sequence = 2
 	m := Derive([]Evidence{a, b}, []Definition{def()}, epoch+int64(time.Minute))
@@ -185,7 +185,7 @@ func TestJourneyTimingKindsSupportAndNoNegativeClock(t *testing.T) {
 }
 
 func TestJourneySummarizePreservesBoundariesAndExcludesPartialConversion(t *testing.T) {
-	full := Derive([]Evidence{ev(1, "discovery.entered", "browser", 0), ev(2, "vote.committed", "server", 1), ev(3, "completion.entered", "browser", 2), ev(4, "discovery.entered", "browser", 3)}, []Definition{def()}, epoch+int64(time.Minute))
+	full := Derive([]Evidence{ev(1, "discovery.entered", "client", 0), ev(2, "vote.committed", "client", 1), ev(3, "completion.entered", "client", 2), ev(4, "discovery.entered", "client", 3)}, []Definition{def()}, epoch+int64(time.Minute))
 	chosen := full.Journeys[0]
 	chosen.Partial = true
 	m := Summarize([]Journey{chosen}, nil, epoch+int64(time.Minute))
@@ -203,7 +203,7 @@ func TestJourneyTimingPolicyVersionsStaySeparate(t *testing.T) {
 	}
 }
 func TestJourneyExpiredStartMarkerAndInitialGoalDiffer(t *testing.T) {
-	goal := ev(1, "completion.entered", "browser", 0)
+	goal := ev(1, "completion.entered", "client", 0)
 	initial := Derive([]Evidence{goal}, []Definition{def()}, epoch+int64(time.Minute))
 	if initial.Stats.EligibleCompleted != 1 || initial.Journeys[0].Partial {
 		t.Fatal("initial convergence was incorrectly marked partial")
@@ -215,9 +215,9 @@ func TestJourneyExpiredStartMarkerAndInitialGoalDiffer(t *testing.T) {
 	}
 }
 func TestJourneyDuplicateSequenceKeepsOrderingUncertainty(t *testing.T) {
-	a := ev(1, "discovery.entered", "browser", 0)
+	a := ev(1, "discovery.entered", "client", 0)
 	a.Sequence = 1
-	b := ev(2, "completion.entered", "browser", 1)
+	b := ev(2, "completion.entered", "client", 1)
 	b.Sequence = 1
 	m := Derive([]Evidence{a, b}, []Definition{def()}, epoch+int64(time.Minute))
 	if len(m.Journeys[0].Warnings) == 0 {
@@ -225,10 +225,10 @@ func TestJourneyDuplicateSequenceKeepsOrderingUncertainty(t *testing.T) {
 	}
 }
 func TestJourneyStageCannotPairDifferentServiceClocks(t *testing.T) {
-	a := ev(1, "stage.entered", "server", 0)
+	a := ev(1, "stage.entered", "client", 0)
 	a.Occurrence = "stage-a"
 	a.Service = "service-a"
-	b := ev(2, "stage.exited", "server", 10)
+	b := ev(2, "stage.exited", "client", 10)
 	b.Occurrence = "stage-a"
 	b.Service = "service-b"
 	m := Derive([]Evidence{a, b}, []Definition{def()}, epoch+int64(time.Minute))
@@ -239,10 +239,10 @@ func TestJourneyStageCannotPairDifferentServiceClocks(t *testing.T) {
 	}
 }
 func TestJourneyExplicitExitReasonAndNoScopeJoin(t *testing.T) {
-	a := ev(1, "discovery.entered", "browser", 0)
-	exit := ev(2, "journey.exited", "browser", 1)
+	a := ev(1, "discovery.entered", "client", 0)
+	exit := ev(2, "journey.exited", "client", 1)
 	exit.Attrs["reason"] = "exhausted"
-	other := ev(3, "completion.entered", "browser", 2)
+	other := ev(3, "completion.entered", "client", 2)
 	other.Scope = "different-visit"
 	m := Derive([]Evidence{a, exit, other}, []Definition{def()}, epoch+int64(time.Minute))
 	if m.Stats.Exited != 1 || m.Stats.Completed != 1 {
@@ -256,9 +256,9 @@ func TestJourneyExplicitExitReasonAndNoScopeJoin(t *testing.T) {
 }
 func TestJourneyWindowPreservesBoundaryAndNeverInventsEdge(t *testing.T) {
 	d := def()
-	a := ev(1, "discovery.entered", "browser", 0)
-	b := ev(2, "vote.committed", "server", 1)
-	c := ev(3, "completion.entered", "browser", 2)
+	a := ev(1, "discovery.entered", "client", 0)
+	b := ev(2, "vote.committed", "client", 1)
+	c := ev(3, "completion.entered", "client", 2)
 	whole := Derive([]Evidence{a, b, c}, []Definition{d}, epoch+int64(time.Minute)).Journeys[0]
 	clipped := ClipJourney(whole, epoch+int64(time.Second), epoch+int64(3*time.Second))
 	if clipped.Start != whole.Start || clipped.ID != whole.ID || !clipped.Partial || len(clipped.Evidence) != 2 || len(clipped.Path) != 2 {
@@ -284,7 +284,7 @@ func TestJourneyEqualEdgesRetainDifferentOrderedPaths(t *testing.T) {
 	derivePath := func(path []string) Model {
 		es := []Evidence{}
 		for i, name := range path {
-			es = append(es, Evidence{ID: int64(i + 1), Source: "server", Signal: "logs", Name: name, Scope: "logical", Record: fmt.Sprint(i), Time: now.Add(time.Duration(i) * time.Second).UnixNano(), Definition: 1, Attrs: map[string]string{}})
+			es = append(es, Evidence{ID: int64(i + 1), Source: "client", Signal: "logs", Name: name, Scope: "logical", Tab: "tab", Record: fmt.Sprint(i), Time: now.Add(time.Duration(i) * time.Second).UnixNano(), Definition: 1, Attrs: map[string]string{}})
 		}
 		return Derive(es, []Definition{d}, now.Add(time.Minute).UnixNano())
 	}

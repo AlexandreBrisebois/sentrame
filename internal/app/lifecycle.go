@@ -40,7 +40,7 @@ func (s *Store) Cleanup() error {
 	group := func(d *DaySummary, key string) *SummaryGroup {
 		g := d.Groups[key]
 		if g == nil {
-			g = &SummaryGroup{Computation: "journey-navigation-v4", Histograms: map[string]map[int]int{}, Excluded: map[string]int{}, Policy: "UTC captured-start cohort; correction ends start+30 days; log histogram ratio 1.1 / 1ms-24h approximate; no individual membership"}
+			g = &SummaryGroup{Computation: "journey-client-v5", Histograms: map[string]map[int]int{}, Excluded: map[string]int{}, Policy: "UTC captured-start cohort; correction ends start+30 days; log histogram ratio 1.1 / 1ms-24h approximate; no individual membership"}
 			d.Groups[key] = g
 		}
 		return g
@@ -63,7 +63,7 @@ func (s *Store) Cleanup() error {
 		if !already {
 			barriers = append(barriers, j)
 			d := load(time.Unix(0, j.Start).UTC().Format("2006-01-02"))
-			g := group(d, fmt.Sprintf("definition:%d/version:%s/computation:journey-navigation-v4", j.Definition, url.QueryEscape(j.Version)))
+			g := group(d, fmt.Sprintf("definition:%d/version:%s/computation:journey-client-v5", j.Definition, url.QueryEscape(j.Version)))
 			g.Records += len(j.Evidence)
 			if !j.Partial {
 				g.Journeys++
@@ -114,7 +114,7 @@ func (s *Store) Cleanup() error {
 	for _, x := range es {
 		if !assigned[x.ID] && x.Time <= cut {
 			d := load(time.Unix(0, x.Time).UTC().Format("2006-01-02"))
-			g := group(d, fmt.Sprintf("definition:%d/version:%s/computation:journey-navigation-v4/unassigned", x.Definition, url.QueryEscape(x.Version)))
+			g := group(d, fmt.Sprintf("definition:%d/version:%s/computation:journey-client-v5/unassigned", x.Definition, url.QueryEscape(x.Version)))
 			g.Records++
 		}
 	}
@@ -150,6 +150,9 @@ func (s *Store) Cleanup() error {
 		return e
 	}
 	n, _ := res.RowsAffected()
+	if _, e = tx.Exec(`DELETE FROM legacy_excluded WHERE evidence_id NOT IN (SELECT id FROM evidence)`); e != nil {
+		return e
+	}
 	if _, e = tx.Exec(`DELETE FROM summaries WHERE day<?`, now.AddDate(-1, 0, 0).UTC().Format("2006-01-02")); e != nil {
 		return e
 	}
@@ -157,6 +160,9 @@ func (s *Store) Cleanup() error {
 		return e
 	}
 	if _, e = tx.Exec(`DELETE FROM boundaries WHERE until<=?`, now.UnixNano()); e != nil {
+		return e
+	}
+	if _, e = tx.Exec(`DELETE FROM legacy_scope_barriers WHERE until<=?`, now.UnixNano()); e != nil {
 		return e
 	}
 	state, _ := json.Marshal(model.Stats)

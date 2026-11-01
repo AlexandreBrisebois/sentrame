@@ -97,7 +97,7 @@ func generateDiagnostics() error {
 	if err != nil {
 		return err
 	}
-	token, err := envRequired("SENTRAME_SERVER_TOKEN")
+	token, err := envRequired("SENTRAME_TELEMETRY_KEY")
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func generateDiagnostics() error {
 			return err
 		}
 	}
-	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "serverToken": token, "diagnosticsTag": g.Tag}
+	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "telemetryKey": token, "diagnosticsTag": g.Tag}
 	existing, err := os.ReadFile("rest/.env")
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -218,7 +218,7 @@ func verifyDiagnostics() error {
 	if err = json.Unmarshal(raw, &g); err != nil {
 		return err
 	}
-	token, err := envRequired("SENTRAME_SERVER_TOKEN")
+	token, err := envRequired("SENTRAME_TELEMETRY_KEY")
 	if err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func verifyDiagnostics() error {
 			return errors.New("prepared diagnostic body changed; regenerate rather than changing replay identity")
 		}
 	}
-	requests, err := parseREST("rest/diagnostics.http", map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "serverToken": token, "diagnosticsTag": g.Tag})
+	requests, err := parseREST("rest/diagnostics.http", map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "telemetryKey": token, "diagnosticsTag": g.Tag})
 	if err != nil {
 		return err
 	}

@@ -128,11 +128,11 @@ def main():
             app_id=json.load(response)["id"]
         with request("/api/apps/"+app_id+"/connection") as response:
             credentials=json.load(response)
-        server=credentials["server"]
+        telemetry_key=credentials["telemetryKey"]
         with request("/api/apps/"+app_id+"/snapshot") as response:
             server_now = json.load(response)["now"]
         payload = smoke_payload(suffix, server_now)
-        with request("/v1/logs", payload, server) as response:
+        with request("/v1/logs", payload, telemetry_key) as response:
             assert response.status == 200
         snapshot_has_record()
         # Reuse the maintained literal REST fixture generator/verifier against

@@ -55,11 +55,8 @@ func (s *Service) producer(h string) (string, error) {
 		return "", status.Error(codes.Unauthenticated, "invalid producer credential")
 	}
 
-	if s.BrowserToken != "" && h == "Bearer "+s.BrowserToken {
-		return "browser", nil
-	}
-	if s.ServerToken != "" && h == "Bearer "+s.ServerToken {
-		return "server", nil
+	if s.TelemetryKey != "" && h == "Bearer "+s.TelemetryKey {
+		return "client", nil
 	}
 	return "", status.Error(codes.Unauthenticated, "invalid producer credential")
 }

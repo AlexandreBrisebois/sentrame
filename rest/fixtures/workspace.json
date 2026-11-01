@@ -2,7 +2,7 @@
   {
     "name": "workspace",
     "scope": "workspace",
-    "producer": "browser",
+    "producer": "client",
     "events": [
       {
         "name": "discovery.entered",

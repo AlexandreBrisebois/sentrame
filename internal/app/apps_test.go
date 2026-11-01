@@ -76,7 +76,7 @@ func TestManagedAppsOwnerAPIIsolationAndPrivacy(t *testing.T) {
 	b := mustRegister(t, m, "Beta")
 	for _, path := range []string{"/api/apps", "/api/session"} {
 		code, raw = appRequest(t, c, server.URL, "GET", path, "", nil)
-		if code != 200 || bytes.Contains(raw, []byte(a.Server)) || bytes.Contains(raw, []byte(a.Browser)) {
+		if code != 200 || bytes.Contains(raw, []byte(a.Key)) {
 			t.Fatal("ordinary payload disclosed secret")
 		}
 	}
@@ -87,7 +87,7 @@ func TestManagedAppsOwnerAPIIsolationAndPrivacy(t *testing.T) {
 	ls := logFixture("colliding")
 	ls.ResourceLogs().At(0).Resource().Attributes().PutStr("app.id", b.ID)
 	for _, a := range []AppEntry{a, b} {
-		if code := requestLogs(t, c, server.URL, a.Browser, ls); code != 200 {
+		if code := requestLogs(t, c, server.URL, a.Key, ls); code != 200 {
 			t.Fatal(code)
 		}
 	}
@@ -98,25 +98,41 @@ func TestManagedAppsOwnerAPIIsolationAndPrivacy(t *testing.T) {
 		}
 		var snap struct{ Evidence []Evidence }
 		json.Unmarshal(raw, &snap)
-		if len(snap.Evidence) != 1 || snap.Evidence[0].Source != "browser" {
+		if len(snap.Evidence) != 1 || snap.Evidence[0].Source != "client" {
 			t.Fatal("attribution/isolation")
 		}
 	}
 	base := "/api/apps/" + a.ID
-	if code, raw = appRequest(t, c, server.URL, "GET", base+"/connection", "", nil); code != 200 || !bytes.Contains(raw, []byte(a.Server)) {
+	if code, raw = appRequest(t, c, server.URL, "GET", base+"/connection", "", nil); code != 200 || !bytes.Contains(raw, []byte(a.Key)) {
 		t.Fatal("explicit settings unavailable")
+	}
+	var connection map[string]string
+	if err := json.Unmarshal(raw, &connection); err != nil {
+		t.Fatal(err)
+	}
+	if connection["telemetryKey"] != a.Key || connection["browser"] != "" || connection["server"] != "" {
+		t.Fatal("connection settings retained roles or omitted app key")
 	}
 	if code, _ = appRequest(t, c, server.URL, "POST", base+"/rename", csrf, map[string]string{"name": "Renamed"}); code != 200 {
 		t.Fatal(code)
 	}
-	if code, _ = appRequest(t, c, server.URL, "POST", base+"/rotate", csrf, map[string]string{"role": "server"}); code != 200 {
+	for _, retiredRole := range []any{"server", "browser", "", nil} {
+		if code, _ = appRequest(t, c, server.URL, "POST", base+"/rotate", csrf, map[string]any{"role": retiredRole}); code != 400 {
+			t.Fatal("retired role rotation was not rejected", retiredRole, code)
+		}
+		if _, _, ok := m.credential("Bearer " + a.Key); !ok {
+			t.Fatal("retired request changed key")
+		}
+	}
+	if code, _ = appRequest(t, c, server.URL, "POST", base+"/rotate", csrf, map[string]string{}); code != 200 {
 		t.Fatal(code)
 	}
-	if _, _, ok := m.credential("Bearer " + a.Server); ok {
+	if _, _, ok := m.credential("Bearer " + a.Key); ok {
 		t.Fatal("rotation kept old authority")
 	}
-	if _, _, ok := m.credential("Bearer " + a.Browser); !ok {
-		t.Fatal("rotation changed other role")
+	a = m.current.Apps[0]
+	if _, _, ok := m.credential("Bearer " + a.Key); !ok {
+		t.Fatal("rotation did not publish new app key")
 	}
 	if code, _ = appRequest(t, c, server.URL, "POST", base+"/delete", csrf, map[string]string{"scope": "random-scope"}); code != 200 {
 		t.Fatal(code)
@@ -126,7 +142,7 @@ func TestManagedAppsOwnerAPIIsolationAndPrivacy(t *testing.T) {
 	if len(ea) != 0 || len(eb) != 1 {
 		t.Fatal("visit deletion crossed apps")
 	}
-	if requestLogs(t, c, server.URL, a.Browser, ls) != 200 {
+	if requestLogs(t, c, server.URL, a.Key, ls) != 200 {
 		t.Fatal("replay rejected")
 	}
 	ea, _ = m.stores[a.ID].Evidence()
@@ -136,10 +152,10 @@ func TestManagedAppsOwnerAPIIsolationAndPrivacy(t *testing.T) {
 	if code, _ = appRequest(t, c, server.URL, "POST", base+"/remove", csrf, map[string]string{"confirmation": "Renamed"}); code != 200 {
 		t.Fatal(code)
 	}
-	if code := requestLogs(t, c, server.URL, a.Browser, ls); code != 401 {
+	if code := requestLogs(t, c, server.URL, a.Key, ls); code != 401 {
 		t.Fatal("removed credential accepted", code)
 	}
-	if code := requestLogs(t, c, server.URL, b.Browser, ls); code != 200 {
+	if code := requestLogs(t, c, server.URL, b.Key, ls); code != 200 {
 		t.Fatal("other app affected", code)
 	}
 }
@@ -249,8 +265,8 @@ func TestManagedIntakeFinalAuthorityAndSharedBudgets(t *testing.T) {
 	a := mustRegister(t, m, "Alpha")
 	b := mustRegister(t, m, "Beta")
 	// A stale forwarded request is independently rejected by the loopback consumer.
-	ctx := client.NewContext(context.Background(), client.Info{Metadata: client.NewMetadata(map[string][]string{"authorization": {"Bearer " + a.Server}, "x-sentrame-app": {b.ID}})})
-	if e := m.Update(a.ID, "", "server"); e != nil {
+	ctx := client.NewContext(context.Background(), client.Info{Metadata: client.NewMetadata(map[string][]string{"authorization": {"Bearer " + a.Key}, "x-sentrame-app": {b.ID}})})
+	if e := m.Update(a.ID, "", "key"); e != nil {
 		t.Fatal(e)
 	}
 	if e := s.consumeLogs(ctx, logFixture("stale")); e == nil {
@@ -269,7 +285,7 @@ func TestManagedIntakeFinalAuthorityAndSharedBudgets(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		s.slots <- struct{}{}
 	}
-	if code := requestLogs(t, c, server.URL, b.Browser, logFixture("budget")); code != 503 {
+	if code := requestLogs(t, c, server.URL, b.Key, logFixture("budget")); code != 503 {
 		t.Fatal("global intake limit missing")
 	}
 	for i := 0; i < 8; i++ {
@@ -280,7 +296,7 @@ func TestManagedIntakeFinalAuthorityAndSharedBudgets(t *testing.T) {
 	store := m.stores[b.ID]
 	store.Mu.Lock()
 	ingested := make(chan int, 1)
-	go func() { ingested <- requestLogs(t, c, server.URL, b.Browser, logFixture("inflight")) }()
+	go func() { ingested <- requestLogs(t, c, server.URL, b.Key, logFixture("inflight")) }()
 	// Wait for the authority lock rather than assuming scheduling order.
 	deadline := time.Now().Add(time.Second)
 	for m.mu.TryLock() {
@@ -292,7 +308,7 @@ func TestManagedIntakeFinalAuthorityAndSharedBudgets(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 	rotated := make(chan error, 1)
-	go func() { rotated <- m.Update(b.ID, "", "browser") }()
+	go func() { rotated <- m.Update(b.ID, "", "key") }()
 	select {
 	case <-rotated:
 		store.Mu.Unlock()
@@ -306,7 +322,7 @@ func TestManagedIntakeFinalAuthorityAndSharedBudgets(t *testing.T) {
 	if e := <-rotated; e != nil {
 		t.Fatal(e)
 	}
-	if code := requestLogs(t, c, server.URL, b.Browser, logFixture("after")); code != 401 {
+	if code := requestLogs(t, c, server.URL, b.Key, logFixture("after")); code != 401 {
 		t.Fatal("old credential committed after successful rotation")
 	}
 }
@@ -323,11 +339,8 @@ func TestManagedWireMatrixRestartAndTwoApps(t *testing.T) {
 		body                           []byte
 	}
 	requests := []request{}
-	for _, role := range []string{"browser", "server"} {
-		token := a.Browser
-		if role == "server" {
-			token = a.Server
-		}
+	for _, role := range []string{"client"} {
+		token := a.Key
 		for _, signal := range []string{"logs", "traces", "metrics"} {
 			for _, encoding := range []string{"json", "protobuf"} {
 				for _, compression := range []string{"", "gzip"} {
@@ -369,10 +382,7 @@ func TestManagedWireMatrixRestartAndTwoApps(t *testing.T) {
 		}
 		// Identical payload IDs also belong independently to B, attributed by token.
 		for _, r := range requests {
-			token := b.Browser
-			if r.token == a.Server {
-				token = b.Server
-			}
+			token := b.Key
 			code, _ := protocolRequest(t, server.Client(), server.URL, r.signal, r.ct, r.compression, token, r.body)
 			if code != 200 {
 				t.Fatal(code)
@@ -423,12 +433,52 @@ func TestManagedRejectsStaleRegistrationAndCredentialProjection(t *testing.T) {
 			t.Fatalf("stale generation %s=%d", target, resp.StatusCode)
 		}
 	}
-	ls := logFixture(b.Server)
-	if code := requestLogs(t, c, server.URL, a.Browser, ls); code != 400 {
+	ls := logFixture(b.Key)
+	if code := requestLogs(t, c, server.URL, a.Key, ls); code != 400 {
 		t.Fatal("known app credential entered telemetry", code)
 	}
 	es, _ := m.stores[a.ID].Evidence()
 	if len(es) != 0 {
 		t.Fatal("secret-bearing batch committed")
+	}
+}
+
+func TestTelemetryKeyGrantsNoReadOrAdministration(t *testing.T) {
+	m, _, server, c := managedFixture(t)
+	a := mustRegister(t, m, "Write only")
+	base := "/api/apps/" + a.ID
+	for _, target := range []struct{ method, path string }{
+		{"GET", base + "/snapshot"}, {"GET", base + "/connection"}, {"POST", base + "/rotate"},
+	} {
+		r, err := http.NewRequest(target.method, server.URL+target.path, strings.NewReader(`{}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.Header.Set("Authorization", "Bearer "+a.Key)
+		r.Header.Set("Origin", server.URL)
+		resp, err := c.Do(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("telemetry key granted %s %s: %d", target.method, target.path, resp.StatusCode)
+		}
+	}
+	if code := requestLogs(t, c, server.URL, a.Key, logFixture("still.write.only")); code != 200 {
+		t.Fatalf("rejected admin requests changed intake authority: %d", code)
+	}
+}
+
+func TestRetiredProducerFiltersCannotWidenReads(t *testing.T) {
+	_, server, c := fixtureService(t)
+	loginTest(t, c, server.URL)
+	for _, path := range []string{"snapshot", "timeline", "errors", "traces"} {
+		for _, filter := range []string{"source=", "role=server", "producer=browser"} {
+			code, _ := appRequest(t, c, server.URL, "GET", "/api/"+path+"?"+filter, "", nil)
+			if code != http.StatusBadRequest {
+				t.Errorf("retired filter was ignored by %s?%s: %d", path, filter, code)
+			}
+		}
 	}
 }

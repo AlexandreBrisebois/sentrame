@@ -40,6 +40,6 @@ func TestStandardJourneyFixtureUsesExplicitBoundedScopeAndNativeAttempts(t *test
 	}
 	l := logs.Logs().ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
 	if l.EventName() != "completion.entered" {
-		t.Fatal("server commit invented a browser-screen goal")
+		t.Fatal("observed result invented the client-screen goal")
 	}
 }

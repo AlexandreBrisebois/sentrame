@@ -18,7 +18,7 @@ func timelineFixture(t *testing.T) (*Store, http.Handler, *http.Cookie) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.DB.Close() })
-	svc, err := New(store, "synthetic owner passphrase", "browser-test", "server-test", "http://localhost")
+	svc, err := New(store, "synthetic owner passphrase", "client-test", "http://localhost")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,15 +48,15 @@ func TestTimelineProtectedOccurrenceHistogramAndFiltersIgnoreSelectedBounds(t *t
 	now := time.Date(2026, 10, 28, 15, 0, 0, 0, time.UTC)
 	store.Now = func() time.Time { return now }
 	records := []Evidence{
-		{Name: "first", Time: now.Add(-time.Hour).UnixNano(), Scope: "visit", Version: "v1", Definition: 1},
-		{Name: "second-bin", Time: now.Add(-59 * time.Minute).UnixNano(), Scope: "visit", Version: "v1", Definition: 1},
-		{Name: "last-bin", Time: now.Add(-time.Nanosecond).UnixNano(), Scope: "visit", Version: "v1", Definition: 1},
-		{Name: "at-now-excluded", Time: now.UnixNano(), Scope: "visit", Version: "v1", Definition: 1},
-		{Name: "before-context", Time: now.Add(-time.Hour - time.Nanosecond).UnixNano(), Scope: "visit", Version: "v1", Definition: 1},
-		{Name: "other-visit", Time: now.Add(-time.Minute).UnixNano(), Scope: "other", Version: "v1", Definition: 1},
-		{Name: "other-version", Time: now.Add(-time.Minute).UnixNano(), Scope: "visit", Version: "v2", Definition: 1},
-		{Name: "other-definition", Time: now.Add(-time.Minute).UnixNano(), Scope: "visit", Version: "v1", Definition: 2},
-		{Name: "unknown-version", Time: now.Add(-time.Minute).UnixNano(), Scope: "unknown", Definition: 1},
+		{Source: "client", Name: "first", Time: now.Add(-time.Hour).UnixNano(), Scope: "visit", Version: "v1", Definition: 1},
+		{Source: "client", Name: "second-bin", Time: now.Add(-59 * time.Minute).UnixNano(), Scope: "visit", Version: "v1", Definition: 1},
+		{Source: "client", Name: "last-bin", Time: now.Add(-time.Nanosecond).UnixNano(), Scope: "visit", Version: "v1", Definition: 1},
+		{Source: "client", Name: "at-now-excluded", Time: now.UnixNano(), Scope: "visit", Version: "v1", Definition: 1},
+		{Source: "client", Name: "before-context", Time: now.Add(-time.Hour - time.Nanosecond).UnixNano(), Scope: "visit", Version: "v1", Definition: 1},
+		{Source: "client", Name: "other-visit", Time: now.Add(-time.Minute).UnixNano(), Scope: "other", Version: "v1", Definition: 1},
+		{Source: "client", Name: "other-version", Time: now.Add(-time.Minute).UnixNano(), Scope: "visit", Version: "v2", Definition: 1},
+		{Source: "client", Name: "other-definition", Time: now.Add(-time.Minute).UnixNano(), Scope: "visit", Version: "v1", Definition: 2},
+		{Source: "client", Name: "unknown-version", Time: now.Add(-time.Minute).UnixNano(), Scope: "unknown", Definition: 1},
 	}
 	if err := store.Insert(records); err != nil {
 		t.Fatal(err)
@@ -115,7 +115,7 @@ func TestTimelineExcludesExpiredDetailImmediatelyAndDisclosesBoundedScan(t *test
 	store, handler, cookie := timelineFixture(t)
 	now := time.Date(2026, 10, 28, 15, 0, 0, 0, time.UTC)
 	store.Now = func() time.Time { return now }
-	if err := store.Insert([]Evidence{{Name: "expired-exact-cutoff", Time: now.Add(-30 * 24 * time.Hour).UnixNano()}, {Name: "retained", Time: now.Add(-30*24*time.Hour + time.Nanosecond).UnixNano()}}); err != nil {
+	if err := store.Insert([]Evidence{{Source: "client", Name: "expired-exact-cutoff", Time: now.Add(-30 * 24 * time.Hour).UnixNano()}, {Source: "client", Name: "retained", Time: now.Add(-30*24*time.Hour + time.Nanosecond).UnixNano()}}); err != nil {
 		t.Fatal(err)
 	}
 	result := timelineRequest(handler, cookie, "?window=30d")
@@ -133,7 +133,7 @@ func TestTimelineExcludesExpiredDetailImmediatelyAndDisclosesBoundedScan(t *test
 	}
 	records := make([]Evidence, 10001)
 	for i := range records {
-		records[i] = Evidence{Name: "bounded", Record: fmt.Sprint(i), Time: now.Add(-time.Second).UnixNano()}
+		records[i] = Evidence{Source: "client", Name: "bounded", Record: fmt.Sprint(i), Time: now.Add(-time.Second).UnixNano()}
 	}
 	if err := store.Insert(records); err != nil {
 		t.Fatal(err)

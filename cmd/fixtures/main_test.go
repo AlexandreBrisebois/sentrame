@@ -13,7 +13,7 @@ import (
 )
 
 func TestFixtureFreshIdentityAndReplay(t *testing.T) {
-	specs := []Scenario{{Name: "test", Scope: "test", Producer: "browser", Events: []Event{{Name: "discovery.entered", Offset: "-1m"}}}}
+	specs := []Scenario{{Name: "test", Scope: "test", Producer: "client", Events: []Event{{Name: "discovery.entered", Offset: "-1m"}}}}
 	now := time.Date(2026, 10, 28, 15, 0, 0, 0, time.UTC)
 	a, err := build(specs, now)
 	if err != nil {
@@ -43,9 +43,9 @@ func TestFixtureFreshIdentityAndReplay(t *testing.T) {
 	}
 }
 
-func TestReadableFixtureCanPreserveCrossProducerRecordIdentity(t *testing.T) {
+func TestIndependentClientRecordsDoNotCollide(t *testing.T) {
 	var specs []Scenario
-	raw := `[{"name":"browser","scope":"combined","producer":"browser","events":[{"name":"vote.requested","offset":"-2s","record":"shared-occurrence","action":"one-action"}]},{"name":"server","scope":"combined","producer":"server","events":[{"name":"vote.committed","offset":"-1s","record":"shared-occurrence","action":"one-action"}]}]`
+	raw := `[{"name":"intent","scope":"combined","producer":"client","events":[{"name":"vote.requested","offset":"-2s","record":"shared-occurrence","action":"one-action"}]},{"name":"result","scope":"combined","producer":"client","events":[{"name":"vote.result.observed","offset":"-1s","record":"shared-occurrence","action":"one-action"}]}]`
 	if err := json.Unmarshal([]byte(raw), &specs); err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestReadableFixtureCanPreserveCrossProducerRecordIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	ids := map[string]string{}
-	for _, name := range []string{"browser", "server"} {
+	for _, name := range []string{"intent", "result"} {
 		var req logsv1.ExportLogsServiceRequest
 		if err = proto.Unmarshal(g.Bodies[name], &req); err != nil {
 			t.Fatal(err)
@@ -65,8 +65,8 @@ func TestReadableFixtureCanPreserveCrossProducerRecordIdentity(t *testing.T) {
 			}
 		}
 	}
-	if ids["browser"] == "" || ids["browser"] != ids["server"] {
-		t.Fatalf("readable record identity must survive across producers to test namespaced replay; got browser=%s server=%s", ids["browser"], ids["server"])
+	if ids["intent"] == "" || ids["intent"] == ids["result"] {
+		t.Fatalf("independent client records must have distinct app-scoped IDs; got first=%s second=%s", ids["intent"], ids["result"])
 	}
 }
 
@@ -103,7 +103,7 @@ GET {{baseUrl}}/api/snapshot
 
 func TestManualFollowupRefreshesTimeOnceWithoutChangingIdentity(t *testing.T) {
 	created := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
-	specs := []Scenario{{Name: "live-followup", Scope: "live", Producer: "browser", Events: []Event{{Name: "completion.entered", Offset: "0s", Action: "persisted-action"}}}}
+	specs := []Scenario{{Name: "live-followup", Scope: "live", Producer: "client", Events: []Event{{Name: "completion.entered", Offset: "0s", Action: "persisted-action"}}}}
 	generated, err := build(specs, created)
 	if err != nil {
 		t.Fatal(err)

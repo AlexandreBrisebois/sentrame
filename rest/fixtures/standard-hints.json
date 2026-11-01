@@ -1,10 +1,10 @@
 {
   "spans": {
     "POST /votes": "voting",
-    "vote.persist": "voting.persist"
+    "vote.result.read": "voting.persist"
   },
   "events": {
-    "vote.committed": "voting",
+    "vote.result.observed": "voting",
     "retry.observed": "voting.retry"
   }
 }

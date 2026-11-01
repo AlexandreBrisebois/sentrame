@@ -22,7 +22,7 @@ func TestInvestigationActualOTLPFixedBaselineResetAndReplay(t *testing.T) {
 	app := mustRegister(t, registry, "Actual intake isolation")
 	csrf := loginTest(t, client, server.URL)
 	base := "/api/apps/" + app.ID + "/"
-	def := Definition{Mappings: []Mapping{{Event: "A", Step: "A", Source: "browser", Kind: "step"}, {Event: "B", Step: "B", Source: "browser", Kind: "step"}}}
+	def := Definition{Mappings: []Mapping{{Event: "A", Step: "A", Kind: "step"}, {Event: "B", Step: "B", Kind: "step"}}}
 	if code, _ := appRequest(t, client, server.URL, "POST", base+"definitions", csrf, def); code != 200 {
 		t.Fatalf("definition status %d", code)
 	}
@@ -43,7 +43,7 @@ func TestInvestigationActualOTLPFixedBaselineResetAndReplay(t *testing.T) {
 	baseline := logs("baseline-before", liveStart.Add(-time.Hour))
 	live := logs("selected-live", liveStart.Add(time.Second))
 	for _, ls := range []plog.Logs{baseline, live} {
-		if code := requestLogs(t, client, server.URL, app.Browser, ls); code != 200 {
+		if code := requestLogs(t, client, server.URL, app.Key, ls); code != 200 {
 			t.Fatalf("intake %d", code)
 		}
 	}
@@ -114,7 +114,7 @@ func TestInvestigationActualOTLPFixedBaselineResetAndReplay(t *testing.T) {
 	initialID := reset()
 	started := time.Now()
 	late := logs("baseline-late", liveStart.Add(-30*time.Minute))
-	if code := requestLogs(t, client, server.URL, app.Browser, late); code != 200 {
+	if code := requestLogs(t, client, server.URL, app.Key, late); code != 200 {
 		t.Fatalf("late intake %d", code)
 	}
 	second := read()
@@ -133,7 +133,7 @@ func TestInvestigationActualOTLPFixedBaselineResetAndReplay(t *testing.T) {
 		t.Fatalf("actual periodic reset cadence/revision: %s changed=%v", elapsed, periodicID != initialID)
 	}
 	for _, ls := range []plog.Logs{baseline, live, late} {
-		if code := requestLogs(t, client, server.URL, app.Browser, ls); code != 200 {
+		if code := requestLogs(t, client, server.URL, app.Key, ls); code != 200 {
 			t.Fatalf("exact replay %d", code)
 		}
 	}

@@ -99,7 +99,7 @@ func TestWorkspaceGenerationPreservesExistingDemoReplayAndRESTVariables(t *testi
 	os.WriteFile(filepath.Join(dir, "rest", ".env"), []byte("healthyScope=preserved\nbaseUrl=http://localhost:1\n"), 0600)
 	t.Chdir(dir)
 	t.Setenv("SENTRAME_PASSPHRASE", "synthetic test passphrase")
-	t.Setenv("SENTRAME_BROWSER_TOKEN", "synthetic-test-token")
+	t.Setenv("SENTRAME_TELEMETRY_KEY", "synthetic-test-token")
 	t.Setenv("SENTRAME_URL", "http://127.0.0.1:8096")
 	if err = generateWorkspace(); err != nil {
 		t.Fatal(err)
@@ -120,7 +120,7 @@ func TestWorkspaceGenerationPreservesExistingDemoReplayAndRESTVariables(t *testi
 	if err = json.Unmarshal(manifest, &g); err != nil {
 		t.Fatal(err)
 	}
-	requests, err := parseREST("rest/workspace.http", map[string]string{"baseUrl": baseURL(), "browserToken": "synthetic-test-token", "workspaceScope": g.Scopes["workspace"]})
+	requests, err := parseREST("rest/workspace.http", map[string]string{"baseUrl": baseURL(), "telemetryKey": "synthetic-test-token", "workspaceScope": g.Scopes["workspace"]})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestWorkspaceUnmappedFixturePrecedesJourneyCapture(t *testing.T) {
 		for _, kv := range r.Attributes {
 			attrs[kv.Key] = kv.Value.GetStringValue()
 		}
-		evidence = append(evidence, app.Evidence{ID: int64(i + 1), Name: r.EventName, Source: "browser", Signal: "logs", Scope: attrs["session.id"], Tab: attrs["tab.id"], Record: attrs["event.id"], Time: int64(r.TimeUnixNano), Receipt: now.UnixNano(), Definition: 1, Version: "synthetic-a1", Attrs: attrs})
+		evidence = append(evidence, app.Evidence{ID: int64(i + 1), Name: r.EventName, Source: "client", Signal: "logs", Scope: attrs["session.id"], Tab: attrs["tab.id"], Record: attrs["event.id"], Time: int64(r.TimeUnixNano), Receipt: now.UnixNano(), Definition: 1, Version: "synthetic-a1", Attrs: attrs})
 	}
 	model := app.Derive(evidence, []app.Definition{app.InitialDefinition()}, now.UnixNano())
 	if len(model.Journeys) != 21 || len(model.Unassigned) != 1 || model.Unassigned[0].Name != "workspace.hint.shown" {

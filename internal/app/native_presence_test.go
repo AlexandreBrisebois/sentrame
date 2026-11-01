@@ -10,10 +10,10 @@ import (
 	"time"
 )
 
-func TestNativeBrowserIntervalUsesOnlyBrowserPresence(t *testing.T) {
+func TestNativeClientIntervalUsesOnlySameServicePresence(t *testing.T) {
 	_, server, c := fixtureService(t)
 	csrf := loginTest(t, c, server.URL)
-	d := Definition{Goal: "finished", Mappings: []Mapping{{Event: "voting.page", Step: "Voting page", Source: "browser", Service: "synthetic-presence", Carrier: "span", Kind: "step", Timing: "native-span"}, {Event: "server.operation", Step: "Server operation", Source: "server", Service: "synthetic-presence", Carrier: "span", Kind: "step", Timing: "native-span"}, {Event: "activity.changed", Step: "Presence", Source: "browser", Carrier: "log", Kind: "activity"}, {Event: "finished", Step: "Completion", Source: "browser", Carrier: "log", Kind: "step"}}}
+	d := Definition{Goal: "finished", Mappings: []Mapping{{Event: "voting.page", Step: "Voting page", Service: "synthetic-presence", Carrier: "span", Kind: "step", Timing: "native-span"}, {Event: "other.operation", Step: "Other operation", Service: "other-service", Carrier: "span", Kind: "step", Timing: "native-span"}, {Event: "activity.changed", Step: "Presence", Carrier: "log", Kind: "activity"}, {Event: "finished", Step: "Completion", Carrier: "log", Kind: "step"}}}
 	postMeaning(t, c, server.URL, csrf, "/api/definitions", d, 200)
 	base := time.Now().Add(-time.Minute)
 	logs := plog.NewLogs()
@@ -32,7 +32,7 @@ func TestNativeBrowserIntervalUsesOnlyBrowserPresence(t *testing.T) {
 		l.Attributes().PutStr("event.id", fmt.Sprint(i))
 		l.Attributes().PutStr("activity.state", observation.state)
 	}
-	if code := requestLogs(t, c, server.URL, "browser-test", logs); code != 200 {
+	if code := requestLogs(t, c, server.URL, "client-test", logs); code != 200 {
 		t.Fatal(code)
 	}
 	// The real SDK-style page span arrives only when ended, after the states.
@@ -49,13 +49,15 @@ func TestNativeBrowserIntervalUsesOnlyBrowserPresence(t *testing.T) {
 	p.Attributes().PutStr("tab.id", "native-presence-tab")
 	p.Status().SetCode(ptrace.StatusCodeOk)
 	body, _ := q.MarshalProto()
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "browser-test", body)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", body)
 	if code != 200 {
 		t.Fatal(code)
 	}
-	p.SetName("server.operation")
+	p.SetName("other.operation")
+	p.SetSpanID(pcommon.SpanID{9})
+	sr.Resource().Attributes().PutStr("service.name", "other-service")
 	body, _ = q.MarshalProto()
-	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", body)
+	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", body)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -67,7 +69,7 @@ func TestNativeBrowserIntervalUsesOnlyBrowserPresence(t *testing.T) {
 	g.SetTimestamp(pcommon.NewTimestampFromTime(base.Add(1100 * time.Millisecond)))
 	g.Attributes().PutStr("session.id", "native-presence-scope")
 	g.Attributes().PutStr("tab.id", "native-presence-tab")
-	if code := requestLogs(t, c, server.URL, "browser-test", goal); code != 200 {
+	if code := requestLogs(t, c, server.URL, "client-test", goal); code != 200 {
 		t.Fatal(code)
 	}
 	model := readNativeModel(t, c, server.URL)
@@ -82,8 +84,8 @@ func TestNativeBrowserIntervalUsesOnlyBrowserPresence(t *testing.T) {
 			}
 			found = true
 		}
-		if timing.Stage == "Server operation" && timing.Basis == "observed-active" {
-			t.Fatal("server borrowed browser presence")
+		if timing.Stage == "Other operation" && timing.Basis == "observed-active" {
+			t.Fatal("other service borrowed client presence")
 		}
 	}
 	if !found {

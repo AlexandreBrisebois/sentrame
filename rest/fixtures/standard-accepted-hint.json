@@ -1,11 +1,10 @@
 {
-  "goal": "vote.committed",
+  "goal": "vote.result.observed",
   "mappings": [
     {
       "event": "POST /votes",
       "step": "Vote processing",
       "kind": "step",
-      "source": "server",
       "service": "synthetic-voting",
       "carrier": "span",
       "timing": "native-span",
@@ -13,19 +12,17 @@
       "value": "POST"
     },
     {
-      "event": "vote.persist",
-      "step": "Persistence operation",
+      "event": "vote.result.read",
+      "step": "Result operation",
       "kind": "step",
-      "source": "server",
       "service": "synthetic-voting",
       "carrier": "span",
       "timing": "native-span"
     },
     {
-      "event": "vote.committed",
-      "step": "Vote saved",
+      "event": "vote.result.observed",
+      "step": "Vote result observed",
       "kind": "step",
-      "source": "server",
       "service": "synthetic-voting",
       "carrier": "span-event"
     },
@@ -33,7 +30,6 @@
       "event": "retry.observed",
       "step": "voting.retry",
       "kind": "activity",
-      "source": "server",
       "service": "synthetic-voting",
       "carrier": "span-event"
     }

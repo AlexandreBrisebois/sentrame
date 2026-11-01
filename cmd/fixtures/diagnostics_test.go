@@ -96,7 +96,7 @@ func TestDiagnosticGenerationPreservesReplayStateAndLiteralRESTBodies(t *testing
 	os.WriteFile(filepath.Join(dir, "rest", ".env"), []byte("workspaceScope=preserved\n"), 0600)
 	t.Chdir(dir)
 	t.Setenv("SENTRAME_PASSPHRASE", "synthetic test passphrase")
-	t.Setenv("SENTRAME_SERVER_TOKEN", "synthetic-server-token")
+	t.Setenv("SENTRAME_TELEMETRY_KEY", "synthetic-client-key")
 	if err = generateDiagnostics(); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestDiagnosticGenerationPreservesReplayStateAndLiteralRESTBodies(t *testing
 	var manifest DiagnosticGenerated
 	raw, _ := os.ReadFile("rest/generated/diagnostics-manifest.json")
 	json.Unmarshal(raw, &manifest)
-	reqs, err := parseREST("rest/diagnostics.http", map[string]string{"baseUrl": baseURL(), "serverToken": "synthetic-server-token", "diagnosticsTag": manifest.Tag})
+	reqs, err := parseREST("rest/diagnostics.http", map[string]string{"baseUrl": baseURL(), "telemetryKey": "synthetic-client-key", "diagnosticsTag": manifest.Tag})
 	if err != nil {
 		t.Fatal(err)
 	}

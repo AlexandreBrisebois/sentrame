@@ -199,15 +199,11 @@ func generateStandard() error {
 	if err = os.WriteFile("rest/generated/standard-login.json", login, 0600); err != nil {
 		return err
 	}
-	token, err := envRequired("SENTRAME_SERVER_TOKEN")
+	token, err := envRequired("SENTRAME_TELEMETRY_KEY")
 	if err != nil {
 		return err
 	}
-	browser, err := envRequired("SENTRAME_BROWSER_TOKEN")
-	if err != nil {
-		return err
-	}
-	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "serverToken": token, "browserToken": browser, "standardTrace": g.Trace, "enrichedTrace": g.EnrichedTrace, "futureTrace": g.FutureTrace, "journeyScope": g.JourneyScope, "journeyTrace": g.JourneyTrace}
+	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "telemetryKey": token, "standardTrace": g.Trace, "enrichedTrace": g.EnrichedTrace, "futureTrace": g.FutureTrace, "journeyScope": g.JourneyScope, "journeyTrace": g.JourneyTrace}
 	existing, err := os.ReadFile("rest/.env")
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -219,7 +215,7 @@ func generateStandard() error {
 			lines = append(lines, line)
 		}
 	}
-	for _, key := range []string{"baseUrl", "browserToken", "serverToken", "standardTrace", "enrichedTrace", "futureTrace", "journeyScope", "journeyTrace"} {
+	for _, key := range []string{"baseUrl", "telemetryKey", "standardTrace", "enrichedTrace", "futureTrace", "journeyScope", "journeyTrace"} {
 		lines = append(lines, key+"="+values[key])
 	}
 	if err = os.WriteFile("rest/.env", []byte(strings.Join(lines, "\n")+"\n"), 0600); err != nil {
@@ -238,7 +234,7 @@ func verifyStandard() error {
 	if err = json.Unmarshal(raw, &g); err != nil {
 		return err
 	}
-	token, err := envRequired("SENTRAME_SERVER_TOKEN")
+	token, err := envRequired("SENTRAME_TELEMETRY_KEY")
 	if err != nil {
 		return err
 	}
@@ -252,11 +248,7 @@ func verifyStandard() error {
 			return errors.New("standard generated body changed; preserve exact replay bytes")
 		}
 	}
-	browser, err := envRequired("SENTRAME_BROWSER_TOKEN")
-	if err != nil {
-		return err
-	}
-	requests, err := parseREST("rest/standard-otel.http", map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "serverToken": token, "browserToken": browser, "standardTrace": g.Trace, "enrichedTrace": g.EnrichedTrace, "futureTrace": g.FutureTrace, "journeyScope": g.JourneyScope, "journeyTrace": g.JourneyTrace, "csrf": "__standard_csrf__", "standardDefinition": "__standard_definition__", "traceReference": "__trace_reference__"})
+	requests, err := parseREST("rest/standard-otel.http", map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "telemetryKey": token, "standardTrace": g.Trace, "enrichedTrace": g.EnrichedTrace, "futureTrace": g.FutureTrace, "journeyScope": g.JourneyScope, "journeyTrace": g.JourneyTrace, "csrf": "__standard_csrf__", "standardDefinition": "__standard_definition__", "traceReference": "__trace_reference__"})
 	if err != nil {
 		return err
 	}
@@ -341,8 +333,8 @@ func verifyStandard() error {
 			if err = json.Unmarshal(body, &v); err != nil {
 				return err
 			}
-			if v.Conflict != "" || v.Matches["vote.committed"] != 1 {
-				return errors.New("owner meaning preview is not one carrier-specific trusted commitment")
+			if v.Conflict != "" || v.Matches["vote.result.observed"] != 1 {
+				return errors.New("owner meaning preview is not one carrier-specific observed client result")
 			}
 		}
 		if fixtureAPIPath(req.URL.Path) == "/api/traces/"+g.JourneyTrace && r.Expected == 200 {
@@ -418,17 +410,17 @@ func verifyStandard() error {
 				for _, v := range d["business"].([]any) {
 					b := v.(map[string]any)
 					if b["goal"] == true {
-						if b["stage"] != "Vote saved" || b["carrier"] != "span-event" || b["boundary"] != "event-time" {
-							return errors.New("generic HTTP or intent became configured persistence evidence")
+						if b["stage"] != "Vote result observed" || b["carrier"] != "span-event" || b["boundary"] != "event-time" {
+							return errors.New("generic HTTP or intent became configured result evidence")
 						}
 						facts++
 					}
 				}
 				if facts != 1 {
-					return errors.New("expected exactly one configured trusted commitment")
+					return errors.New("expected exactly one configured observed client result")
 				}
 				meaningReads++
-				fmt.Println("PASS explicit meaning preview: one trusted Vote saved, native operation timings separate; no history rewrite")
+				fmt.Println("PASS explicit meaning preview: one mapped Vote result observed, native operation timings separate; no history rewrite")
 				continue
 			}
 			if trace := strings.TrimPrefix(fixtureAPIPath(req.URL.Path), "/api/traces/"); trace == g.EnrichedTrace || trace == g.FutureTrace {
@@ -451,8 +443,8 @@ func verifyStandard() error {
 				for _, v := range d["business"].([]any) {
 					m := v.(map[string]any)
 					if m["goal"] == true {
-						if m["stage"] != "Vote saved" {
-							return errors.New("emitted voting label overrode Vote saved")
+						if m["stage"] != "Vote result observed" {
+							return errors.New("emitted voting label overrode Vote result observed")
 						}
 						goal = true
 					}

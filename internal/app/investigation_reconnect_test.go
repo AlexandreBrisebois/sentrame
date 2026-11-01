@@ -20,7 +20,7 @@ func TestInvestigationActualResetReconnectUsesCurrentSnapshot(t *testing.T) {
 	entry := mustRegister(t, registry, "Reconnect isolation")
 	csrf := loginTest(t, client, server.URL)
 	base := "/api/apps/" + entry.ID + "/"
-	def := Definition{Mappings: []Mapping{{Event: "A", Step: "A", Source: "browser", Kind: "step"}, {Event: "B", Step: "B", Source: "browser", Kind: "step"}}}
+	def := Definition{Mappings: []Mapping{{Event: "A", Step: "A", Kind: "step"}, {Event: "B", Step: "B", Kind: "step"}}}
 	if code, _ := appRequest(t, client, server.URL, "POST", base+"definitions", csrf, def); code != 200 {
 		t.Fatalf("definition %d", code)
 	}
@@ -37,7 +37,7 @@ func TestInvestigationActualResetReconnectUsesCurrentSnapshot(t *testing.T) {
 			r.Attributes().PutStr("event.id", scope+"-"+r.EventName())
 			r.Attributes().PutInt("source.sequence", int64(i+1))
 		}
-		if code := requestLogs(t, client, server.URL, entry.Browser, ls); code != 200 {
+		if code := requestLogs(t, client, server.URL, entry.Key, ls); code != 200 {
 			t.Fatalf("intake %d", code)
 		}
 	}

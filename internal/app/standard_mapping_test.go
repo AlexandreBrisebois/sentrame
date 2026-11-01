@@ -30,17 +30,17 @@ func postMeaning(t *testing.T, c *http.Client, base, csrf, path string, d any, w
 	return out
 }
 func ordinaryDefinition() map[string]any {
-	return map[string]any{"goal": "vote.committed", "mappings": []map[string]any{
-		{"event": "POST /votes", "step": "Vote processing", "kind": "step", "source": "server", "service": "synthetic-voting", "carrier": "span", "key": "http.request.method", "value": "POST"},
-		{"event": "vote.committed", "step": "Vote saved", "kind": "step", "source": "server", "service": "synthetic-voting", "carrier": "span-event"},
-		{"event": "vote.persist", "step": "Persistence operation", "kind": "step", "source": "server", "service": "synthetic-voting", "carrier": "span"},
+	return map[string]any{"goal": "vote.result.observed", "mappings": []map[string]any{
+		{"event": "POST /votes", "step": "Vote processing", "kind": "step", "service": "synthetic-voting", "carrier": "span", "key": "http.request.method", "value": "POST"},
+		{"event": "vote.result.observed", "step": "Vote result shown", "kind": "step", "service": "synthetic-voting", "carrier": "span-event"},
+		{"event": "vote.result.read", "step": "Read result operation", "kind": "step", "service": "synthetic-voting", "carrier": "span"},
 	}}
 }
 func TestStandardMappingContextualPreviewAndTraceCapture(t *testing.T) {
 	_, server, c := fixtureService(t)
 	tb, lb, _ := standardBodies(t)
 	for signal, body := range map[string][]byte{"traces": tb, "logs": lb} {
-		code, _ := protocolRequest(t, c, server.URL, signal, "application/x-protobuf", "", "server-test", body)
+		code, _ := protocolRequest(t, c, server.URL, signal, "application/x-protobuf", "", "client-test", body)
 		if code != 200 {
 			t.Fatal(code)
 		}
@@ -52,7 +52,7 @@ func TestStandardMappingContextualPreviewAndTraceCapture(t *testing.T) {
 		t.Fatal(preview["conflict"])
 	}
 	counts := preview["matches"].(map[string]any)
-	if counts["vote.committed"] != float64(1) || counts["vote.persist"] != float64(2) {
+	if counts["vote.result.observed"] != float64(1) || counts["vote.result.read"] != float64(2) {
 		t.Fatalf("carrier selector ignored: %v", counts)
 	}
 	changed := ordinaryDefinition()
@@ -67,14 +67,14 @@ func TestStandardMappingContextualPreviewAndTraceCapture(t *testing.T) {
 	old := getTraceJSON(t, c, server.URL, path, 200)
 	for _, v := range old["business"].([]any) {
 		b := v.(map[string]any)
-		if b["definition"] != float64(1) || b["stage"] == "Vote saved" {
+		if b["definition"] != float64(1) || b["stage"] == "Vote result shown" {
 			t.Fatal("activation silently remapped historical capture")
 		}
 	}
 	prospective := getTraceJSON(t, c, server.URL, path+"?previewDefinition="+strconv.Itoa(version), 200)
 	business := prospective["business"].([]any)
 	if len(business) != 4 {
-		t.Fatalf("want native span labels plus trusted event: %v", business)
+		t.Fatalf("want native span labels plus observed event: %v", business)
 	}
 	samples := 0
 	for _, v := range business {
@@ -85,8 +85,8 @@ func TestStandardMappingContextualPreviewAndTraceCapture(t *testing.T) {
 			}
 			samples++
 		}
-		if m["goal"] == true && m["stage"] != "Vote saved" {
-			t.Fatal("untrusted/generic evidence established persistence")
+		if m["goal"] == true && m["stage"] != "Vote result shown" {
+			t.Fatal("unexpected client observation satisfied the selected goal")
 		}
 	}
 	if samples != 3 {
@@ -101,7 +101,7 @@ func TestStandardMappingDisjointAndConflictingSelectors(t *testing.T) {
 	csrf := loginTest(t, c, server.URL)
 	d := ordinaryDefinition()
 	rules := d["mappings"].([]map[string]any)
-	r := map[string]any{"event": "vote.persist", "step": "Other service", "kind": "step", "source": "server", "service": "other-service", "carrier": "span"}
+	r := map[string]any{"event": "vote.result.read", "step": "Other service", "kind": "step", "service": "other-service", "carrier": "span"}
 	d["mappings"] = append(rules, r)
 	postMeaning(t, c, server.URL, csrf, "/api/definitions", d, 200)
 	r["service"] = ""
@@ -111,26 +111,26 @@ func TestStandardMappingDisjointAndConflictingSelectors(t *testing.T) {
 func TestStandardMappingNativeGoalEvaluatesAtEndAndRejectsAmbiguity(t *testing.T) {
 	_, server, c := fixtureService(t)
 	tb, _, _ := standardBodies(t)
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", tb)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", tb)
 	if code != 200 {
 		t.Fatal(code)
 	}
 	csrf := loginTest(t, c, server.URL)
 	d := ordinaryDefinition()
-	d["goal"] = "vote.persist"
+	d["goal"] = "vote.result.read"
 	activated := postMeaning(t, c, server.URL, csrf, "/api/definitions", d, 200)
 	version := int(activated["version"].(float64))
 	detail := getTraceJSON(t, c, server.URL, "/api/traces/11111111111111111111111111111111?previewDefinition="+strconv.Itoa(version), 200)
 	for _, v := range detail["business"].([]any) {
 		m := v.(map[string]any)
-		if m["stage"] == "Persistence operation" {
+		if m["stage"] == "Read result operation" {
 			if m["goal"] != true || m["boundary"] != "span-end" || m["boundaryNs"] == nil {
 				t.Fatal("native goal not evaluated at completion boundary")
 			}
 		}
 	}
 	rules := d["mappings"].([]map[string]any)
-	d["mappings"] = append(rules, map[string]any{"event": "vote.persist", "step": "Browser intent", "kind": "step", "source": "browser", "carrier": "log"})
+	d["mappings"] = append(rules, map[string]any{"event": "vote.result.read", "step": "Browser intent", "kind": "step", "carrier": "log"})
 	postMeaning(t, c, server.URL, csrf, "/api/definitions", d, 400)
 	d = ordinaryDefinition()
 	d["mappings"].([]map[string]any)[0]["key"] = "url.full"

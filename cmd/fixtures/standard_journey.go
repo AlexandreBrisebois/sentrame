@@ -23,10 +23,10 @@ func buildStandardJourney(now time.Time) (map[string][]byte, string, string, err
 		return nil, "", "", err
 	}
 	var spec struct {
-		BrowserService, ServerService string
-		BrowserEvents, ServerEvents   []Event
-		Goal                          Event
-		Operations                    []struct {
+		NavigationService, ResultService string
+		NavigationEvents, ResultEvents   []Event
+		Goal                             Event
+		Operations                       []struct {
 			Name, Start, End, Status, Event, EventOffset string
 			HTTPStatus                                   int
 		}
@@ -39,12 +39,12 @@ func buildStandardJourney(now time.Time) (map[string][]byte, string, string, err
 		d, err := time.ParseDuration(value)
 		return pcommon.Timestamp(now.Add(d).UnixNano()), err
 	}
-	for name, events := range map[string][]Event{"standard-journey-browser": spec.BrowserEvents, "standard-journey-server": spec.ServerEvents, "standard-journey-goal": {spec.Goal}} {
+	for name, events := range map[string][]Event{"standard-journey-navigation": spec.NavigationEvents, "standard-journey-results": spec.ResultEvents, "standard-journey-goal": {spec.Goal}} {
 		q := plogotlp.NewExportRequest()
 		r := q.Logs().ResourceLogs().AppendEmpty()
-		service := spec.BrowserService
-		if name == "standard-journey-server" {
-			service = spec.ServerService
+		service := spec.NavigationService
+		if name == "standard-journey-results" {
+			service = spec.ResultService
 		}
 		r.Resource().Attributes().PutStr("service.name", service)
 		ls := r.ScopeLogs().AppendEmpty().LogRecords()
@@ -76,13 +76,13 @@ func buildStandardJourney(now time.Time) (map[string][]byte, string, string, err
 	}
 	q := ptraceotlp.NewExportRequest()
 	r := q.Traces().ResourceSpans().AppendEmpty()
-	r.Resource().Attributes().PutStr("service.name", spec.ServerService)
+	r.Resource().Attributes().PutStr("service.name", spec.ResultService)
 	spans := r.ScopeSpans().AppendEmpty().Spans()
 	firstTrace := ""
 	for i, operation := range spec.Operations {
 		p := spans.AppendEmpty()
 		p.SetName(operation.Name)
-		p.SetKind(ptrace.SpanKindServer)
+		p.SetKind(ptrace.SpanKindClient)
 		var trace pcommon.TraceID
 		copy(trace[:], diagnosticBytesID(16))
 		var span pcommon.SpanID
@@ -109,7 +109,7 @@ func buildStandardJourney(now time.Time) (map[string][]byte, string, string, err
 		p.Attributes().PutInt("http.response.status_code", int64(operation.HTTPStatus))
 		if operation.Status == "error" {
 			p.Status().SetCode(ptrace.StatusCodeError)
-			p.Status().SetMessage("Vote persistence unavailable; retry permitted")
+			p.Status().SetMessage("Vote result unavailable; retry permitted")
 		} else {
 			p.Status().SetCode(ptrace.StatusCodeOk)
 		}
@@ -121,7 +121,7 @@ func buildStandardJourney(now time.Time) (map[string][]byte, string, string, err
 		}
 		event.SetTimestamp(stamp)
 		if operation.Event == "exception" {
-			event.Attributes().PutStr("exception.type", "SyntheticPersistenceUnavailable")
+			event.Attributes().PutStr("exception.type", "SyntheticResultUnavailable")
 		}
 	}
 	b, err := q.MarshalProto()
@@ -159,8 +159,8 @@ func checkStandardJourney(raw []byte, definition string, completed bool) error {
 	if err := json.Unmarshal(raw, &snap); err != nil {
 		return err
 	}
-	if snap.Mode != "journey" || snap.Model.Computation != "journey-navigation-v4" || len(snap.Model.Journeys) != 1 {
-		return fmt.Errorf("scoped voting requires one explicit journey under journey-navigation-v4: mode=%s computation=%s journeys=%d", snap.Mode, snap.Model.Computation, len(snap.Model.Journeys))
+	if snap.Mode != "journey" || snap.Model.Computation != "journey-client-v5" || len(snap.Model.Journeys) != 1 {
+		return fmt.Errorf("scoped voting requires one explicit journey under journey-client-v5: mode=%s computation=%s journeys=%d", snap.Mode, snap.Model.Computation, len(snap.Model.Journeys))
 	}
 	j := snap.Model.Journeys[0]
 	if fmt.Sprint(j.Definition) != definition {
@@ -171,14 +171,14 @@ func checkStandardJourney(raw []byte, definition string, completed bool) error {
 			return fmt.Errorf("actual goal did not preserve completed recovery")
 		}
 	} else if j.Status != "active" {
-		return fmt.Errorf("HTTP success or commitment incorrectly completed browser-screen goal")
+		return fmt.Errorf("HTTP success or result incorrectly completed the client-screen goal")
 	}
 	votes, requests, processing := 0, 0, 0
 	for _, e := range j.Evidence {
-		if e.Name == "vote.committed" && e.Source == "server" && e.Signal == "span-events" {
+		if e.Name == "vote.result.observed" && e.Source == "client" && e.Signal == "span-events" {
 			votes++
 		}
-		if e.Name == "vote.requested" && e.Source == "browser" {
+		if e.Name == "vote.requested" && e.Source == "client" {
 			requests++
 		}
 	}
@@ -186,12 +186,12 @@ func checkStandardJourney(raw []byte, definition string, completed bool) error {
 		if step == "Vote processing" {
 			processing++
 		}
-		if step == "Next saved vote" {
+		if step == "Next observed result" {
 			return fmt.Errorf("new definition relabeled existing capture")
 		}
 	}
 	if votes != 1 || requests != 2 || processing != 2 {
-		return fmt.Errorf("voting story lost distinct attempts/commit/native occurrences: %d/%d/%d", requests, votes, processing)
+		return fmt.Errorf("voting story lost distinct attempts/result/native occurrences: %d/%d/%d", requests, votes, processing)
 	}
 	native, elapsed, active := 0, 0, 0
 	for _, timing := range j.Timings {

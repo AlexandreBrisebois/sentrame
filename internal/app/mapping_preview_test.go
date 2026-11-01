@@ -16,7 +16,7 @@ func TestMappingPreviewExamplesUseExactContextAndRetainedConditionValues(t *test
 	send := func(app AppEntry, service, stage string) {
 		t.Helper()
 		payload := fmt.Sprintf(`{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":%q}}]},"scopeLogs":[{"logRecords":[{"timeUnixNano":"%d","eventName":"pwa.app.opened","attributes":[{"key":"stage.name","value":{"stringValue":%q}},{"key":"private.user.text","value":{"stringValue":"must not be offered"}}]}]}]}]}`, service, time.Now().Add(-time.Second).UnixNano(), stage)
-		if code, _ := protocolRequest(t, c, server.URL, "logs", "application/json", "", app.Browser, []byte(payload)); code != 200 {
+		if code, _ := protocolRequest(t, c, server.URL, "logs", "application/json", "", app.Key, []byte(payload)); code != 200 {
 			t.Fatal(code)
 		}
 	}
@@ -24,7 +24,7 @@ func TestMappingPreviewExamplesUseExactContextAndRetainedConditionValues(t *test
 	send(a, "wfs-pwa-browser", "home")
 	send(a, "another-service", "capture")
 	send(b, "wfs-pwa-browser", "profile")
-	definition := Definition{Mappings: []Mapping{{Event: "pwa.app.opened", Step: "Open", Kind: "step", Service: "wfs-pwa-browser", Source: "browser", Carrier: "log"}}}
+	definition := Definition{Mappings: []Mapping{{Event: "pwa.app.opened", Step: "Open", Kind: "step", Service: "wfs-pwa-browser", Carrier: "log"}}}
 	read := func() map[string]any {
 		t.Helper()
 		code, raw := appRequest(t, c, server.URL, "POST", "/api/apps/"+a.ID+"/preview", csrf, definition)
@@ -62,7 +62,7 @@ func TestMappingPreviewExamplesUseExactContextAndRetainedConditionValues(t *test
 			t.Fatal("wrong service example")
 		}
 	}
-	definition.Mappings = append(definition.Mappings, Mapping{Event: "pwa.app.opened", Step: "Other opening", Kind: "step", Service: "another-service", Source: "browser", Carrier: "log"})
+	definition.Mappings = append(definition.Mappings, Mapping{Event: "pwa.app.opened", Step: "Other opening", Kind: "step", Service: "another-service", Carrier: "log"})
 	preview = read()
 	if preview["matches"] != float64(2) || preview["missingContext"] != float64(2) {
 		t.Fatal("per-mapping preview mixed another service with the same event name")
@@ -89,7 +89,7 @@ func TestMappingPreviewExamplesUseExactContextAndRetainedConditionValues(t *test
 func TestMappingPreviewBoundsAndUsableConditions(t *testing.T) {
 	records := []Evidence{}
 	for i := 0; i < 80; i++ {
-		records = append(records, Evidence{ID: int64(i), Name: "opened", Source: "browser", Signal: "logs", Service: "pwa", Attrs: map[string]string{"stage.name": fmt.Sprintf("screen-%d", i), "private.user.text": "not selectable", "http.request.method": "GET?secret"}})
+		records = append(records, Evidence{ID: int64(i), Name: "opened", Source: "client", Signal: "logs", Service: "pwa", Attrs: map[string]string{"stage.name": fmt.Sprintf("screen-%d", i), "private.user.text": "not selectable", "http.request.method": "GET?secret"}})
 	}
 	preview := previewMappingEvidence(records, Mapping{Event: "opened", Service: "pwa"})
 	if preview.Candidates != 80 || preview.Matches != 80 || len(preview.Examples) != 5 || len(preview.MatchingExamples) != 5 || len(preview.Conditions) != 64 || !preview.ConditionsTruncated {

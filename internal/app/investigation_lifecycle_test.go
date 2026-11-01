@@ -24,7 +24,7 @@ func TestInvestigationLifecycleReadsRemoveDetailWithoutPopulationFallback(t *tes
 					start = now.Add(-time.Minute)
 				}
 				for i, name := range []string{"discovery.entered", "completion.entered"} {
-					events = append(events, Evidence{Source: "browser", Signal: "logs", Name: name, Scope: population, Tab: "same-tab", Record: population + name, Time: start.Add(time.Duration(i) * time.Second).UnixNano(), Attrs: map[string]string{}})
+					events = append(events, Evidence{Source: "client", Signal: "logs", Name: name, Scope: population, Tab: "same-tab", Record: population + name, Time: start.Add(time.Duration(i) * time.Second).UnixNano(), Attrs: map[string]string{}})
 				}
 			}
 			if err := svc.Store.Insert(events); err != nil {

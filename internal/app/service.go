@@ -28,36 +28,36 @@ type session struct {
 	Expires           time.Time
 }
 type Service struct {
-	Store                             *Store
-	BrowserToken, ServerToken, Origin string
-	password                          []byte
-	Mu                                *sync.Mutex
-	Registry                          *Registry
-	selected                          *AppEntry
-	redemptionReserved                bool
-	credentials                       []string
-	queries                           chan struct{}
-	sessions                          map[string]session
-	failures                          []time.Time
-	slots                             chan struct{}
-	streams                           chan struct{}
-	logins                            chan struct{}
-	ReceiverURL                       string
-	closeReceiver                     func()
-	static                            http.Handler
+	Store                *Store
+	TelemetryKey, Origin string
+	password             []byte
+	Mu                   *sync.Mutex
+	Registry             *Registry
+	selected             *AppEntry
+	redemptionReserved   bool
+	credentials          []string
+	queries              chan struct{}
+	sessions             map[string]session
+	failures             []time.Time
+	slots                chan struct{}
+	streams              chan struct{}
+	logins               chan struct{}
+	ReceiverURL          string
+	closeReceiver        func()
+	static               http.Handler
 }
 type host struct{}
 
 func (host) GetExtensions() map[component.ID]component.Component { return nil }
-func New(s *Store, pass, browser, server, origin string) (*Service, error) {
-	if len(pass) < 12 || browser == "" || server == "" || browser == server {
-		return nil, fmt.Errorf("passphrase must have 12 characters; producer tokens must be distinct and nonempty")
+func New(s *Store, pass, key, origin string) (*Service, error) {
+	if len(pass) < 12 || key == "" {
+		return nil, fmt.Errorf("passphrase must have 12 characters; telemetry key must be nonempty")
 	}
 	hash, e := bcrypt.GenerateFromPassword([]byte(pass), 12)
 	if e != nil {
 		return nil, e
 	}
-	return &Service{Mu: &sync.Mutex{}, queries: make(chan struct{}, 8), Store: s, BrowserToken: browser, ServerToken: server, Origin: origin, password: hash, sessions: map[string]session{}, slots: make(chan struct{}, 8), streams: make(chan struct{}, 8), logins: make(chan struct{}, 2)}, nil
+	return &Service{Mu: &sync.Mutex{}, queries: make(chan struct{}, 8), Store: s, TelemetryKey: key, Origin: origin, password: hash, sessions: map[string]session{}, slots: make(chan struct{}, 8), streams: make(chan struct{}, 8), logins: make(chan struct{}, 2)}, nil
 }
 func (s *Service) StartReceiver() error {
 	ln, e := net.Listen("tcp", "127.0.0.1:0")
@@ -114,19 +114,18 @@ func (s *Service) Close() {
 
 // NewManaged shares one instance authority and receiver across bounded app stores.
 func NewManaged(registry *Registry, pass, origin string) (*Service, error) {
-	s, e := New(nil, pass, "unused-browser", "unused-server", origin)
+	s, e := New(nil, pass, "unused-key", origin)
 	if e != nil {
 		return nil, e
 	}
-	s.BrowserToken = ""
-	s.ServerToken = ""
+	s.TelemetryKey = ""
 	s.Registry = registry
 	return s, nil
 }
 func (s *Service) forApp(a AppEntry) *Service {
 	secrets := []string{}
 	for _, entry := range s.Registry.current.Apps {
-		secrets = append(secrets, entry.Browser, entry.Server)
+		secrets = append(secrets, entry.Key)
 	}
-	return &Service{credentials: secrets, Store: s.Registry.stores[a.ID], BrowserToken: a.Browser, ServerToken: a.Server, Origin: s.Origin, password: s.password, Mu: s.Mu, sessions: s.sessions, slots: s.slots, streams: s.streams, logins: s.logins, queries: s.queries, Registry: s.Registry, selected: &a}
+	return &Service{credentials: secrets, Store: s.Registry.stores[a.ID], TelemetryKey: a.Key, Origin: s.Origin, password: s.password, Mu: s.Mu, sessions: s.sessions, slots: s.slots, streams: s.streams, logins: s.logins, queries: s.queries, Registry: s.Registry, selected: &a}
 }

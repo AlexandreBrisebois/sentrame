@@ -15,7 +15,7 @@ Origin: {{baseUrl}}
 # @expect 200
 POST {{baseUrl}}/v1/traces
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/diagnostics-traces.bin
 
@@ -23,7 +23,7 @@ Authorization: Bearer {{serverToken}}
 # @expect 200
 POST {{baseUrl}}/v1/logs
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/diagnostics-logs.bin
 
@@ -35,7 +35,7 @@ GET {{baseUrl}}/api/apps/{{appId}}/errors?q={{diagnosticsTag}}
 # @expect 200
 POST {{baseUrl}}/v1/traces
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/diagnostics-traces.bin
 
@@ -43,7 +43,7 @@ Authorization: Bearer {{serverToken}}
 # @expect 200
 POST {{baseUrl}}/v1/logs
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/diagnostics-logs.bin
 

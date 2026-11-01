@@ -1,6 +1,6 @@
 # Sentrame
 
-See [App workspaces](docs/MULTI-APP.md) for greenfield registration, connection settings, isolation and coordinated backup/restore. No legacy credential import is performed.
+See [App workspaces](docs/MULTI-APP.md) for registration, one-key connection settings, isolation and coordinated backup/restore. Existing two-key managed state requires an explicitly reviewed offline transition; startup never resets old data.
 
 **Find the meaning between events.** Pronounced “sen-tram,” inspired by *sens* and *trame*: meaning, direction, and the thread connecting events.
 
@@ -13,7 +13,7 @@ The application is implemented with **Svelte/TypeScript, Go and SQLite**. It run
 | I want to… | Guide |
 | --- | --- |
 | Understand the graph, configure events, investigate errors or share a view | [User guide](docs/USER-GUIDE.md) |
-| Send telemetry from a .NET or Next.js application | [Developer integration guide](docs/DEVELOPER-GUIDE.md) |
+| Send client telemetry using an existing standard exporter | [Developer integration guide](docs/DEVELOPER-GUIDE.md) |
 | Run the container with Compose and a chosen data folder | [Container deployment guide](docs/NAS.md) |
 | Run from source, load synthetic scenarios or use VS Code REST Client | [Local setup and demonstrations](docs/LOCAL-REVIEW.md) |
 | Review requirements, decisions and verification | [Project documentation](docs/README.md) |
@@ -38,7 +38,7 @@ Choose [compose.yaml](compose.yaml) for direct local access, or [compose.cloudfl
 - `SENTRAME_IMAGE`: a published tag or immutable image digest.
 - `SENTRAME_DATA_DIR`: the existing local filesystem folder to bind into `/data`, writable by UID/GID `10001`.
 - `SENTRAME_ORIGIN`: the exact browser origin, without a trailing path, such as `https://sentrame.example.com`.
-- A fresh owner passphrase. Register apps through the owner UI; generated browser/server credentials persist in private `apps.json`. Keep `.env` and the data directory private.
+- A fresh owner passphrase. Register apps through the owner UI; one generated telemetry key per app persist in private `apps.json`. Keep `.env` and the data directory private.
 
 After preparing the folder and configuration:
 
@@ -71,11 +71,11 @@ These commands send actual standard OTLP through ingestion, storage and protecte
 
 ## Connect your application
 
-.NET and Next.js **servers can export independently** to Sentrame using standard OpenTelemetry exporters. A shared OpenTelemetry Collector is optional; .NET does not need to relay every other application's telemetry. Browser telemetry needs a separate untrusted producer path and must never contain the server ingestion token or viewer passphrase.
+Configure client observations through an existing standard OpenTelemetry exporter with the registered app's single telemetry key. A qualified app-origin forwarder may carry client OTLP without server instrumentation. The client key is extractable write permission, not proof of an authentic action or backend persistence; owner/viewer access remains separate.
 
 Use **OTLP/HTTP**, with ordinary authentication headers, at `/v1/logs`, `/v1/traces` or `/v1/metrics`. No Sentrame SDK or proprietary fields are required for valid reception. An empty-definition app can show goal-free browser navigation from named browser logs with explicit anonymous session/tab and source order. Configured business meaning uses event-to-stage mappings and separately justified goals; native trace parents do not imply a business journey. Records without sufficient applicable context remain accepted and unassigned. Metrics are receipt-only.
 
-The [developer guide](docs/DEVELOPER-GUIDE.md) explains transport, credentials, .NET/Next.js setup, named events, exceptions and the path from first receipt to a useful journey. SDK-specific recipes and a deployed network route need their own verification; standard wire compatibility alone does not qualify every framework/exporter.
+The [developer guide](docs/DEVELOPER-GUIDE.md) explains transport, the app key, client setup, named events, exceptions and the path from first receipt to a useful journey. SDK-specific recipes and a deployed network route need their own verification; standard wire compatibility alone does not qualify every framework/exporter.
 
 ## Data and interpretation
 
@@ -94,7 +94,7 @@ task container:smoke PLATFORM=linux/amd64
 task spec:validate        # Strict validation of the active OpenSpec change
 ```
 
-Core journey exploration, diagnostics, temporary app-wide viewers and container delivery are implemented. Registered app workspaces are implemented. Richer version comparisons/configuration and narrower visit-only invitation grants remain deferred. Local/container checks do not establish native Home Server capacity or shared Tunnel behavior. [Exact producer qualification and WFS lessons](docs/DEVELOPER-GUIDE.md#9-lessons-from-the-wfs-integration) distinguish actual local Node and .NET integration, older disposable SDK samples and unqualified deployment routes.
+Core journey exploration, diagnostics, temporary app-wide viewers and container delivery are implemented. Registered app workspaces are implemented. Richer version comparisons/configuration and narrower visit-only invitation grants remain deferred. Local/container checks do not establish native Home Server capacity or shared Tunnel behavior. [Historical producer qualification and WFS lessons](docs/verification/historical-server-integration.md) distinguish actual local Node and .NET integration, older disposable SDK samples and unqualified deployment routes.
 
 The [canonical specifications](openspec/specs/) define the baseline; the [archived standard OTel change](openspec/changes/archive/2026-10-29-standard-otel-default-integration/) records the completed implementation and qualification. The [archived synthetic baseline](openspec/changes/archive/2026-10-29-synthetic-journey-outcomes/) is historical. Planning/research documents record how decisions evolved. Use the user/developer/deployment guides for current operation and the [documentation index](docs/README.md) to find the underlying contracts and evidence.
 
@@ -103,6 +103,6 @@ The [canonical specifications](openspec/specs/) define the baseline; the [archiv
 
 Register an app in the owner UI and configure its existing standard exporter with the generated settings. **Journeys** is the first and default navigation option, including on app switches. Choose **Traces** explicitly to inspect standard logs/spans. The local trace explorer needs native trace/span IDs and no `stage.name`, session or occurrence attributes. Tree/timeline/table views preserve parents, events, log context and bounded links; inclusive operation duration comes from native start/end. **Journeys** is the default chronological business view requiring owner mappings and explicit correlation. A request duration does not measure page dwell or prove a vote persisted.
 
-Use the [progressive voting fixture](docs/integration/synthetic-demo.md#standard-otel-voting-operations) and [trace controls](docs/USER-GUIDE.md#trace-exploration). Service/carrier business mapping and native trace business occurrences are qualified locally. Optional hint suggestions require explicit owner acceptance. Span-backed occurrences are also available for explicitly scoped journeys, with separate native, paired and presence distributions. [Qualification](docs/verification/standard-otel.md) separates local wire evidence from unrun .NET/Next/browser exporters and deployment routes. Existing synthetic databases require an explicitly selected fresh data directory for this greenfield model; startup never resets old data.
+Use the [progressive voting fixture](docs/integration/synthetic-demo.md#standard-otel-voting-operations) and [trace controls](docs/USER-GUIDE.md#trace-exploration). Service/carrier business mapping and native trace business occurrences are qualified locally. Optional hint suggestions require explicit owner acceptance. Span-backed occurrences are also available for explicitly scoped journeys, with separate native, paired and presence distributions. [Qualification](docs/verification/standard-otel.md) separates local wire evidence from unrun .NET/Next/browser exporters and deployment routes. Existing managed two-key state requires the reviewed offline transition; unsupported state is never reset automatically. Mixed historical journeys remain non-comparable rather than being filtered into invented client paths.
 
 [Multi-app qualification](docs/verification/multi-app-workspaces.md)

@@ -26,7 +26,7 @@ func diagnosticFixture(t *testing.T) (*Service, http.Handler, *http.Cookie) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.DB.Close() })
-	svc, err := New(store, "synthetic owner passphrase", "browser-test", "server-test", "http://localhost")
+	svc, err := New(store, "synthetic owner passphrase", "client-test", "http://localhost")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func diagnosticFixture(t *testing.T) (*Service, http.Handler, *http.Cookie) {
 	return svc, handler, result.Result().Cookies()[0]
 }
 func diagnosticContext() context.Context {
-	return client.NewContext(context.Background(), client.Info{Metadata: client.NewMetadata(map[string][]string{"authorization": {"Bearer server-test"}})})
+	return client.NewContext(context.Background(), client.Info{Metadata: client.NewMetadata(map[string][]string{"authorization": {"Bearer client-test"}})})
 }
 func errorRequest(handler http.Handler, cookie *http.Cookie, q string) *httptest.ResponseRecorder {
 	request := httptest.NewRequest("GET", "http://localhost/api/errors"+q, nil)
@@ -290,7 +290,7 @@ func TestDiagnosticReadLimitsAndExplicitVisitDeletion(t *testing.T) {
 	}
 	more := make([]Evidence, 9900)
 	for i := range more {
-		more[i] = Evidence{Source: "server", Signal: "logs", Name: "bounded.error", Record: fmt.Sprint("bound-", i), Scope: "bounded-operation", Severity: 17, Time: now.Add(-time.Second).UnixNano(), Attrs: map[string]string{}}
+		more[i] = Evidence{Source: "client", Signal: "logs", Name: "bounded.error", Record: fmt.Sprint("bound-", i), Scope: "bounded-operation", Severity: 17, Time: now.Add(-time.Second).UnixNano(), Attrs: map[string]string{}}
 	}
 	if err := svc.Store.Insert(more); err != nil {
 		t.Fatal(err)

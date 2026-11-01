@@ -17,7 +17,7 @@ func TestManagedStandaloneWFSLogsRemainVisibleWithoutJourneysOrTraces(t *testing
 	other := mustRegister(t, m, "Other app")
 	csrf := loginTest(t, c, server.URL)
 	payload := fmt.Sprintf(`{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"wfs-pwa-browser"}},{"key":"service.version","value":{"stringValue":"test-beta"}}]},"scopeLogs":[{"scope":{"name":"wfs.anonymous"},"logRecords":[{"timeUnixNano":"%d","eventName":"pwa.app.opened","severityNumber":9,"body":{"stringValue":"WFS opening observed"},"attributes":[{"key":"stage.name","value":{"stringValue":"search"}}]}]}]}]}`, time.Now().Add(-time.Second).UnixNano())
-	code, response := protocolRequest(t, c, server.URL, "logs", "application/json", "", a.Browser, []byte(payload))
+	code, response := protocolRequest(t, c, server.URL, "logs", "application/json", "", a.Key, []byte(payload))
 	if code != http.StatusOK || !json.Valid([]byte(response)) {
 		t.Fatalf("OTLP log intake: status=%d response=%s", code, response)
 	}
@@ -36,7 +36,7 @@ func TestManagedStandaloneWFSLogsRemainVisibleWithoutJourneysOrTraces(t *testing
 		t.Fatalf("standalone log missing from protected evidence/unassigned read: %d %s", code, raw)
 	}
 	e := snap.Evidence[0]
-	if e.Name != "pwa.app.opened" || e.Service != "wfs-pwa-browser" || e.Version != "test-beta" || e.Source != "browser" || e.Signal != "logs" || e.Attrs["stage.name"] != "search" || e.Scope != "" || e.Trace != "" {
+	if e.Name != "pwa.app.opened" || e.Service != "wfs-pwa-browser" || e.Version != "test-beta" || e.Source != "client" || e.Signal != "logs" || e.Attrs["stage.name"] != "search" || e.Scope != "" || e.Trace != "" {
 		t.Fatalf("unexpected standalone projection: %+v", e)
 	}
 	if len(snap.Discovered) != 1 || snap.Discovered[0].Name != e.Name || snap.Discovered[0].Count != 1 || snap.Discovered[0].Assigned != 0 {
@@ -57,7 +57,7 @@ func TestManagedStandaloneWFSLogsRemainVisibleWithoutJourneysOrTraces(t *testing
 		t.Fatalf("standalone evidence crossed app boundary: status=%d", code)
 	}
 	t.Run("first mapping needs neither a goal nor journey correlation", func(t *testing.T) {
-		definition := Definition{Mappings: []Mapping{{Event: "pwa.app.opened", Step: "App opened", Source: "browser", Service: "wfs-pwa-browser", Signal: "logs", Kind: "step"}}}
+		definition := Definition{Mappings: []Mapping{{Event: "pwa.app.opened", Step: "App opened", Service: "wfs-pwa-browser", Signal: "logs", Kind: "step"}}}
 		code, raw := appRequest(t, c, server.URL, "POST", base+"/preview", csrf, definition)
 		var preview struct {
 			Conflict       string

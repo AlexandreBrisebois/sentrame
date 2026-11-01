@@ -103,7 +103,7 @@ func TestStandardOTelStructuralProjection(t *testing.T) {
 	svc, server, c := fixtureService(t)
 	tb, lb, epoch := standardBodies(t)
 	for signal, body := range map[string][]byte{"traces": tb, "logs": lb} {
-		code, _ := protocolRequest(t, c, server.URL, signal, "application/x-protobuf", "", "server-test", body)
+		code, _ := protocolRequest(t, c, server.URL, signal, "application/x-protobuf", "", "client-test", body)
 		if code != 200 {
 			t.Fatalf("ingest %s: %d", signal, code)
 		}
@@ -121,7 +121,7 @@ func TestStandardOTelStructuralProjection(t *testing.T) {
 		if x["scope"] != "" || x["occurrence"] != "" {
 			t.Fatal("custom context invented")
 		}
-		if x["projection"] != "structural-v2" {
+		if x["projection"] != projectionPolicy {
 			t.Errorf("missing projection policy: %v", x["projection"])
 		}
 		switch {
@@ -131,7 +131,7 @@ func TestStandardOTelStructuralProjection(t *testing.T) {
 			child = x
 		case x["signal"] == "span-events" && x["name"] == "retry.observed":
 			event = x
-		case x["signal"] == "logs" && x["name"] == "vote.committed":
+		case x["signal"] == "logs" && x["name"] == "vote.result.observed":
 			log = x
 		}
 	}
@@ -174,7 +174,7 @@ func TestStandardOTelNativeReplayConflictsAreAtomic(t *testing.T) {
 	tb, _, _ := standardBodies(t)
 	send := func(b []byte, want int) {
 		t.Helper()
-		code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+		code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 		if code != want {
 			t.Fatalf("status %d want %d", code, want)
 		}
@@ -262,7 +262,7 @@ func TestStandardOTelHTTPProjectionPrivacy(t *testing.T) {
 		p.Attributes().PutStr("authorization", "STRUCTURAL-PRIVATE-SENTINEL")
 	}
 	b, _ := q.MarshalProto()
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -285,7 +285,7 @@ func TestStandardOTelHTTPProjectionPrivacy(t *testing.T) {
 func TestStandardOTelRestartRetainsExactNativeProjection(t *testing.T) {
 	svc, server, c := fixtureService(t)
 	tb, _, _ := standardBodies(t)
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", tb)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", tb)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -298,7 +298,7 @@ func TestStandardOTelRestartRetainsExactNativeProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.DB.Close()
-	restarted, err := New(reopened, "synthetic owner passphrase", "browser-test", "server-test", "")
+	restarted, err := New(reopened, "synthetic owner passphrase", "client-test", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -316,7 +316,7 @@ func TestStandardOTelRestartRetainsExactNativeProjection(t *testing.T) {
 	if !reflect.DeepEqual(before, after) {
 		t.Fatal("native projection changed across SQLite reopen")
 	}
-	code, _ = protocolRequest(t, client, again.URL, "traces", "application/x-protobuf", "", "server-test", tb)
+	code, _ = protocolRequest(t, client, again.URL, "traces", "application/x-protobuf", "", "client-test", tb)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -338,7 +338,7 @@ func TestStandardOTelRouteTemplateNamesAndOmissionDisclosure(t *testing.T) {
 	sp.At(1).SetName("GET https://example.test/STRUCTURAL-PRIVATE-SENTINEL")
 	sp.At(2).SetName("/votes/12345")
 	body, _ := q.MarshalProto()
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", body)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", body)
 	if code != 200 {
 		t.Fatal(code)
 	}

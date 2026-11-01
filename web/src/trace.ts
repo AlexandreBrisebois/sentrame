@@ -25,5 +25,5 @@ export function operationBar(operation:TraceOperation,operations:TraceOperation[
  return {left:Number((BigInt(operation.evidence.time)-origin)*10000n/range)/100,width:Number(BigInt(operation.durationNs)*10000n/range)/100};
 }
 export function contextualMapping(evidence:import('./types').Evidence,suggestion?:string) {
- return {event:evidence.name,step:suggestion===evidence.attrs?.['stage.name']?suggestion:evidence.name,source:evidence.source,kind:'step',key:'',value:'',service:evidence.service,carrier:evidence.signal==='traces'?'span':evidence.signal==='span-events'?'span-event':'log'};
+ return {event:evidence.name,step:suggestion===evidence.attrs?.['stage.name']?suggestion:evidence.name,kind:'step',key:'',value:'',service:evidence.service,carrier:evidence.signal==='traces'?'span':evidence.signal==='span-events'?'span-event':'log'};
 }

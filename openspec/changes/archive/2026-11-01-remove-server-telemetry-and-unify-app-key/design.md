@@ -1,5 +1,7 @@
 # Design
 
+Implementation decision record (2026-11-01): Alex explicitly requested apply after the recommended key/history review. The recommended A–C choices are selected for local implementation; see [IMPLEMENTATION-HANDOFF.md](IMPLEMENTATION-HANDOFF.md). Real migration and credential operations remain separately unauthorized.
+
 ## Context
 
 See `proposal.md` for the product scope and `inventory.md` for source evidence and previous-change reconciliation. The baseline is `main` at `c7288d5`. The source currently binds each app's two JSON credentials to browser/server evidence; that source participates in identity, mapping and journey behavior. Unsupported nonempty SQLite schemas are rejected, so existing-state migration requires deliberate work rather than relying on startup to convert it.

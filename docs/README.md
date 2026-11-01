@@ -3,7 +3,7 @@
 ## Use and operate the application
 
 - [User guide](USER-GUIDE.md): graph views, selection, event mapping, time filters, highlights, references, errors, data lifecycle and temporary viewers.
-- [Developer integration guide](DEVELOPER-GUIDE.md): .NET and Next.js telemetry, direct export versus Collector/proxy routing, trust boundaries, exceptions, automatic versus configured journeys, a runnable native Node check, qualified WFS .NET setup and explicit runtime/deployment limits.
+- [Developer integration guide](DEVELOPER-GUIDE.md): .NET and Next.js telemetry, direct export versus Collector/proxy routing, trust boundaries, exceptions, automatic versus configured journeys, client exporter configuration and qualified-route boundaries and explicit runtime/deployment limits.
 - [OTel event/activity contract](integration/OTEL-CONTRACT.md): standard native spans/logs first, contextual mappings, optional stage hints and capability-specific scope/presence.
 - [Container deployment guide](NAS.md): Docker Hub workflow, Compose, environment configuration, filesystem bind storage, health and upgrades.
 - [Local setup and demonstrations](LOCAL-REVIEW.md): source startup, synthetic scenarios and VS Code REST Client requests.
@@ -11,7 +11,7 @@
 
 ## Contracts and implementation
 
-- [Canonical capability specifications](../openspec/specs/): current normative baseline.
+- [Canonical capability specifications](../openspec/specs/): the pre-sync normative baseline; the approved one-key change deltas and CONTRACT describe the current local source changes until separately reviewed synchronization.
 - [Archived journey investigation change](../openspec/changes/archive/2026-10-31-improve-journey-investigation-experience/): synced journey/live contracts and implemented investigation flow; three manual acceptance tasks remain unchecked and owned by Alex under an explicit archive exception.
 - [Archived standard OTel integration change](../openspec/changes/archive/2026-10-29-standard-otel-default-integration/): completed implementation, synced capability deltas and qualification tasks.
 - [Archived synthetic journey baseline](../openspec/changes/archive/2026-10-29-synthetic-journey-outcomes/): historical planning and implementation record.
@@ -22,7 +22,7 @@
 
 ## Verification and historical rationale
 
-- [Standard OTel qualification](verification/standard-otel.md): current model, progressive voting, exact wire/SDK/browser cells and remaining deployment limitations.
+- [Standard OTel qualification](verification/standard-otel.md): historical model, progressive voting and exact wire/SDK/browser cells; earlier two-role results do not qualify the one-key source change.
 
 - [Workspace verification](verification/workspace-design.md): graph/UI, diagnostic, invitation and container checks, including failed attempts, corrections and limits.
 - [Initial Release A verification](verification/release-a-local.md): earlier technical qualification; later workspace/delivery evidence extends it.
@@ -33,3 +33,5 @@
 A requirement, a code path and a passed qualification are different things. Operational guides describe current behavior; verification reports state what was actually exercised and where support remains unqualified.
 
 [App workspaces](MULTI-APP.md) · [Multi-app qualification](verification/multi-app-workspaces.md)
+
+Current integration uses one app telemetry key and client journeys; [historical server integration evidence](verification/historical-server-integration.md) preserves earlier qualification without advertising current server telemetry support.

@@ -143,9 +143,9 @@ func TestInvestigationReferenceHistoricalWindowAndViewerReadOnly(t *testing.T) {
 	now := time.Now().UTC()
 	from, to := now.Add(-30*time.Second), now.Add(-time.Second)
 	if err := x.s.Store.Insert([]Evidence{
-		{Source: "browser", Signal: "logs", Name: "discovery.entered", Scope: "continuation", Tab: "tab", Record: "prior", Time: now.Add(-time.Minute).UnixNano(), Attrs: map[string]string{}},
-		{Source: "browser", Signal: "logs", Name: "completion.entered", Scope: "continuation", Tab: "tab", Record: "inside", Time: now.Add(-2 * time.Second).UnixNano(), Attrs: map[string]string{}},
-		{Source: "browser", Signal: "logs", Name: "discovery.entered", Scope: "outside", Tab: "tab", Record: "later", Time: now.UnixNano(), Attrs: map[string]string{}},
+		{Source: "client", Signal: "logs", Name: "discovery.entered", Scope: "continuation", Tab: "tab", Record: "prior", Time: now.Add(-time.Minute).UnixNano(), Attrs: map[string]string{}},
+		{Source: "client", Signal: "logs", Name: "completion.entered", Scope: "continuation", Tab: "tab", Record: "inside", Time: now.Add(-2 * time.Second).UnixNano(), Attrs: map[string]string{}},
+		{Source: "client", Signal: "logs", Name: "discovery.entered", Scope: "outside", Tab: "tab", Record: "later", Time: now.UnixNano(), Attrs: map[string]string{}},
 	}); err != nil {
 		t.Fatal(err)
 	}

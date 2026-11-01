@@ -34,7 +34,7 @@ func TestRegistryValidationPrivacyAndStores(t *testing.T) {
 	m, path := registryFixture(t)
 	a := mustRegister(t, m, "Alpha")
 	b := mustRegister(t, m, "Bêta")
-	if a.ID == b.ID || a.Generation == b.Generation || a.Browser == a.Server || a.Server == b.Server {
+	if a.ID == b.ID || a.Generation == b.Generation || a.Key == b.Key {
 		t.Fatal("authority collision")
 	}
 	defs, e := m.stores[a.ID].Definitions()
@@ -52,7 +52,7 @@ func TestRegistryValidationPrivacyAndStores(t *testing.T) {
 	}
 	original := m.current
 	for _, mutate := range []func(*appRegistry){
-		func(v *appRegistry) { v.Version = 2 }, func(v *appRegistry) { v.Apps[1].Browser = a.Server }, func(v *appRegistry) { v.Apps[1].Name = "ALPHA" }, func(v *appRegistry) { v.Apps[1].ID = a.ID }, func(v *appRegistry) { v.Apps[0].Storage = "../escape" }, func(v *appRegistry) { v.Apps[0].Storage = "/absolute" }, func(v *appRegistry) { v.Apps[0].Storage = "apps/other/telemetry.db" },
+		func(v *appRegistry) { v.Version = 99 }, func(v *appRegistry) { v.Apps[1].Key = a.Key }, func(v *appRegistry) { v.Apps[1].Name = "ALPHA" }, func(v *appRegistry) { v.Apps[1].ID = a.ID }, func(v *appRegistry) { v.Apps[0].Storage = "../escape" }, func(v *appRegistry) { v.Apps[0].Storage = "/absolute" }, func(v *appRegistry) { v.Apps[0].Storage = "apps/other/telemetry.db" },
 	} {
 		v := original
 		v.Apps = append([]AppEntry{}, original.Apps...)
@@ -103,7 +103,7 @@ func TestRegistryValidationPrivacyAndStores(t *testing.T) {
 					if raw, ok := val.([]byte); ok {
 						value = string(raw)
 					}
-					for _, secret := range []string{a.Browser, a.Server, b.Browser, b.Server} {
+					for _, secret := range []string{a.Key, b.Key} {
 						if strings.Contains(value, secret) {
 							t.Fatal("credential copied into SQLite")
 						}
@@ -119,7 +119,7 @@ func TestRegistryValidationPrivacyAndStores(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer reopened.Close()
-	if reopened.current.Apps[0].Server != a.Server {
+	if reopened.current.Apps[0].Key != a.Key {
 		t.Fatal("restart overwrote authority")
 	}
 }
@@ -162,10 +162,10 @@ func TestRegistryAtomicFailureAndRestart(t *testing.T) {
 				}
 				return nil
 			}
-			if e := m.Update(a.ID, "", "server"); e == nil {
+			if e := m.Update(a.ID, "", "key"); e == nil {
 				t.Fatal("fault reported success")
 			}
-			_, _, authorized := m.credential("Bearer " + a.Server)
+			_, _, authorized := m.credential("Bearer " + a.Key)
 			if stage == "directory-sync" {
 				if authorized || !m.uncertain {
 					t.Fatal("uncertain commit kept authority")
@@ -185,7 +185,7 @@ func TestRegistryAtomicFailureAndRestart(t *testing.T) {
 				t.Fatal(e)
 			}
 			defer next.Close()
-			_, _, authorized = next.credential("Bearer " + a.Server)
+			_, _, authorized = next.credential("Bearer " + a.Key)
 			if authorized == (stage == "directory-sync") {
 				t.Fatal("restart did not reconcile committed file")
 			}
@@ -217,10 +217,10 @@ func TestRegistryConcurrentUpdatesAndRemovalRecovery(t *testing.T) {
 	if e := m.Delete(a.ID, current.Name); e == nil {
 		t.Fatal("purge failure absent")
 	}
-	if _, _, ok := m.credential("Bearer " + a.Server); ok {
+	if _, _, ok := m.credential("Bearer " + a.Key); ok {
 		t.Fatal("pending deletion active")
 	}
-	if _, _, ok := m.credential("Bearer " + b.Server); !ok {
+	if _, _, ok := m.credential("Bearer " + b.Key); !ok {
 		t.Fatal("other app disabled")
 	}
 	m.Close()
@@ -239,7 +239,7 @@ func TestRegistryConcurrentUpdatesAndRemovalRecovery(t *testing.T) {
 		t.Fatal("empty registry invalid")
 	}
 	c := mustRegister(t, next, "Alpha")
-	if c.ID == a.ID || c.Generation == a.Generation || c.Server == a.Server {
+	if c.ID == a.ID || c.Generation == a.Generation || c.Key == a.Key {
 		t.Fatal("removed authority reused")
 	}
 }
@@ -309,7 +309,7 @@ func TestRegistrySupportedSchemaIdentityAndExternalEdits(t *testing.T) {
 				os.WriteFile(file, []byte("{"), 0600)
 			case "version":
 				v := m.current
-				v.Version = 2
+				v.Version = 99
 				b, _ := json.Marshal(v)
 				os.WriteFile(file, b, 0600)
 			case "external":
@@ -342,8 +342,11 @@ func TestRegistryActualRegistrationLimitAndDuplicateEntropy(t *testing.T) {
 		t.Fatal("actual registration limit missing")
 	}
 	other, _ := registryFixture(t)
-	other.entropy = bytes.NewReader(bytes.Repeat([]byte{1}, 128))
-	if _, e := other.Register("Duplicate credentials"); e == nil || len(other.current.Apps) != 0 {
+	other.entropy = bytes.NewReader(bytes.Repeat([]byte{1}, 256))
+	if _, e := other.Register("First generated key"); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := other.Register("Duplicate credentials"); e == nil || len(other.current.Apps) != 1 {
 		t.Fatal("duplicate generated tokens accepted")
 	}
 }

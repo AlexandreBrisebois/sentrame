@@ -24,7 +24,7 @@ func TestStageHintsSuggestionsNeverActivateOrInherit(t *testing.T) {
 	sp.At(3).Attributes().PutInt("stage.name", 42)
 	sp.At(4).Attributes().PutStr("stage.name", "unsafe?label")
 	b, _ := q.MarshalProto()
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -44,7 +44,7 @@ func TestStageHintsSuggestionsNeverActivateOrInherit(t *testing.T) {
 			}
 			seen = true
 		}
-		if x["name"] == "vote.persist" || x["name"] == "missing.parent" || x["name"] == "invalid.clock" || x["name"] == "retry.observed" {
+		if x["name"] == "vote.result.read" || x["name"] == "missing.parent" || x["name"] == "invalid.clock" || x["name"] == "retry.observed" {
 			if len(hints) != 0 {
 				t.Fatalf("invalid/inherited hint: %v", x)
 			}
@@ -73,7 +73,7 @@ func TestStageHintsExplicitOwnerWinsAndHistoryIsLiteral(t *testing.T) {
 	root := q.Traces().ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0)
 	root.Events().At(0).Attributes().PutStr("stage.name", "voting")
 	b, _ := q.MarshalProto()
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -85,7 +85,7 @@ func TestStageHintsExplicitOwnerWinsAndHistoryIsLiteral(t *testing.T) {
 		for _, v := range detail["business"].([]any) {
 			m := v.(map[string]any)
 			if m["goal"] == true {
-				if m["stage"] != "Vote saved" || m["definition"] != version {
+				if m["stage"] != "Vote result shown" || m["definition"] != version {
 					t.Fatal("emitted tag or new definition renamed capture")
 				}
 				found = true
@@ -100,9 +100,9 @@ func TestStageHintsExplicitOwnerWinsAndHistoryIsLiteral(t *testing.T) {
 	d["mappings"].([]map[string]any)[1]["step"] = "voting"
 	postMeaning(t, c, server.URL, csrf, "/api/definitions", d, 200)
 	check()
-	// No attribute-implied authority: browser export has a separate namespace and
-	// cannot match the server selector, even when parent/tag/IDs are forged.
-	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "browser-test", b)
+	// Replaying an observation does not apply a later definition or replace
+	// the original literal owner label with its emitted hint.
+	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -110,14 +110,14 @@ func TestStageHintsExplicitOwnerWinsAndHistoryIsLiteral(t *testing.T) {
 	for _, v := range detail["business"].([]any) {
 		m := v.(map[string]any)
 		if m["stage"] == "voting" {
-			t.Fatal("browser hint promoted to trusted server mapping")
+			t.Fatal("replay applied a later mapping instead of the capture definition")
 		}
 	}
 	// The stored event retains emitted hint for mismatch inspection, independently
 	// of the literal owner label and definition.
 	for _, v := range detail["events"].([]any) {
 		e := v.(map[string]any)
-		if e["source"] == "server" && e["name"] == "vote.committed" {
+		if e["source"] == "client" && e["name"] == "vote.result.observed" {
 			a := e["attrs"].(map[string]any)
 			if a["stage.name"] != "voting" {
 				t.Fatal("emitted evidence lost")
@@ -134,7 +134,7 @@ func TestStageHintsDistinctLabelsRemainSeparateSuggestions(t *testing.T) {
 	sp.At(1).Attributes().PutStr("stage.name", "voting")
 	sp.At(2).Attributes().PutStr("stage.name", "voting.persist")
 	b, _ := q.MarshalProto()
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -142,7 +142,7 @@ func TestStageHintsDistinctLabelsRemainSeparateSuggestions(t *testing.T) {
 	snap := getTraceJSON(t, c, server.URL, "/api/snapshot", 200)
 	for _, v := range snap["contextualDiscovery"].([]any) {
 		x := v.(map[string]any)
-		if x["name"] == "vote.persist" {
+		if x["name"] == "vote.result.read" {
 			labels := x["stageHints"].([]any)
 			if len(labels) != 2 {
 				t.Fatal("conflicting labels collapsed or popularity-selected")
@@ -164,7 +164,7 @@ func TestStageHintsBoundedContextualLabels(t *testing.T) {
 		l.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
 		l.Attributes().PutStr("stage.name", fmt.Sprintf("voting.%02d", i))
 	}
-	if code := requestLogs(t, c, server.URL, "server-test", logs); code != 200 {
+	if code := requestLogs(t, c, server.URL, "client-test", logs); code != 200 {
 		t.Fatal(code)
 	}
 	loginTest(t, c, server.URL)

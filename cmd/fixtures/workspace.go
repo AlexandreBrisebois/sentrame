@@ -49,7 +49,7 @@ func generateWorkspace() error {
 	if err != nil {
 		return err
 	}
-	token, err := envRequired("SENTRAME_BROWSER_TOKEN")
+	token, err := envRequired("SENTRAME_TELEMETRY_KEY")
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func generateWorkspace() error {
 	}
 	// Keep the existing demonstration's variables and overwrite only shared local
 	// endpoint/token values plus this new scope. Never print credentials.
-	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "browserToken": token, "workspaceScope": g.Scopes["workspace"]}
+	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "telemetryKey": token, "workspaceScope": g.Scopes["workspace"]}
 	existing, err := os.ReadFile("rest/.env")
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -98,11 +98,11 @@ func verifyWorkspace() error {
 	if err = json.Unmarshal(raw, &g); err != nil {
 		return err
 	}
-	token, err := envRequired("SENTRAME_BROWSER_TOKEN")
+	token, err := envRequired("SENTRAME_TELEMETRY_KEY")
 	if err != nil {
 		return err
 	}
-	requests, err := parseREST("rest/workspace.http", map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "browserToken": token, "workspaceScope": g.Scopes["workspace"]})
+	requests, err := parseREST("rest/workspace.http", map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "telemetryKey": token, "workspaceScope": g.Scopes["workspace"]})
 	if err != nil {
 		return err
 	}

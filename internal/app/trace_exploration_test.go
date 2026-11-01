@@ -35,7 +35,7 @@ func TestTraceExplorerStandardProtectedStructure(t *testing.T) {
 	_, server, c := fixtureService(t)
 	tb, lb, _ := standardBodies(t)
 	for signal, body := range map[string][]byte{"traces": tb, "logs": lb} {
-		code, _ := protocolRequest(t, c, server.URL, signal, "application/x-protobuf", "", "server-test", body)
+		code, _ := protocolRequest(t, c, server.URL, signal, "application/x-protobuf", "", "client-test", body)
 		if code != 200 {
 			t.Fatal(code)
 		}
@@ -88,33 +88,26 @@ func TestTraceExplorerStandardProtectedStructure(t *testing.T) {
 		t.Fatalf("typed relationships missing: %v", counts)
 	}
 	events := detail["events"].([]any)
-	if events[0].(map[string]any)["name"] != "vote.committed" || events[1].(map[string]any)["name"] != "retry.observed" {
+	if events[0].(map[string]any)["name"] != "vote.result.observed" || events[1].(map[string]any)["name"] != "retry.observed" {
 		t.Fatal("events reordered by clock instead of export index")
 	}
 	if detail["completeness"] == "complete" || detail["revision"] == nil {
 		t.Fatal("partial sampling/revision disclosure missing")
 	}
-	// Browser claims stay separate; duplicate parent candidates become ambiguous.
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "browser-test", tb)
+	// Replaying the same supported identity stays one operation in one app domain.
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", tb)
 	if code != 200 {
 		t.Fatal(code)
 	}
 	changed := getTraceJSON(t, c, server.URL, path, 200)
-	if changed["revision"] == detail["revision"] {
-		t.Fatal("new evidence did not invalidate revision")
+	if len(changed["operations"].([]any)) != len(spans) {
+		t.Fatal("identified replay duplicated client trace operations")
 	}
-	ambiguous := 0
 	for _, v := range changed["relationships"].([]any) {
 		r := v.(map[string]any)
-		if r["type"] == "parent" && r["targetSpan"] == "0000000000000001" {
-			if r["state"] != "ambiguous" {
-				t.Fatal("cross-source parent authority promoted")
-			}
-			ambiguous++
+		if r["type"] == "parent" && r["targetSpan"] == "0000000000000001" && r["state"] != "resolved" {
+			t.Fatal("identified replay made client parentage ambiguous")
 		}
-	}
-	if ambiguous != 4 {
-		t.Fatalf("ambiguous parents %d", ambiguous)
 	}
 }
 
@@ -160,7 +153,7 @@ func TestTraceDetailBoundUsesActualIngestion(t *testing.T) {
 			p.SetEndTimestamp(p.StartTimestamp() + 1)
 		}
 		body, _ := q.MarshalProto()
-		code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", body)
+		code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", body)
 		if code != 200 {
 			t.Fatal(code)
 		}

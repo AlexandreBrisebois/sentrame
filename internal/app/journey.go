@@ -135,14 +135,38 @@ const inactivityNanos = int64(30 * time.Minute)
 // Derive reads an already sanitized, app-isolated retained evidence snapshot. It never
 // infers a person, cross-tab join, or a causal relation from temporal proximity.
 func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model {
-	m := Model{Computation: "journey-navigation-v4", Journeys: []Journey{}, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: []Evidence{}, Warnings: []string{}, Policy: "Correlated browser navigation or first mapped occurrence / optional goal / 30-minute inactivity; event-time display is not causal order. Transition occurrences, journeys and anonymous scopes are separate units. Timings never measure attention."}
+	m := Model{Computation: "journey-client-v5", Journeys: []Journey{}, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: []Evidence{}, Warnings: []string{}, Policy: "Correlated client navigation or first mapped occurrence / optional goal / 30-minute inactivity; event-time display is not causal order. Transition occurrences, journeys and anonymous scopes are separate units. Timings never measure attention."}
 	defs := map[int64]Definition{}
 	for _, d := range definitions {
-		defs[d.Version] = d
+		if compatible, ok := compatibleClientDefinition(d); ok {
+			defs[d.Version] = compatible
+		}
 	}
 	groups := map[string][]Evidence{}
+	// A legacy/unknown record makes its bounded visit incompatible. Filtering only
+	// the old record would manufacture a direct transition across missing history.
+	incompatible := map[string]bool{}
+	incompatibleScope := map[string]bool{}
+	for _, e := range evidence {
+		if e.Source != "client" && e.Scope != "" {
+			if e.Tab == "" {
+				incompatibleScope[e.Scope] = true
+			} else {
+				incompatible[e.Scope+"\x00"+e.Tab] = true
+			}
+		}
+	}
 	seen := map[string]bool{}
 	for _, e := range evidence {
+		definition := e.Definition
+		if e.CaptureDefinition > 0 {
+			definition = e.CaptureDefinition
+		}
+		_, compatible := defs[definition]
+		if e.Source != "client" || !compatible || incompatibleScope[e.Scope] || incompatible[e.Scope+"\x00"+e.Tab] {
+			m.Warnings = appendUnique(m.Warnings, "Legacy mixed or unsupported history is non-comparable; select a current client period.")
+			continue
+		}
 		if e.Record != "" {
 			key := e.Source + "\x00" + e.Signal + "\x00" + e.Record
 			if seen[key] {
@@ -151,7 +175,7 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 			seen[key] = true
 		}
 		m.Stats.Records++
-		if e.Signal == "metrics" || e.Scope == "" || (e.Source == "browser" && e.Tab == "") {
+		if e.Signal == "metrics" || e.Scope == "" || e.Tab == "" {
 			m.Unassigned = append(m.Unassigned, e)
 			continue
 		}
@@ -302,7 +326,7 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 					}
 				}
 			}
-			if current != nil && e.Time >= current.Start && e.Time-current.LastMapped <= inactivityNanos && (!current.NavigationOnly || len(currentDef.Mappings) > 0 || e.Source == "browser" && e.Signal == "logs") {
+			if current != nil && e.Time >= current.Start && e.Time-current.LastMapped <= inactivityNanos && (!current.NavigationOnly || len(currentDef.Mappings) > 0 || e.Source == "client" && e.Signal == "logs") {
 				current.Evidence = append(current.Evidence, e)
 				if e.Attrs["_partial_start"] == "true" {
 					current.Partial = true
@@ -360,6 +384,33 @@ func Derive(evidence []Evidence, definitions []Definition, nowNanos int64) Model
 	summarizeModel(&m)
 	return m
 }
+
+// compatibleClientDefinition provides an analysis-only view of old client rules.
+// Originals remain stored unchanged. A server/unknown role cannot be widened
+// into a current client rule or accidentally fall back to automatic navigation.
+func compatibleClientDefinition(d Definition) (Definition, bool) {
+	d.Mappings = append([]Mapping(nil), d.Mappings...)
+	for i := range d.Mappings {
+		switch d.Mappings[i].Source {
+		case "", "browser":
+			d.Mappings[i].Source = ""
+		default:
+			return Definition{}, false
+		}
+	}
+	if d.GoalSelector != nil {
+		goal := *d.GoalSelector
+		switch goal.Source {
+		case "", "browser":
+			goal.Source = ""
+		default:
+			return Definition{}, false
+		}
+		d.GoalSelector = &goal
+	}
+	return d, true
+}
+
 func mappingFor(e Evidence, d Definition) (Mapping, bool, bool) {
 	var found Mapping
 	count := 0
@@ -373,21 +424,21 @@ func mappingFor(e Evidence, d Definition) (Mapping, bool, bool) {
 	return found, count == 1, count > 1
 }
 
-// Browser logs with explicit visit/tab correlation can describe navigation
+// Client logs with explicit visit/tab correlation can describe navigation
 // without assigning business meaning to traces or claiming completion.
 // An explicit definition remains authoritative, including excluded events.
 func journeyMappingFor(e Evidence, d Definition) (Mapping, bool, bool) {
 	if len(d.Mappings) > 0 || d.Goal != "" || d.GoalSelector != nil {
 		return mappingFor(e, d)
 	}
-	if e.Source != "browser" || e.Signal != "logs" || e.Scope == "" || e.Tab == "" || isDiagnostic(e) || safeEvidenceName(e.Name) == "" || e.Name == "unnamed" {
+	if e.Source != "client" || e.Signal != "logs" || e.Scope == "" || e.Tab == "" || isDiagnostic(e) || safeEvidenceName(e.Name) == "" || e.Name == "unnamed" {
 		return Mapping{}, false, false
 	}
 	label := e.Attrs["stage.name"]
 	if label == "" {
 		label = e.Name
 	}
-	return Mapping{Event: e.Name, Step: label, Kind: "step", Source: "browser", Signal: "logs", Timing: "none"}, true, false
+	return Mapping{Event: e.Name, Step: label, Kind: "step", Signal: "logs", Timing: "none"}, true, false
 }
 
 func appendUnique(xs []string, x string) []string {
@@ -424,7 +475,7 @@ func deriveTimings(j Journey, d Definition, now int64) []Timing {
 					t.Quality = "inclusive native operation; nested/parallel intervals are not unique time"
 				}
 				out = append(out, t)
-				if t.Complete && e.Source == "browser" && (j.End == 0 || e.End <= j.End) {
+				if t.Complete && e.Source == "client" && (j.End == 0 || e.End <= j.End) {
 					end := e
 					end.Time = e.End
 					if active, has := activeDuration(j.Evidence, e, end); has {
@@ -562,14 +613,14 @@ func timingComputation(basis string) string {
 	case "measured-elapsed":
 		return "paired-wall-clock-v1"
 	case "observed-active":
-		return "presence-cap60-browser-v2"
+		return "presence-cap60-client-v3"
 	case "next-event-estimated":
 		return "adjacent-window30m-v1"
 	}
 	return "unavailable"
 }
 func activeDuration(es []Evidence, start, end Evidence) (int64, bool) {
-	if start.Source != "browser" || end.Source != "browser" {
+	if start.Source != "client" || end.Source != "client" {
 		return 0, false
 	}
 	var activeAt int64
@@ -618,7 +669,7 @@ func activeDuration(es []Evidence, start, end Evidence) (int64, bool) {
 // Summarize recomputes map/statistic projections for a selected cohort without
 // touching captured segmentation or manufacturing adjacency across hidden events.
 func Summarize(journeys []Journey, unassigned []Evidence, nowNanos int64) Model {
-	m := Model{Computation: "journey-navigation-v4", Journeys: journeys, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: unassigned, Warnings: []string{}, Policy: "Captured journey boundaries are preserved; cohort selection does not resegment. Counts describe observed eligible journeys; timing kinds and censoring remain separate."}
+	m := Model{Computation: "journey-client-v5", Journeys: journeys, Nodes: []Node{}, Edges: []Edge{}, Diagnostics: []Diagnostic{}, Unassigned: unassigned, Warnings: []string{}, Policy: "Captured journey boundaries are preserved; cohort selection does not resegment. Counts describe observed eligible journeys; timing kinds and censoring remain separate."}
 	if m.Journeys == nil {
 		m.Journeys = []Journey{}
 	}
@@ -752,7 +803,7 @@ func summarizeModel(m *Model) {
 			}
 			diag := diagnostic(e)
 			diag.JourneyID = j.ID
-			diag.Linkage = "explicit app-scoped logical correlation and tab; source authority retained"
+			diag.Linkage = "explicit app-scoped logical correlation and tab; untrusted client observations"
 			diag.Completed = j.Status == "completed"
 			for _, next := range j.Steps {
 				if next.Time > e.Time {
@@ -908,7 +959,7 @@ func evidenceCarrier(e Evidence) string {
 	return "unknown"
 }
 func mappingMatches(e Evidence, r Mapping) bool {
-	return e.Signal != "metrics" && r.Event == e.Name && (r.Source == "" || r.Source == e.Source) && (r.Service == "" || r.Service == e.Service) && (r.Signal == "" || r.Signal == e.Signal) && (r.Carrier == "" || r.Carrier == evidenceCarrier(e)) && (r.Key == "" || e.Attrs[r.Key] == r.Value)
+	return e.Signal != "metrics" && r.Event == e.Name && r.Source == "" && (r.Service == "" || r.Service == e.Service) && (r.Signal == "" || r.Signal == e.Signal) && (r.Carrier == "" || r.Carrier == evidenceCarrier(e)) && (r.Key == "" || e.Attrs[r.Key] == r.Value)
 }
 func sameSelector(a, b Mapping) bool {
 	return a.Event == b.Event && a.Source == b.Source && a.Service == b.Service && a.Signal == b.Signal && a.Carrier == b.Carrier && a.Key == b.Key && a.Value == b.Value

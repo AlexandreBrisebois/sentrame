@@ -23,79 +23,79 @@ GET {{baseUrl}}/api/apps/{{appId}}/snapshot
 ### Healthy browser stage, visibility and screen observation
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
-< ./generated/healthy-browser.bin
+< ./generated/healthy-navigation.bin
 
-### Ten genuine server commitments in the same logical/tab scope
+### Ten distinct client result observations in the same visit/tab scope
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
-< ./generated/healthy-server.bin
+< ./generated/healthy-results.bin
 
 ### Identical replay cannot add votes
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
-< ./generated/healthy-server.bin
+< ./generated/healthy-results.bin
 
-### Intent, eventual screen observation and server persistence remain different facts
+### Intent, result and screen observations remain distinct records
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
-< ./generated/recovery-browser.bin
+< ./generated/recovery-navigation.bin
 
-### Post-commit failure then recovery; unsafe diagnostic content omitted
+### Client result error then recovery; unsafe diagnostic content omitted
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
-< ./generated/recovery-server.bin
+< ./generated/recovery-results.bin
 
 ### Already-converged screen with zero votes
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
 < ./generated/initial-convergence.bin
 
-### Server-only journey requires no fictitious browser tab
+### Missing-context observations do not create journeys
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
-< ./generated/server-only.bin
+< ./generated/missing-context.bin
 
 ### Ordinary telemetry without Sentrame identity or logical context
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
 < ./generated/accepted-unassigned.bin
 
-### Self-asserted server authority remains browser evidence
+### Claimed origin never grants stronger assurance
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
-< ./generated/forged-authority.bin
+< ./generated/claimed-origin.bin
 
 ### Silence closes inactive, not failed
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
 < ./generated/inactive.bin
@@ -103,15 +103,15 @@ Content-Type: application/x-protobuf
 ### App baseline is historical app traffic, separate from one live visit
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
-< ./generated/baseline-browser.bin
+< ./generated/baseline-navigation.bin
 
 ### Twenty explicit stage occurrences: supported median and slower cases
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
 < ./generated/timing-samples.bin
@@ -123,7 +123,7 @@ GET {{baseUrl}}/api/apps/{{appId}}/snapshot?scope={{timingScope}}
 ### Begin a live journey
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
 < ./generated/live-start.bin
@@ -131,7 +131,7 @@ Content-Type: application/x-protobuf
 ### Follow up with the same scope and new record identity
 # @expect 200
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
 < ./generated/live-followup.bin
@@ -139,7 +139,7 @@ Content-Type: application/x-protobuf
 ### One valid plus one future-invalid record: zero records commit
 # @expect 400
 POST {{baseUrl}}/v1/logs
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 Content-Type: application/x-protobuf
 
 < ./generated/atomic-invalid.bin

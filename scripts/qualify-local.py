@@ -23,7 +23,7 @@ def main():
             headers={'Origin':origin,'Content-Type':'application/json','X-CSRF-Token':csrf}
             req=urllib.request.Request(origin+'/api/apps',data=json.dumps({'name':'Load qualification'}).encode(),headers=headers)
             with owner.open(req,timeout=5) as r: app_id=json.load(r)['id']
-            with owner.open(origin+'/api/apps/'+app_id+'/connection',timeout=5) as r: producer=json.load(r)['browser']
+            with owner.open(origin+'/api/apps/'+app_id+'/connection',timeout=5) as r: producer=json.load(r)['telemetryKey']
             def view():
                 while not stop.is_set():
                     start=time.perf_counter()

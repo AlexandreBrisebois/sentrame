@@ -56,7 +56,7 @@
               "droppedLinksCount": 4,
               "events": [
                 {
-                  "name": "vote.committed",
+                  "name": "vote.result.observed",
                   "timeUnixNano": "800000000",
                   "attributes": [
                     {
@@ -520,7 +520,7 @@
             {
               "traceId": "11111111111111111111111111111111",
               "spanId": "0000000000000002",
-              "name": "vote.persist",
+              "name": "vote.result.read",
               "kind": 2,
               "startTimeUnixNano": "100",
               "endTimeUnixNano": "700000000",
@@ -553,7 +553,7 @@
             {
               "traceId": "11111111111111111111111111111111",
               "spanId": "0000000000000003",
-              "name": "vote.persist",
+              "name": "vote.result.read",
               "kind": 2,
               "startTimeUnixNano": "200",
               "endTimeUnixNano": "800000000",
@@ -669,7 +669,7 @@
         {
           "logRecords": [
             {
-              "eventName": "vote.committed",
+              "eventName": "vote.result.observed",
               "timeUnixNano": "800000000",
               "traceId": "11111111111111111111111111111111",
               "spanId": "0000000000000001",

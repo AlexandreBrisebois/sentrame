@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -25,8 +26,7 @@ type AppEntry struct {
 	Name       string `json:"name"`
 	State      string `json:"state"`
 	Storage    string `json:"storage"`
-	Browser    string `json:"browserCredential,omitempty"`
-	Server     string `json:"serverCredential,omitempty"`
+	Key        string `json:"telemetryKey,omitempty"`
 }
 type appRegistry struct {
 	Version  int        `json:"version"`
@@ -106,7 +106,7 @@ func safePath(path string) error {
 	return nil
 }
 func (m *Registry) validate(v appRegistry) error {
-	if v.Version != 1 || v.Apps == nil || len(v.Apps) > MaxApps {
+	if v.Version != 2 || v.Apps == nil || len(v.Apps) > MaxApps {
 		return registryError()
 	}
 	ids, names, tokens, paths := map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}
@@ -128,7 +128,7 @@ func (m *Registry) validate(v appRegistry) error {
 		if err := safePath(filepath.Join(m.root, a.Storage)); err != nil {
 			return err
 		}
-		for _, token := range []string{a.Browser, a.Server} {
+		for _, token := range []string{a.Key} {
 			if !opaqueID.MatchString(token) || tokens[token] {
 				return registryError()
 			}
@@ -329,12 +329,23 @@ func OpenRegistry(dbPath string) (*Registry, error) {
 	if safePath(registryPath) != nil || safePath(marker) != nil {
 		return nil, registryError()
 	}
+	if _, err := os.Stat(filepath.Join(root, ".client-migration.json")); !os.IsNotExist(err) {
+		return nil, errors.New("client migration incomplete; keep intake stopped and resume the reviewed offline migration")
+	}
 	b, err := os.ReadFile(registryPath)
 	if err == nil {
-		if len(b) > 1<<20 || json.Unmarshal(b, &m.current) != nil || m.validate(m.current) != nil {
+		var version struct {
+			Version int `json:"version"`
+		}
+		if json.Unmarshal(b, &version) == nil && version.Version == 1 {
+			return nil, errors.New("two-key registry requires explicit offline client migration; existing state was preserved")
+		}
+		decoder := json.NewDecoder(bytes.NewReader(b))
+		decoder.DisallowUnknownFields()
+		if len(b) > 1<<20 || decoder.Decode(&m.current) != nil || m.validate(m.current) != nil {
 			return nil, registryError()
 		}
-		if _, e := os.Stat(marker); e != nil {
+		if initialized, e := os.ReadFile(marker); e != nil || string(initialized) != "2\n" {
 			return nil, registryError()
 		}
 		m.diskDigest = digest(string(b))
@@ -348,7 +359,7 @@ func OpenRegistry(dbPath string) (*Registry, error) {
 		if _, e := os.Stat(filepath.Join(m.root, "apps")); !os.IsNotExist(e) {
 			return nil, registryError()
 		}
-		v := appRegistry{Version: 1, Apps: []AppEntry{}}
+		v := appRegistry{Version: 2, Apps: []AppEntry{}}
 		if _, e := os.Stat(abs); e == nil {
 			return nil, errors.New("legacy single-app database found; select a fresh data directory and register apps in the owner UI (existing files were preserved)")
 		} else if !os.IsNotExist(e) {
@@ -361,7 +372,7 @@ func OpenRegistry(dbPath string) (*Registry, error) {
 		if e != nil {
 			return nil, registryError()
 		}
-		_, e = f.WriteString("1\n")
+		_, e = f.WriteString("2\n")
 		if e == nil {
 			e = f.Sync()
 		}
@@ -436,11 +447,8 @@ func (m *Registry) credential(h string) (AppEntry, string, bool) {
 	}
 	for _, a := range m.current.Apps {
 		if a.State == "active" {
-			if h == "Bearer "+a.Browser {
-				return a, "browser", true
-			}
-			if h == "Bearer "+a.Server {
-				return a, "server", true
+			if h == "Bearer "+a.Key {
+				return a, "client", true
 			}
 		}
 	}
@@ -454,7 +462,7 @@ func (m *Registry) Register(name string) (AppEntry, error) {
 	}
 	a := AppEntry{Name: strings.TrimSpace(name), State: "active"}
 	var e error
-	for _, p := range []*string{&a.ID, &a.Generation, &a.Browser, &a.Server} {
+	for _, p := range []*string{&a.ID, &a.Generation, &a.Key} {
 		*p, e = checkedRandom(m.entropy)
 		if e != nil {
 			return AppEntry{}, e
@@ -494,14 +502,10 @@ func (m *Registry) Update(id, name, role string) error {
 			if e != nil {
 				return e
 			}
-			switch role {
-			case "browser":
-				a.Browser = token
-			case "server":
-				a.Server = token
-			default:
-				return errors.New("choose browser or server")
+			if role != "key" {
+				return errors.New("producer roles are unsupported; rotate the app key")
 			}
+			a.Key = token
 		} else {
 			a.Name = strings.TrimSpace(name)
 		}

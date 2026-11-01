@@ -7,7 +7,7 @@ Turn explicitly correlated browser navigation and configured telemetry into expl
 ## Requirements
 
 ### Requirement: Separate application visits and journeys
-The system SHALL support client-only, server-only and combined journeys within one registered app and bounded logical correlation scope. Browser visits SHALL use separate random tab scopes; server workflows SHALL NOT require a browser/tab. Combined observations SHALL use the same correctly scoped correlation while preserving sources. Person/cross-visit/app joins SHALL NOT be inferred, and a request trace SHALL NOT automatically become a business journey.
+The system SHALL derive client journeys within one registered app and bounded explicit visit/tab scope. Tabs SHALL remain separate. Server-only and combined client/server journeys SHALL be unsupported. Person, cross-visit and cross-app joins SHALL NOT be inferred; request traces SHALL NOT automatically become journeys.
 
 #### Scenario: Session identifier collision across apps
 - **WHEN** two applications emit the same session value
@@ -22,12 +22,12 @@ The system SHALL support client-only, server-only and combined journeys within o
 - **THEN** the browser evidence is marked ambiguous/unassigned until separate tab scopes are available; the system does not merge concurrent tabs into a certain user path
 
 #### Scenario: Server-only journey
-- **WHEN** mapped events identify a bounded server operation with no browser
-- **THEN** automatic first-event/goal/inactivity rules apply within that operation scope without a fabricated tab, person or browser visit
+- **WHEN** a received record lacks the required visit or tab context
+- **THEN** it remains received evidence without a fabricated journey or a server-operation fallback
 
 #### Scenario: Combined client and server evidence
-- **WHEN** properly emitted client/server observations share app-scoped logical correlation
-- **THEN** they can form one journey while retaining producer authority, clock/order uncertainty and distinct record/action identities; the shared ID alone establishes neither duplicates nor causality
+- **WHEN** retained evidence previously formed a mixed journey
+- **THEN** the lifecycle cutover marks it non-comparable rather than flattening it into a new client path
 
 ### Requirement: Self-explanatory event classification
 The system SHALL list sanitized discovered events and fields so an authorized owner can map emitted events to stable journey steps, optionally choose a completion goal and define explicit start/exit conditions. A valid definition with mappings SHALL NOT require a completion goal. It SHALL preview matches, missing context and conflicts before definition activation. Ordinary standard OTel instrumentation SHALL suffice; a custom SDK, executable script or AI SHALL NOT be required.
@@ -56,12 +56,12 @@ The system SHALL distinguish OTel signal/carrier, event name, severity and owner
 - **THEN** the prefix is inspectable and later recovery remains available; event selection does not silently activate a terminal/failure rule
 
 ### Requirement: Explicit journey lifecycle
-The system SHALL start at the first mapped event or eligible unconfigured browser log within a logical scope. Configured goals SHALL close journeys; otherwise 30 minutes without eligible activity SHALL close them inactive. Goal-free journeys SHALL NOT enter completed-goal counts or goal conversion. Browser tabs SHALL remain separate. Severity and saved-view queries SHALL NOT change boundaries.
+The system SHALL start at the first mapped event or eligible unconfigured client log within explicit visit/tab scope. Configured goals SHALL close journeys; otherwise 30 minutes without eligible activity SHALL close them inactive. Goal-free journeys SHALL NOT enter completed-goal counts or goal conversion. Browser tabs SHALL remain separate. Severity and saved-view queries SHALL NOT change boundaries.
 
 #### Scenario: Mappings without a completion goal
 - **WHEN** an owner previews and activates a valid mapping definition without a goal
 - **THEN** activation succeeds, mapped events form paths, and no event implicitly becomes completion
-- **AND** journeys remain active until inactivity or an explicitly mapped exit; server-only scopes require no fabricated tab and late revisions remain explicit
+- **AND** journeys remain active until inactivity or an explicitly mapped exit; missing client context remains unassigned and late revisions remain explicit
 
 #### Scenario: Timeout without terminal evidence
 - **WHEN** a journey reaches 30 minutes without mapped activity or a goal
@@ -80,7 +80,7 @@ The system SHALL start at the first mapped event or eligible unconfigured browse
 - **THEN** the next new mapped occurrence starts a new journey and the completed goal remains evidenced
 
 ### Requirement: Correlated browser navigation without configuration
-With an empty captured definition, the system SHALL derive navigation from named non-diagnostic browser logs sharing safe explicit session and tab IDs within one app. It SHALL label steps with retained `stage.name`, otherwise the event name. Explicit definitions SHALL retain precedence. Navigation SHALL NOT imply business meaning, goals or duration, or turn server-only logs, metrics or native spans into automatic steps.
+With an empty captured definition, the system SHALL derive navigation from named non-diagnostic client logs sharing safe explicit session and tab IDs within one app. It SHALL label steps with retained `stage.name`, otherwise the event name. Explicit definitions SHALL retain precedence. Navigation SHALL NOT imply business meaning, goals or duration, or turn uncorrelated logs, metrics or native spans into automatic steps.
 
 #### Scenario: Next.js navigation retains document correlation
 - **WHEN** Home, Search and Planner browser logs share session and tab IDs, increasing source sequences, and an empty captured definition
@@ -101,12 +101,12 @@ With an empty captured definition, the system SHALL derive navigation from named
 The system SHALL separate completion, positive business outcome, observed failure and configured flaky behavior. Each classification SHALL expose its rule version and evidence. A negative vote SHALL NOT imply a negative journey outcome. HTTP success, optimistic UI, repetition, silence or an exception alone SHALL NOT establish goal completion or failure.
 
 #### Scenario: Recovered operation
-- **WHEN** a request error is followed by valid persistence and later goal evidence
+- **WHEN** a client request error is followed by an observed recovery and later configured goal evidence
 - **THEN** the journey shows the completed goal plus the earlier friction rather than ending at the error
 
 #### Scenario: Publication fails after commit
-- **WHEN** a vote commits before a follow-up publication fails and the client receives an error
-- **THEN** valid commitment evidence still establishes the saved contribution without requiring a second vote, while the error and any later completion-screen observation remain separate
+- **WHEN** a client observes a vote result and then a follow-up error
+- **THEN** the result observation, error and later completion-screen evidence remain separate; none independently proves durable backend persistence
 
 #### Scenario: Flaky classification
 - **WHEN** a configured retry/error condition matches within its declared denominator and time window
@@ -120,8 +120,8 @@ The system SHALL separate completion, positive business outcome, observed failur
 The system SHALL preserve vote-loop repetitions and valid duration. WFS completion-screen observation SHALL be a visit outcome distinct from shared agreement, its cause and emitted end reason. Mappings SHALL distinguish recipes exhausted, family agreement and departure before completion where emitted. Missing evidence SHALL NOT imply tiredness, frustration or a defect.
 
 #### Scenario: Repeated healthy voting
-- **WHEN** a journey records ten distinct valid vote commitments and then observes the completion screen
-- **THEN** it shows ten votes, nine successive vote-to-vote transitions and one evidenced visit completion without a repetition-based failure label or a claim that this visit caused shared agreement
+- **WHEN** a journey records ten distinct qualified client vote-result observations and then observes the completion screen
+- **THEN** it shows ten observed vote results, nine successive result-to-result transitions and one evidenced visit completion without a repetition-based failure label or a claim that this visit caused shared agreement
 
 #### Scenario: Exhaustion differs from agreement
 - **WHEN** emitted evidence says recipes exhausted without agreement
@@ -140,11 +140,11 @@ The system SHALL preserve vote-loop repetitions and valid duration. WFS completi
 - **THEN** the later shared state does not fabricate completion-screen evidence for the departed visit
 
 ### Requirement: Evidence authority and semantic counting
-The system SHALL evaluate each claim under its configured owning boundary: client evidence can establish a rendered screen, while committed operations require trusted persistence evidence. Transport records, action intents, committed actions and completed journeys SHALL have distinct counting units. Correlation SHALL NOT automatically deduplicate records or establish authority.
+The system SHALL describe untrusted client observations, including rendered screens, intents and reported results. It SHALL NOT certify backend persistence or truthful user actions. Records, action observations and completed configured journeys SHALL retain distinct units; correlation alone SHALL NOT deduplicate them.
 
 #### Scenario: Intent and commitment describe one vote
-- **WHEN** one browser intent and one trusted server commitment describe the same supported action
-- **THEN** a vote-commitment count does not count both records as two votes; unsupported identity remains visible as uncertainty
+- **WHEN** one client intent and one result observation describe the same supported action
+- **THEN** the interface distinguishes two records from one qualified interaction, labels unsupported identity as uncertain and makes no trusted-commitment claim
 
 ### Requirement: Stable semantics across versions
 The system SHALL retain stable step identity for unchanged semantics and preserve application version separately from journey-definition version. Changed semantics SHALL require a distinct step identity/name rather than silently joining unlike steps. Missing release metadata SHALL remain unknown. Definition edits SHALL preserve the interpretation version used by comparisons.
@@ -158,7 +158,7 @@ The system SHALL retain stable step identity for unchanged semantics and preserv
 - **THEN** the definition uses distinct semantics and does not compare the milestones as identical completion
 
 ### Requirement: Stage occurrence timing
-The system SHALL support stage durations from configured entry/exit or start/end evidence emitted through standard OTel instrumentation. It SHALL pair occurrences within app/logical-correlation/source scope, with tab context where applicable, without double counting. Measured elapsed, observed-active and next-event-estimated time SHALL remain distinct; server elapsed time SHALL NOT imply human attention or cognitive effort.
+The system SHALL support stage durations from configured entry/exit or start/end evidence emitted through standard OTel instrumentation. It SHALL pair occurrences within app/visit/tab and supported emitter context, without double counting. Measured elapsed, observed-active and next-event-estimated time SHALL remain distinct; operation elapsed time SHALL NOT imply human attention or cognitive effort.
 
 #### Scenario: Recipe viewing and repeated votes
 - **WHEN** a visit enters/exits recipe viewing and then starts/ends several occurrences of the same voting stage
@@ -177,21 +177,21 @@ The system SHALL support stage durations from configured entry/exit or start/end
 - **THEN** that duration is explicitly estimated under a named adjacency/window policy and is not silently pooled with measured entry/exit durations
 
 ### Requirement: Standard-name business mappings
-Owners SHALL map standard span/event names and supported attributes using explicit service, carrier and trusted-source selectors without `stage.name`. They SHALL preview stages, supporting activity, goals, exceptions and missing prerequisites before prospective activation.
+Owners SHALL map standard span/event names and supported attributes using explicit service, carrier and retained attribute selectors without `stage.name`. They SHALL preview stages, supporting activity, goals, exceptions and missing prerequisites before prospective activation.
 
 #### Scenario: Ordinary voting operation
-- **WHEN** a server exports `POST /votes`, a persistence span and a named `vote.committed` event without Sentrame attributes
-- **THEN** the owner can label the operations and map the trusted commitment to a business milestone within the supported trace context, without creating a multi-request journey from that trace alone
+- **WHEN** a client exports a request span and named `vote.result.shown` event without Sentrame attributes
+- **THEN** the owner can label the operation and map the result observation to a milestone without requiring a producer role or creating a journey from a trace alone
 
 #### Scenario: Unproven persistence
 - **WHEN** only a browser button event and generic HTTP success exist
-- **THEN** configuration explains the absent trusted business-outcome evidence rather than asserting that a vote persisted
+- **THEN** configuration explains that received observations do not certify persistence; role selection cannot manufacture stronger evidence
 
 ### Requirement: Optional stage hint suggestions
 The system SHALL retain optional `stage.name` as a Sentrame application convention and suggest labels for unmapped evidence. Business mapping suggestions SHALL require owner acceptance into literal versioned rules; the attribute alone SHALL NOT assign Kind, goal, session, boundary, authority or timing quality. Unconfigured correlated browser navigation may use the retained label for display without activating a business rule.
 
 #### Scenario: Enriched voting event
-- **WHEN** an unmapped server `vote.committed` event carries `stage.name=voting.persist`
+- **WHEN** an unmapped client `vote.result.shown` event carries `stage.name=voting.result`
 - **THEN** configuration suggests that label and shows its source, and activation requires explicit owner preview/acceptance rather than silently creating a graph stage
 
 #### Scenario: Missing and conflicting labels
@@ -221,15 +221,15 @@ A configured native-span stage SHALL use native span identity and its inclusive 
 - **THEN** its selected timing policy contributes at most one completed observation for that occurrence and basis, with evidence links and no implicit pooling
 
 ### Requirement: Purposeful multi-request correlation
-Multi-request journeys SHALL require explicit bounded app-scoped correlation and browser tab separation where applicable. `session.id` support SHALL disclose its opt-in Development client convention and Sentrame's server-scope use. No person, IP, user-agent, fingerprint, timestamp or automatic cross-session inference SHALL join evidence.
+Client journeys spanning requests SHALL require explicit bounded app/visit/tab correlation. `session.id` SHALL remain an opt-in client convention, never server-operation scope or person identity. No IP, user-agent, fingerprint, timestamp or automatic cross-session inference SHALL join evidence.
 
 #### Scenario: Multiple request traces
-- **WHEN** navigation, button press, failed request, retry and commitment span different traces without a shared supported scope
+- **WHEN** navigation, button press, failed request, retry and observed result span different traces without a shared supported scope
 - **THEN** each trace remains explorable but no single browsing session or complete multi-request path is invented
 
 #### Scenario: Explicit combined correlation
-- **WHEN** those records carry correctly propagated random `session.id` and matching browser `tab.id`, with trusted source retained
-- **THEN** the configured journey preserves intent, failure, retry, recovery and valid goal under first-mapped/goal/30-minute rules without joining unrelated tabs, apps or visits
+- **WHEN** those records carry correctly propagated random `session.id` and matching browser `tab.id`, as client observations
+- **THEN** the configured journey preserves observed intent, failure, retry, recovery and configured goal under first-mapped/goal/30-minute rules without joining unrelated tabs, apps or visits
 
 ### Requirement: Optional observed browser activity
 Observed-active stage time SHALL require actual scoped browser presence evidence and a supported stage interval. It SHALL remain separate from span duration, stage elapsed time and attention. Missing observations SHALL disable only observed-active measurement.

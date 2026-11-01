@@ -33,28 +33,27 @@ The system SHALL distinguish receiver/origin support from support through the sh
 - **THEN** qualification checks paths/content types, binary/JSON and gzip handling, body/time limits, auth, errors/retries and acknowledgements; direct-origin success alone does not establish route success
 
 ### Requirement: Configured application attribution
-The system SHALL bind each registered browser/server credential to exactly one stable app and producer role. Standard intake routes SHALL resolve the app from that credential, independently of service/resource claims. Optional metadata SHALL NOT be required for attribution. Service selectors SHALL NOT move data into another app, and ambiguous or unauthorized credentials SHALL reject intake.
+The system SHALL bind each active telemetry key to exactly one stable app and generation. Standard intake SHALL resolve that binding independently of service/resource claims. Optional metadata SHALL NOT be required for attribution. Service selectors SHALL NOT move data into another app, and unauthorized keys SHALL reject intake. Intake SHALL assign no browser/server role.
 
 #### Scenario: Several services for one app
-- **WHEN** a configured browser service and API service map to WFS
-- **THEN** both belong to the same registered app while retaining service identity
+- **WHEN** components use the same app key with different service names
+- **THEN** accepted observations belong to that registered app and retain bounded service metadata without separate role credentials
 
 #### Scenario: Same service name in different apps
-- **WHEN** two authorized routes receive the same service name for separate applications
+- **WHEN** two authorized keys receive the same service name for separate applications
 - **THEN** their events, queries, diagnostics and counts remain separate
 
 #### Scenario: Missing service metadata
-- **WHEN** an authorized route binds a valid standard record to an app but its service or version is absent
-- **THEN** the record is accepted with unknown metadata rather than invented values
+- **WHEN** a valid standard record has no service or version metadata
+- **THEN** it is accepted under its key-bound app with unknown metadata rather than invented values
 
 #### Scenario: Same endpoint and different app credentials
-- **WHEN** A and B send to the same standard OTLP signal URL with their respective credentials
-- **THEN** each request reaches only its credential-bound app even when service, trace, span, session and event IDs overlap
-- **AND** record attributes or claimed app IDs cannot override the credential's app or producer role
+- **WHEN** A and B use the same OTLP signal URL with overlapping service, trace, span, session and event IDs
+- **THEN** each request reaches only its key-bound app and payload claims cannot override the app or generation
 
 #### Scenario: Multiple products in a collector
-- **WHEN** a Collector exports multiple products to Sentrame
-- **THEN** requests are separated by the configured app credential before export; one authenticated request cannot distribute resource groups among apps by payload claims
+- **WHEN** a Collector exports multiple products
+- **THEN** requests are separated by app key before export; resource groups cannot distribute one request across apps
 
 ### Requirement: Reception differs from analysis
 The system SHALL expose received signal types, sanitized event names and field availability. It SHALL distinguish accepted, privacy-filtered, rejected, unmapped and journey-analyzable records. Lack of optional journey context SHALL NOT be a protocol error or become a fabricated visit, step or outcome. Metrics SHALL NOT reconstruct individual paths.
@@ -98,19 +97,20 @@ The initial direct receiver SHALL prevalidate and atomically accept or reject ea
 - **THEN** atomicity applies only to each resulting direct storage-receiver request and the original envelopes are not described as atomic through that pipeline
 
 ### Requirement: Honest delivery identity
-The system SHALL preserve source IDs and deduplicate supported identities within app, trusted configured producer namespace and signal. Source-record identity, action correlation and semantic occurrence SHALL remain distinct. Basic ingestion SHALL NOT require custom IDs or claim exactly-once counts without them. Conflicts SHALL NOT overwrite accepted evidence or retain unsafe payloads.
+The system SHALL preserve source IDs and deduplicate supported identities within app, generation and signal under its published identity policy. Record identity, action correlation and semantic occurrence SHALL remain distinct. Basic reception SHALL NOT require custom IDs or claim exactly-once counts without them. Conflicts SHALL NOT overwrite accepted evidence. Removing roles SHALL NOT collapse legacy identity domains.
 
 #### Scenario: Retry with stable identity
-- **WHEN** the same app, trusted producer namespace, signal and stable source identity are retransmitted unchanged
-- **THEN** one evidence item and one set of derived contributions remain after replay and restart
+- **WHEN** unchanged identified observations are retransmitted before or after restart or app-key rotation
+- **THEN** one evidence item and one set of derived contributions remain under the same app identity
 
 #### Scenario: Legitimate repeated identical logs
-- **WHEN** two identical-looking log records have no reliable source identity
-- **THEN** intake does not silently collapse a potentially healthy repeated action and marks retry-related count uncertainty
+- **WHEN** identical-looking logs have no reliable source identity
+- **THEN** intake does not silently collapse healthy repeated actions and discloses retry-related count uncertainty
 
 #### Scenario: Equal IDs from different producers
-- **WHEN** browser and server records use the same local ID in different configured producer namespaces
-- **THEN** they coexist and the browser record cannot suppress or acquire the authority of the server record; forwarding preserves the declared trust distinction
+- **WHEN** old client and server records shared the same local ID
+- **THEN** compatibility preserves their distinct identities and only eligible client evidence can contribute to current analysis
+- **AND** replay under the retained app key cannot resurrect excluded server evidence or duplicate already accepted client contributions
 
 ### Requirement: Bounded metric receipt without unsafe arithmetic
 The system SHALL receive supported metrics but initially limit their analysis to bounded sanitized receipt inspection. Metric arithmetic SHALL remain unavailable unless retained identity, type, temporality and interval semantics support it. Forbidden fields SHALL NOT be retained to rescue analysis, and privacy projection SHALL NOT silently merge distinct streams.
@@ -146,7 +146,7 @@ The system SHALL distinguish receipt/discovery, trace operations, configured bus
 - **THEN** it remains accepted and discoverable with available operation/error evidence, while unavailable journey/presence capabilities explain their missing prerequisites
 
 ### Requirement: Minimized structural receipt
-The system SHALL retain supported native span times, identity, parent, kind/status, ordered events and bounded link targets, plus standard log context. Projection SHALL preserve exact timestamps and producer namespaces without retaining raw OTLP, arbitrary attributes or link payloads.
+The system SHALL retain supported native span times, identity, parent, kind/status, ordered events and bounded link targets, plus standard log context. Projection SHALL preserve exact timestamps and compatible identity domains without retaining raw OTLP, arbitrary attributes or link payloads.
 
 #### Scenario: Standard span structure
 - **WHEN** a span carries start/end times, parent ID, events and links
@@ -157,35 +157,43 @@ The system SHALL retain supported native span times, identity, parent, kind/stat
 - **THEN** at most 32 link targets are retained with an omission count, without rejecting the record solely for optional link truncation or implying complete structure
 
 ### Requirement: Contextual safe discovery
-Discovery SHALL distinguish service, signal/carrier, span/event name, trusted producer and retained field availability. It SHALL expose unknown/omitted values honestly. Mappings SHALL use only supported privacy-projected fields; metrics SHALL remain receipt-only.
+Discovery SHALL distinguish service, signal/carrier, span/event name and retained field availability without browser/server roles. Unknown and omitted values SHALL remain explicit. Mappings SHALL use supported privacy-projected fields; metrics SHALL remain receipt-only.
 
 #### Scenario: Same name across carriers
-- **WHEN** a browser log and server span have the same name
-- **THEN** discovery separates their carrier/source context and permits intentional owner selectors without presenting the browser record as server evidence
+- **WHEN** a log and a span use the same name
+- **THEN** discovery preserves their service/carrier context for intentional owner selection without role or trusted-persistence claims
 
 #### Scenario: Route and secret fields
 - **WHEN** telemetry contains an approved route template, HTTP method/status, raw URL/query and an authorization value
 - **THEN** only supported validated selectors survive projection, and secrets/raw URL content remain absent from storage, preview, errors, copies and live reads
 
 ### Requirement: Credential-derived authority
-Producer authority SHALL derive from authenticated intake configuration and SHALL NOT come from telemetry attributes, stage labels, trace IDs or claimed parentage. Browser forwarding SHALL preserve browser authority.
+The app key SHALL authorize bounded writes to its app only. Observations SHALL remain untrusted, including through a forwarder. Payload attributes, stage labels, span kind, trace IDs, service metadata and claimed parentage SHALL NOT grant read/admin access or establish persistence, an authentic installation or a human action.
 
 #### Scenario: Forged persistence claim
-- **WHEN** browser-authenticated telemetry claims server source, `stage.name=voting.persist` and a trusted span's parent ID
-- **THEN** it remains browser evidence and cannot satisfy a server-only persistence goal or suppress an equal-ID server record
+- **WHEN** accepted telemetry claims server source, a persistence label or another span's parent ID
+- **THEN** it remains an untrusted app observation and cannot gain stronger assurance or bypass identity validation
 
 ### Requirement: Standard sender configuration and restart continuity
-Registered apps SHALL use the existing standard OTLP endpoints, Authorization bearer header and supported wire behavior. Restart or registering another app SHALL NOT change existing sender settings. Credential rotation SHALL be a separate explicit owner action. Legacy credential import and single-app adoption are outside this greenfield change.
+Registered apps SHALL use existing qualified OTLP endpoints, bearer headers and wire behavior with one app key. Restart and registering another app SHALL preserve settings. Existing two-key installations SHALL require the explicit lifecycle cutover before role removal. Subsequent rotation SHALL be an explicit owner action.
 
 #### Scenario: Unchanged sender across restart
-- **WHEN** a registered sender sends a qualified request before and after restart
-- **THEN** the same endpoint, header and payload work for the same app and stable-identity replay stays idempotent
+- **WHEN** an eligible client sender uses a qualified request before and after restart
+- **THEN** its endpoint, header and payload continue to work for the same app and identified replay stays idempotent
 
 #### Scenario: Configure a newly registered app
-- **WHEN** a second app uses an existing standard OTLP exporter
-- **THEN** endpoint/protocol/header configuration with the generated credential is sufficient for supported reception, without a Sentrame SDK, app-ID tag, custom envelope or journey fields
-- **AND** journey analysis still depends on its separately documented prerequisites: explicit correlation for unconfigured browser navigation, and mappings for configured business journeys
+- **WHEN** a second app uses an existing standard exporter
+- **THEN** ordinary endpoint/protocol/header configuration is sufficient for supported reception without a Sentrame SDK, app-ID field, custom envelope or journey fields
+- **AND** journey analysis separately requires explicit visit/tab correlation and the applicable mappings
 
 #### Scenario: Rotation and intentional reassignment
-- **WHEN** the owner explicitly rotates a credential or intentionally configures a producer for a different registered app
-- **THEN** guidance identifies the required exporter credential change without requiring instrumentation changes or implying that previously stored data moves with the producer
+- **WHEN** an owner explicitly rotates a key or configures a sender for another app
+- **THEN** guidance identifies the exporter configuration change without implying that stored data moves or instrumentation must change
+
+### Requirement: Role-free standard receipt boundary
+Supported logs, traces and metrics SHALL remain receivable without a runtime-role claim. Span kind SERVER, runtime names or missing journey fields SHALL NOT alone reject otherwise valid OTLP. Reception SHALL NOT provide a server-workflow product or certify producer origin. Missing journey prerequisites SHALL remain explainable; metrics SHALL remain receipt-only.
+
+#### Scenario: Generic exporter and no journey context
+- **WHEN** valid qualified OTLP includes a SERVER-kind span or runtime metadata without visit/tab context
+- **THEN** sanitized reception and available diagnostic context remain inspectable without a server journey, service dependency view or inferred user path
+- **AND** documentation explains that payload fields cannot reliably enforce a client-only physical origin

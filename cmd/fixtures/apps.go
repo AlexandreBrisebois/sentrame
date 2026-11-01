@@ -67,8 +67,7 @@ func prepareDemo() error {
 		return e
 	}
 	os.Setenv("SENTRAME_APP_ID", id)
-	os.Setenv("SENTRAME_BROWSER_TOKEN", settings["browser"])
-	os.Setenv("SENTRAME_SERVER_TOKEN", settings["server"])
+	os.Setenv("SENTRAME_TELEMETRY_KEY", settings["telemetryKey"])
 	if os.Args[1] == "generate" || os.Args[1] == "demo" || os.Args[1] == "workspace" || os.Args[1] == "workspace-generate" || os.Args[1] == "live" {
 		var defs []app.Definition
 		if e := call("GET", "/api/apps/"+id+"/definitions", nil, &defs); e != nil {

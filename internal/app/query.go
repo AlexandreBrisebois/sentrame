@@ -69,6 +69,9 @@ func (s *Service) definitions(w http.ResponseWriter, r *http.Request) {
 	write(w, d)
 }
 func validateDefinition(d Definition) string {
+	if d.GoalSelector != nil && d.GoalSelector.Source != "" {
+		return "Producer role selectors are unsupported; review this goal before activation"
+	}
 	if d.Goal == "" && len(d.Mappings) == 0 && d.GoalSelector == nil {
 		return ""
 	}
@@ -78,8 +81,11 @@ func validateDefinition(d Definition) string {
 	seen := []Mapping{}
 	goal := false
 	for _, m := range d.Mappings {
-		if safeEvidenceName(m.Event) == "" || safe(m.Step) == "" || m.Source != "" && m.Source != "browser" && m.Source != "server" {
-			return "Invalid event, step or producer"
+		if m.Source != "" {
+			return "Producer role selectors are unsupported; review this mapping before activation"
+		}
+		if safeEvidenceName(m.Event) == "" || safe(m.Step) == "" {
+			return "Invalid event or step"
 		}
 		switch m.Kind {
 		case "step", "exit", "stage-start", "stage-end", "activity":
@@ -94,10 +100,9 @@ func validateDefinition(d Definition) string {
 				continue
 			}
 			disjointContext := prev.Service != "" && m.Service != "" && prev.Service != m.Service || prev.Signal != "" && m.Signal != "" && prev.Signal != m.Signal || mappingCarrier(prev) != "" && mappingCarrier(m) != "" && mappingCarrier(prev) != mappingCarrier(m)
-			disjointSource := prev.Source != "" && m.Source != "" && prev.Source != m.Source
 			disjointCondition := prev.Key != "" && prev.Key == m.Key && prev.Value != m.Value
-			if !disjointContext && !disjointSource && !disjointCondition {
-				return "Conflicting event mappings require disjoint producer or attribute conditions"
+			if !disjointContext && !disjointCondition {
+				return "Conflicting event mappings require disjoint service, carrier or attribute conditions"
 			}
 		}
 		if m.Service != "" && safe(m.Service) == "" {
@@ -180,7 +185,7 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 			}
 			if mappingMatches(x, m) {
 				counts[m.Event]++
-				if x.Scope == "" || x.Source == "browser" && x.Tab == "" {
+				if x.Scope == "" || x.Tab == "" {
 					missing++
 					missingByEvent[m.Event]++
 				}
@@ -415,6 +420,17 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if reference != nil {
+		compatible, err := s.Store.ClientReferenceCompatible(*reference)
+		if err != nil {
+			http.Error(w, "Compatibility unavailable; retry this reference", 503)
+			return
+		}
+		if !compatible {
+			http.Error(w, "Legacy reference is non-comparable; return or explicitly select a current client period", 409)
+			return
+		}
+	}
 	if reference != nil && reference.Mode == "trace" {
 		http.Error(w, "Open this reference in trace exploration", 400)
 		return
@@ -504,7 +520,7 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 		if !present {
 			d.Sources = append(d.Sources, x.Source)
 		}
-		if x.Scope != "" && (x.Source != "browser" || x.Tab != "") {
+		if x.Scope != "" && x.Tab != "" {
 			d.Assigned++
 		}
 	}
@@ -625,8 +641,15 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 			rows.Scan(&b)
 			json.Unmarshal([]byte(b), &d)
 			dayStart, _ := time.Parse("2006-01-02", d.Day)
+			if s.Store.ClientCutover > 0 && !dayStart.After(time.Unix(0, s.Store.ClientCutover).UTC()) {
+				continue
+			}
 			if q.Get("scope") == "" && q.Get("mode") != "live" && !dayStart.Before(time.Unix(0, from)) && !dayStart.Add(24*time.Hour).After(time.Unix(0, to)) {
-				for key := range d.Groups {
+				for key, group := range d.Groups {
+					if s.Store.ClientCutover > 0 && group.Computation != "journey-client-v5" {
+						delete(d.Groups, key)
+						continue
+					}
 					parts := strings.SplitN(key, "/version:", 2)
 					versionValue := ""
 					if len(parts) == 2 {
@@ -645,7 +668,7 @@ func (s *Service) snapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Store.Mu.Unlock()
 	locked = false
-	write(w, map[string]any{"mode": "journey", "coverage": map[string]any{"source": map[string]any{"truncated": sourceTruncated, "recordLimit": 10000, "collectionCompleteness": "unknown; exporter sampling/loss not observed"}, "current": currentCoverage, "baseline": baselineCoverage, "evidence": map[string]any{"limit": 2000, "omitted": evidenceOmitted}}, "revision": rev, "now": now, "contextualDiscovery": contextualDiscovery(retained), "discovered": discovered, "appVersions": appVersions, "appScopes": appScopes, "evidence": selected, "definitions": defs, "activeDefinition": defs[len(defs)-1], "views": views, "model": model, "baselineModel": base, "baselineBounds": bounds, "summary": summary, "health": map[string]any{"mode": "local synthetic", "collectionCompleteness": "unknown; exporter sampling/loss not observed", "transport": "origin HTTP only; Tunnel and gRPC unqualified", "privacy": diagnosticPolicyDescription, "detailFrom": cut, "summaryOnlyBefore": cut, "freshnessSeconds": 5, "summaryPolicy": "App-wide complete UTC days only, version/definition dimensions. Isolated-visit and partial-day summary queries are unsupported; no individual drilldown. Correction horizon ends captured start+30 days."}, "limits": map[string]any{"truncated": truncated, "modelRecordLimit": 10000, "evidenceLimit": 2000, "policy": "Captured start cohorts; follow-up to snapshot. Partial starts separate; supported summaries only after detail expires."}})
+	write(w, map[string]any{"mode": "journey", "compatibility": s.Store.ClientCompatibility(), "coverage": map[string]any{"source": map[string]any{"truncated": sourceTruncated, "recordLimit": 10000, "collectionCompleteness": "unknown; exporter sampling/loss not observed"}, "current": currentCoverage, "baseline": baselineCoverage, "evidence": map[string]any{"limit": 2000, "omitted": evidenceOmitted}}, "revision": rev, "now": now, "contextualDiscovery": contextualDiscovery(retained), "discovered": discovered, "appVersions": appVersions, "appScopes": appScopes, "evidence": selected, "definitions": defs, "activeDefinition": defs[len(defs)-1], "views": views, "model": model, "baselineModel": base, "baselineBounds": bounds, "summary": summary, "health": map[string]any{"mode": "local synthetic", "collectionCompleteness": "unknown; exporter sampling/loss not observed", "transport": "origin HTTP only; Tunnel and gRPC unqualified", "privacy": diagnosticPolicyDescription, "detailFrom": cut, "summaryOnlyBefore": cut, "freshnessSeconds": 5, "summaryPolicy": "App-wide complete UTC days only, version/definition dimensions. Isolated-visit and partial-day summary queries are unsupported; no individual drilldown. Correction horizon ends captured start+30 days."}, "limits": map[string]any{"truncated": truncated, "modelRecordLimit": 10000, "evidenceLimit": 2000, "policy": "Captured start cohorts; follow-up to snapshot. Partial starts separate; supported summaries only after detail expires."}})
 }
 
 // DaySummary contains no individual membership. Quantiles use mergeable histogram counts.

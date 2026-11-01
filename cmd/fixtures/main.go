@@ -75,8 +75,8 @@ func build(specs []Scenario, now time.Time) (Generated, error) {
 	occurrences := map[string]string{}
 	records := map[string]string{}
 	for _, s := range specs {
-		if s.Name == "" || s.Producer != "browser" && s.Producer != "server" {
-			return g, errors.New("fixture needs a name and configured producer")
+		if s.Name == "" || s.Producer != "client" {
+			return g, errors.New("fixture needs a name and client observations")
 		}
 		if s.Scope != "" && g.Scopes[s.Scope] == "" {
 			g.Scopes[s.Scope] = randomID()
@@ -100,7 +100,7 @@ func build(specs []Scenario, now time.Time) (Generated, error) {
 			if !s.NoIdentity {
 				id := randomID()
 				if e.Record != "" {
-					key := s.Scope + "/" + e.Record
+					key := s.Scope + "/" + s.Name + "/" + e.Record
 					if records[key] == "" {
 						records[key] = randomID()
 					}
@@ -205,11 +205,7 @@ func generate() error {
 	if e != nil {
 		return e
 	}
-	browser, e := envRequired("SENTRAME_BROWSER_TOKEN")
-	if e != nil {
-		return e
-	}
-	server, e := envRequired("SENTRAME_SERVER_TOKEN")
+	telemetryKey, e := envRequired("SENTRAME_TELEMETRY_KEY")
 	if e != nil {
 		return e
 	}
@@ -217,7 +213,7 @@ func generate() error {
 	if e = os.WriteFile("rest/generated/login.json", login, 0600); e != nil {
 		return e
 	}
-	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "browserToken": browser, "serverToken": server, "healthyScope": g.Scopes["healthy"], "timingScope": g.Scopes["timing-samples"], "liveScope": g.Scopes["live"], "liveStart": url.QueryEscape(g.LiveStart)}
+	values := map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "telemetryKey": telemetryKey, "healthyScope": g.Scopes["healthy"], "timingScope": g.Scopes["timing-samples"], "liveScope": g.Scopes["live"], "liveStart": url.QueryEscape(g.LiveStart)}
 	var env strings.Builder
 	env.WriteString("# Generated local synthetic credentials; do not commit.\n")
 	keys := []string{}
@@ -353,15 +349,11 @@ func parseREST(path string, v map[string]string) ([]restRequest, error) {
 	return out, nil
 }
 func variables(g Generated) (map[string]string, error) {
-	browser, e := envRequired("SENTRAME_BROWSER_TOKEN")
+	telemetryKey, e := envRequired("SENTRAME_TELEMETRY_KEY")
 	if e != nil {
 		return nil, e
 	}
-	server, e := envRequired("SENTRAME_SERVER_TOKEN")
-	if e != nil {
-		return nil, e
-	}
-	return map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "browserToken": browser, "serverToken": server, "healthyScope": g.Scopes["healthy"], "timingScope": g.Scopes["timing-samples"], "liveScope": g.Scopes["live"], "liveStart": url.QueryEscape(g.LiveStart)}, nil
+	return map[string]string{"appId": os.Getenv("SENTRAME_APP_ID"), "baseUrl": baseURL(), "telemetryKey": telemetryKey, "healthyScope": g.Scopes["healthy"], "timingScope": g.Scopes["timing-samples"], "liveScope": g.Scopes["live"], "liveStart": url.QueryEscape(g.LiveStart)}, nil
 }
 func manifest() (Generated, error) {
 	var g Generated
@@ -474,7 +466,7 @@ func checkSnapshots(client *http.Client, g Generated) error {
 			Nodes    []node    `json:"nodes"`
 		} `json:"model"`
 	}
-	expected := map[string]int{"healthy": 16, "recovery": 6, "initial": 1, "server-only": 3, "forged": 1, "inactive": 1, "baseline": 2, "live": 2, "atomic": 0, "timing-samples": 42}
+	expected := map[string]int{"healthy": 16, "recovery": 6, "initial": 1, "missing-context": 3, "forged": 1, "inactive": 1, "baseline": 2, "live": 2, "atomic": 0, "timing-samples": 42}
 	for scope, n := range expected {
 		resp, e := client.Get(baseURL() + appAPI("snapshot") + "?scope=" + url.QueryEscape(g.Scopes[scope]))
 		if e != nil {
@@ -495,25 +487,25 @@ func checkSnapshots(client *http.Client, g Generated) error {
 		if scope == "healthy" {
 			votes := 0
 			for _, x := range snap.Evidence {
-				if x.Name == "vote.committed" && x.Source == "server" {
+				if x.Name == "vote.result.observed" && x.Source == "client" {
 					votes++
 				}
 			}
 			if votes != 10 {
-				return fmt.Errorf("healthy votes %d, expected ten trusted commitments", votes)
+				return fmt.Errorf("healthy votes %d, expected ten observed client results", votes)
 			}
 			if len(snap.Model.Journeys) != 1 || snap.Model.Journeys[0].Status != "completed" {
 				return errors.New("healthy scope did not produce one completed journey")
 			}
 		}
-		if scope == "forged" && len(snap.Model.Journeys) != 0 {
-			return errors.New("browser self-asserted server authority became a mapped journey")
+		if (scope == "forged" || scope == "missing-context") && len(snap.Model.Journeys) != 0 {
+			return errors.New("missing-context observation became a mapped journey")
 		}
 		if scope == "inactive" && (len(snap.Model.Journeys) != 1 || snap.Model.Journeys[0].Status != "inactive") {
 			return errors.New("silence did not produce inactive journey")
 		}
 		if scope == "recovery" && (len(snap.Model.Journeys) != 1 || snap.Model.Journeys[0].Status != "completed") {
-			return errors.New("post-commit error prevented eventual completion")
+			return errors.New("client error prevented eventual observed completion")
 		}
 		if scope == "timing-samples" {
 			if len(snap.Model.Journeys) != 1 || snap.Model.Journeys[0].Status != "completed" {
@@ -542,7 +534,7 @@ func checkSnapshots(client *http.Client, g Generated) error {
 	fmt.Println("Verified literal rest/demo.http plus protected per-scope read assertions through the actual service. No DB preload.")
 	return nil
 }
-func sendFile(name, producer string) error {
+func sendFile(name string) error {
 	b, e := os.ReadFile("rest/generated/" + name + ".bin")
 	if e != nil {
 		return e
@@ -580,10 +572,7 @@ func sendFile(name, producer string) error {
 			}
 		}
 	}
-	key := "SENTRAME_BROWSER_TOKEN"
-	if producer == "server" {
-		key = "SENTRAME_SERVER_TOKEN"
-	}
+	key := "SENTRAME_TELEMETRY_KEY"
 	token, e := envRequired(key)
 	if e != nil {
 		return e
@@ -663,11 +652,11 @@ func run() error {
 		if e := generate(); e != nil {
 			return e
 		}
-		return sendFile("live-start", "browser")
+		return sendFile("live-start")
 	case "replay":
-		return sendFile("healthy-server", "server")
+		return sendFile("healthy-results")
 	case "followup":
-		return sendFile("live-followup", "browser")
+		return sendFile("live-followup")
 	default:
 		return errors.New("unknown fixture command")
 	}

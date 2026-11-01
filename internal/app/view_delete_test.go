@@ -16,7 +16,7 @@ func TestDeleteReferenceIsProtectedAndPreservesEvidenceAndOtherViews(t *testing.
 		t.Fatal(err)
 	}
 	defer func() { store.DB.Close() }()
-	svc, err := New(store, "synthetic owner passphrase", "browser-test", "server-test", "http://localhost")
+	svc, err := New(store, "synthetic owner passphrase", "client-test", "http://localhost")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestDeleteReferenceIsProtectedAndPreservesEvidenceAndOtherViews(t *testing.
 		json.Unmarshal(w.Body.Bytes(), &v)
 		ids = append(ids, v.ID)
 	}
-	if err := store.Insert([]Evidence{{Source: "server", Signal: "logs", Name: "synthetic.retained", Time: 1, Attrs: map[string]string{}}}); err != nil {
+	if err := store.Insert([]Evidence{{Source: "client", Signal: "logs", Name: "synthetic.retained", Time: 1, Attrs: map[string]string{}}}); err != nil {
 		t.Fatal(err)
 	}
 	body := fmt.Sprintf(`{"id":%d}`, ids[0])

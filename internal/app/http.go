@@ -43,6 +43,14 @@ func (s *Service) Handler(static string) http.Handler {
 }
 func (s *Service) serve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
+	if strings.HasPrefix(r.URL.Path, "/api/") {
+		for _, key := range []string{"source", "role", "producer"} {
+			if r.URL.Query().Has(key) {
+				http.Error(w, "Producer role filters are unsupported; select client evidence by service or carrier", http.StatusBadRequest)
+				return
+			}
+		}
+	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'")

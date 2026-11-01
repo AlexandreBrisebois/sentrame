@@ -34,7 +34,7 @@ func TestLiveWindowIncludesContinuationWithoutBaselineDoubleCount(t *testing.T) 
 	svc, server, c := fixtureService(t)
 	loginTest(t, c, server.URL)
 	now := time.Now()
-	es := []Evidence{{Source: "browser", Signal: "logs", Name: "discovery.entered", Scope: "ongoing", Tab: "tab", Record: "entry", Time: now.Add(-time.Minute).UnixNano(), Attrs: map[string]string{}}, {Source: "browser", Signal: "logs", Name: "completion.entered", Scope: "ongoing", Tab: "tab", Record: "goal", Time: now.Add(-time.Second).UnixNano(), Attrs: map[string]string{}}}
+	es := []Evidence{{Source: "client", Signal: "logs", Name: "discovery.entered", Scope: "ongoing", Tab: "tab", Record: "entry", Time: now.Add(-time.Minute).UnixNano(), Attrs: map[string]string{}}, {Source: "client", Signal: "logs", Name: "completion.entered", Scope: "ongoing", Tab: "tab", Record: "goal", Time: now.Add(-time.Second).UnixNano(), Attrs: map[string]string{}}}
 	svc.Store.Insert(es)
 	v := snapshotTest(t, c, server.URL, "?mode=live&baseline=1&liveStart="+url.QueryEscape(now.Add(-30*time.Second).Format(time.RFC3339Nano)))
 	var live, base Model
@@ -81,7 +81,7 @@ func TestMappingActivationAndSavedViewUseRealAPIAndSurviveRestart(t *testing.T) 
 			t.Fatal(status)
 		}
 	}
-	send("discovery.entered", "entry", "browser-test", 0)
+	send("discovery.entered", "entry", "client-test", 0)
 	post := func(path string, v any) []byte {
 		b, _ := json.Marshal(v)
 		r, _ := http.NewRequest("POST", server.URL+"/api/"+path, bytes.NewReader(b))
@@ -99,7 +99,7 @@ func TestMappingActivationAndSavedViewUseRealAPIAndSurviveRestart(t *testing.T) 
 		return body
 	}
 	d := InitialDefinition()
-	d.Goal = "vote.committed"
+	d.Goal = "vote.result.observed"
 	preview := post("preview", d)
 	if !bytes.Contains(preview, []byte(`"discovery.entered":1`)) {
 		t.Fatal("received evidence not previewed")
@@ -109,9 +109,9 @@ func TestMappingActivationAndSavedViewUseRealAPIAndSurviveRestart(t *testing.T) 
 	if activated.Version != 2 {
 		t.Fatal("definition was not versioned")
 	}
-	send("vote.committed", "vote1", "server-test", time.Second)
-	send("completion.entered", "completion", "browser-test", 2*time.Second)
-	send("vote.committed", "vote2", "server-test", 3*time.Second)
+	send("vote.result.observed", "vote1", "client-test", time.Second)
+	send("completion.entered", "completion", "client-test", 2*time.Second)
+	send("vote.result.observed", "vote2", "client-test", 3*time.Second)
 	v := snapshotTest(t, c, server.URL, "")
 	var m Model
 	json.Unmarshal(v["model"], &m)
@@ -147,7 +147,7 @@ func TestOverviewSavedWorkspacePreservesScopeFiltersAndPresentation(t *testing.T
 		t.Fatal(err)
 	}
 	defer store.DB.Close()
-	svc, err := New(store, "synthetic owner passphrase", "browser-test", "server-test", "http://localhost")
+	svc, err := New(store, "synthetic owner passphrase", "client-test", "http://localhost")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func TestOverviewSavedWorkspacePreservesScopeFiltersAndPresentation(t *testing.T
 	json.Unmarshal(logged.Body.Bytes(), &session)
 	now := time.Now().UTC()
 	for i, scope := range []string{"selected-visit", "other-visit"} {
-		err := svc.Store.Insert([]Evidence{{Source: "browser", Tab: "tab", Signal: "logs", Name: "discovery.entered", Scope: scope, Record: fmt.Sprint(i), Version: "v1", Time: now.Add(-time.Minute).UnixNano(), Attrs: map[string]string{}}, {Source: "browser", Tab: "tab", Signal: "logs", Name: "completion.entered", Scope: scope, Record: fmt.Sprint(i) + "goal", Version: "v1", Time: now.Add(-time.Second).UnixNano(), Attrs: map[string]string{}}})
+		err := svc.Store.Insert([]Evidence{{Source: "client", Tab: "tab", Signal: "logs", Name: "discovery.entered", Scope: scope, Record: fmt.Sprint(i), Version: "v1", Time: now.Add(-time.Minute).UnixNano(), Attrs: map[string]string{}}, {Source: "client", Tab: "tab", Signal: "logs", Name: "completion.entered", Scope: scope, Record: fmt.Sprint(i) + "goal", Version: "v1", Time: now.Add(-time.Second).UnixNano(), Attrs: map[string]string{}}})
 		if err != nil {
 			t.Fatal(err)
 		}

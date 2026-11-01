@@ -38,7 +38,7 @@ export function mergeSummaryGroups(days:{groups?:Record<string,any>}[]):SummaryG
 export type Discovery = {name:string;count:number;sources:string[];assigned:number};
 export function discoveryChoices(discovered:Discovery[]|undefined,evidence:{name:string;source:string;scope:string;tab:string}[]):[string,{count:number;sources:Set<string>;assigned:number}][]{
   if(discovered!==undefined)return discovered.map(d=>[d.name,{count:d.count,sources:new Set(d.sources??[]),assigned:d.assigned}] as [string,{count:number;sources:Set<string>;assigned:number}]).sort((a,b)=>a[0].localeCompare(b[0]));
-  const names=new Map<string,{count:number;sources:Set<string>;assigned:number}>();for(const e of evidence){const v=names.get(e.name)??{count:0,sources:new Set<string>(),assigned:0};v.count++;v.sources.add(e.source);if(e.scope&&(e.source!=='browser'||e.tab))v.assigned++;names.set(e.name,v)}return [...names.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+  const names=new Map<string,{count:number;sources:Set<string>;assigned:number}>();for(const e of evidence){const v=names.get(e.name)??{count:0,sources:new Set<string>(),assigned:0};v.count++;v.sources.add(e.source);if(e.scope&&e.tab)v.assigned++;names.set(e.name,v)}return [...names.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
 }
 export function timestampMilliseconds(value:number|string):number {if(typeof value==='string'&&/^\d{16,}$/.test(value))return Number(BigInt(value)/1000000n);const n=Number(value);return n>1e15?n/1e6:n;}
 export function evidenceCopy(value:object):string {return JSON.stringify(value,null,2);}

@@ -33,7 +33,7 @@ func TestConcurrentIntakeReadCleanupAndSSERevocation(t *testing.T) {
 			defer wg.Done()
 			for i := 0; i < 10; i++ {
 				ls := logFixture(fmt.Sprintf("concurrent.%d.%d", worker, i))
-				if status := requestLogs(t, c, server.URL, "server-test", ls); status != 200 {
+				if status := requestLogs(t, c, server.URL, "client-test", ls); status != 200 {
 					fail <- fmt.Sprintf("intake %d", status)
 				}
 			}
@@ -101,7 +101,7 @@ func TestDeleteReplayBarrierSurvivesRestartAndAppDisable(t *testing.T) {
 	svc, server, c := fixtureService(t)
 	csrf := loginTest(t, c, server.URL)
 	ls := logFixture("discovery.entered")
-	if code := requestLogs(t, c, server.URL, "browser-test", ls); code != 200 {
+	if code := requestLogs(t, c, server.URL, "client-test", ls); code != 200 {
 		t.Fatal(code)
 	}
 	mutate := func(body string) {
@@ -127,7 +127,7 @@ func TestDeleteReplayBarrierSurvivesRestartAndAppDisable(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer reopened.DB.Close()
-	restarted, e := New(reopened, "synthetic owner passphrase", "browser-test", "server-test", "")
+	restarted, e := New(reopened, "synthetic owner passphrase", "client-test", "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -141,7 +141,7 @@ func TestDeleteReplayBarrierSurvivesRestartAndAppDisable(t *testing.T) {
 	svc = restarted
 	csrf = loginTest(t, c, server.URL)
 
-	if code := requestLogs(t, c, server.URL, "browser-test", ls); code != 200 {
+	if code := requestLogs(t, c, server.URL, "client-test", ls); code != 200 {
 		t.Fatal(code)
 	}
 	es, _ := svc.Store.Evidence()
@@ -149,7 +149,7 @@ func TestDeleteReplayBarrierSurvivesRestartAndAppDisable(t *testing.T) {
 		t.Fatal("deleted visit resurrected")
 	}
 	mutate(`{"app":true}`)
-	if code := requestLogs(t, c, server.URL, "browser-test", ls); code != 403 {
+	if code := requestLogs(t, c, server.URL, "client-test", ls); code != 403 {
 		t.Fatalf("disabled generation accepted %d", code)
 	}
 	var n int

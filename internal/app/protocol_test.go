@@ -146,7 +146,7 @@ func compressed(t *testing.T, b []byte) []byte {
 
 func TestOTLPRejectedResponseUsesStandardStatusAndSanitizedMessage(t *testing.T) {
 	_, server, c := fixtureService(t)
-	code, raw := protocolRequest(t, c, server.URL, "logs", "application/json", "", "browser-test", []byte(`{"resourceLogs": "PROTOCOL-PRIVATE-SENTINEL"}`))
+	code, raw := protocolRequest(t, c, server.URL, "logs", "application/json", "", "client-test", []byte(`{"resourceLogs": "PROTOCOL-PRIVATE-SENTINEL"}`))
 	if code != 400 {
 		t.Fatalf("malformed request status %d", code)
 	}
@@ -187,7 +187,7 @@ func TestOTLPHTTPWireMatrixAndPrivacyProjection(t *testing.T) {
 						body = compressed(t, body)
 						ce = "gzip"
 					}
-					code, raw := protocolRequest(t, c, server.URL, signal, contentType, ce, "server-test", body)
+					code, raw := protocolRequest(t, c, server.URL, signal, contentType, ce, "client-test", body)
 					if code != 200 {
 						t.Fatalf("valid standard request rejected: %d %s", code, raw)
 					}
@@ -247,13 +247,13 @@ func TestOTLPHTTPPermanentErrorsAuthAndBoundedDecompression(t *testing.T) {
 			}{
 				{"no-producer", "application/x-protobuf", "", "", valid, 401},
 				{"wrong-producer", "application/x-protobuf", "", "forged", valid, 401},
-				{"malformed-binary", "application/x-protobuf", "", "server-test", []byte{0xff, 0xff, 0xff}, 400},
-				{"malformed-json", "application/json", "", "server-test", []byte(`{"invalid":"PROTOCOL-PRIVATE-SENTINEL"`), 400},
-				{"wrong-content-type", "text/plain", "", "server-test", valid, 415},
-				{"unknown-encoding", "application/x-protobuf", "br", "server-test", valid, 415},
-				{"invalid-gzip", "application/x-protobuf", "gzip", "server-test", []byte("PROTOCOL-PRIVATE-SENTINEL not gzip"), 400},
-				{"request-body-limit", "application/x-protobuf", "", "server-test", bytes.Repeat([]byte{0}, (1<<20)+1), 400},
-				{"decompression-limit", "application/json", "gzip", "server-test", compressed(t, bytes.Repeat([]byte(" "), (4<<20)+1)), 400},
+				{"malformed-binary", "application/x-protobuf", "", "client-test", []byte{0xff, 0xff, 0xff}, 400},
+				{"malformed-json", "application/json", "", "client-test", []byte(`{"invalid":"PROTOCOL-PRIVATE-SENTINEL"`), 400},
+				{"wrong-content-type", "text/plain", "", "client-test", valid, 415},
+				{"unknown-encoding", "application/x-protobuf", "br", "client-test", valid, 415},
+				{"invalid-gzip", "application/x-protobuf", "gzip", "client-test", []byte("PROTOCOL-PRIVATE-SENTINEL not gzip"), 400},
+				{"request-body-limit", "application/x-protobuf", "", "client-test", bytes.Repeat([]byte{0}, (1<<20)+1), 400},
+				{"decompression-limit", "application/json", "gzip", "client-test", compressed(t, bytes.Repeat([]byte(" "), (4<<20)+1)), 400},
 			}
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
@@ -300,7 +300,7 @@ func TestOTLPHTTPPermanentErrorsAuthAndBoundedDecompression(t *testing.T) {
 			<-svc.slots
 		}
 	}()
-	code, _ := protocolRequest(t, c, server.URL, "logs", "application/x-protobuf", "", "server-test", protocolBody(t, "logs", "protobuf", "bounded.overload"))
+	code, _ := protocolRequest(t, c, server.URL, "logs", "application/x-protobuf", "", "client-test", protocolBody(t, "logs", "protobuf", "bounded.overload"))
 	if code != 503 {
 		t.Fatalf("bounded overload must be retryable503, got%d", code)
 	}
@@ -323,7 +323,7 @@ func TestOTLPHTTPStandardSDKExportersBinaryNoneAndGzip(t *testing.T) {
 			if zip {
 				comp = otlploghttp.GzipCompression
 			}
-			exp, e := otlploghttp.New(ctx, otlploghttp.WithEndpointURL(server.URL+"/v1/logs"), otlploghttp.WithHeaders(map[string]string{"Authorization": "Bearer server-test"}), otlploghttp.WithInsecure(), otlploghttp.WithCompression(comp))
+			exp, e := otlploghttp.New(ctx, otlploghttp.WithEndpointURL(server.URL+"/v1/logs"), otlploghttp.WithHeaders(map[string]string{"Authorization": "Bearer client-test"}), otlploghttp.WithInsecure(), otlploghttp.WithCompression(comp))
 			if e != nil {
 				t.Fatal(e)
 			}
@@ -345,7 +345,7 @@ func TestOTLPHTTPStandardSDKExportersBinaryNoneAndGzip(t *testing.T) {
 			if zip {
 				comp = otlptracehttp.GzipCompression
 			}
-			exp, e := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(server.URL+"/v1/traces"), otlptracehttp.WithHeaders(map[string]string{"Authorization": "Bearer server-test"}), otlptracehttp.WithInsecure(), otlptracehttp.WithCompression(comp))
+			exp, e := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(server.URL+"/v1/traces"), otlptracehttp.WithHeaders(map[string]string{"Authorization": "Bearer client-test"}), otlptracehttp.WithInsecure(), otlptracehttp.WithCompression(comp))
 			if e != nil {
 				t.Fatal(e)
 			}
@@ -364,7 +364,7 @@ func TestOTLPHTTPStandardSDKExportersBinaryNoneAndGzip(t *testing.T) {
 			if zip {
 				comp = otlpmetrichttp.GzipCompression
 			}
-			exp, e := otlpmetrichttp.New(ctx, otlpmetrichttp.WithEndpointURL(server.URL+"/v1/metrics"), otlpmetrichttp.WithHeaders(map[string]string{"Authorization": "Bearer server-test"}), otlpmetrichttp.WithInsecure(), otlpmetrichttp.WithCompression(comp))
+			exp, e := otlpmetrichttp.New(ctx, otlpmetrichttp.WithEndpointURL(server.URL+"/v1/metrics"), otlpmetrichttp.WithHeaders(map[string]string{"Authorization": "Bearer client-test"}), otlpmetrichttp.WithInsecure(), otlpmetrichttp.WithCompression(comp))
 			if e != nil {
 				t.Fatal(e)
 			}
@@ -469,7 +469,7 @@ func TestOTLPResourceAttributeLimitWholeRequest(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			code, _ := protocolRequest(t, c, server.URL, signal, "application/x-protobuf", "", "server-test", b)
+			code, _ := protocolRequest(t, c, server.URL, signal, "application/x-protobuf", "", "client-test", b)
 			after, e := svc.Store.Evidence()
 			if e != nil {
 				t.Fatal(e)
@@ -494,7 +494,7 @@ func TestOTLPScopeSpanEventAndMetricPointAttributeLimits(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		code, _ := protocolRequest(t, c, server.URL, signal, "application/x-protobuf", "", "server-test", b)
+		code, _ := protocolRequest(t, c, server.URL, signal, "application/x-protobuf", "", "client-test", b)
 		after, e := svc.Store.Evidence()
 		if e != nil {
 			t.Fatal(e)

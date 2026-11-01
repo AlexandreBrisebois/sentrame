@@ -1,7 +1,7 @@
 # App scope: fixture tools register/select Sentrame demonstration through owner APIs; appId and generated sender credentials come from private rest/.env.
 # Ordinary standard OTel only. Generate fresh bytes with fixtures standard-generate.
 # Export SENTRAME_URL/PASSPHRASE/SERVER_TOKEN for the verifier; REST Client also
-# needs baseUrl,serverToken,standardTrace in its private rest/.env.
+# needs baseUrl,telemetryKey,standardTrace in its private rest/.env.
 
 ### Trace detail is protected even with a known native trace ID
 # @no-cookie-jar
@@ -18,14 +18,14 @@ Origin: {{baseUrl}}
 ### Ordinary native spans, no journey fields
 POST {{baseUrl}}/v1/traces
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/standard-traces.bin
 
 ### Exact and trace-only logs; anonymous logs are sent once
 POST {{baseUrl}}/v1/logs
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/standard-logs.bin
 
@@ -38,14 +38,14 @@ GET {{baseUrl}}/api/apps/{{appId}}/traces/{{standardTrace}}
 ### Exact native replay
 POST {{baseUrl}}/v1/traces
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/standard-traces.bin
 
 ### Same span projection through standard JSON
 POST {{baseUrl}}/v1/traces
 Content-Type: application/json
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/standard-traces.json
 
@@ -53,7 +53,7 @@ Authorization: Bearer {{serverToken}}
 POST {{baseUrl}}/v1/traces
 Content-Type: application/x-protobuf
 Content-Encoding: gzip
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/standard-traces.bin.gz
 
@@ -84,14 +84,14 @@ GET {{baseUrl}}/api/apps/{{appId}}/traces/{{standardTrace}}?previewDefinition={{
 ### Default still uses receipt-time definitions
 GET {{baseUrl}}/api/apps/{{appId}}/traces/{{standardTrace}}
 
-### Enriched future capture: owner Vote saved overrides emitted voting
+### Enriched future capture: owner Vote result observed overrides emitted voting
 POST {{baseUrl}}/v1/traces
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/standard-enriched.bin
 
-### Unmapped retry has a suggestion; owner commitment remains literal
+### Unmapped retry has a suggestion; owner result label remains literal
 GET {{baseUrl}}/api/apps/{{appId}}/traces/{{enrichedTrace}}
 
 ### Conflicting generic rule is rejected without activation
@@ -125,7 +125,7 @@ GET {{baseUrl}}/api/apps/{{appId}}/traces/{{enrichedTrace}}
 ### Replay enriched native bytes after definition activation
 POST {{baseUrl}}/v1/traces
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/standard-enriched.bin
 
@@ -135,7 +135,7 @@ GET {{baseUrl}}/api/apps/{{appId}}/traces/{{enrichedTrace}}
 ### Future capture emits changed.retry while owner literal stays voting.retry
 POST {{baseUrl}}/v1/traces
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/standard-future.bin
 
@@ -156,23 +156,23 @@ X-CSRF-Token: {{csrf}}
 ### Explicit browser scope/tab: navigation, intent, optional synthetic presence and page pair
 POST {{baseUrl}}/v1/logs
 Content-Type: application/x-protobuf
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 
-< ./generated/standard-journey-browser.bin
+< ./generated/standard-journey-navigation.bin
 
 ### Separate failed and retry request traces under the same explicit scope/tab
 POST {{baseUrl}}/v1/traces
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/standard-journey-traces.bin
 
-### Trusted failure, post-commit publication error and recovery facts
+### Client failure, later result error and recovery observations
 POST {{baseUrl}}/v1/logs
 Content-Type: application/x-protobuf
-Authorization: Bearer {{serverToken}}
+Authorization: Bearer {{telemetryKey}}
 
-< ./generated/standard-journey-server.bin
+< ./generated/standard-journey-results.bin
 
 ### Persistence and HTTP success do not invent the separately configured screen goal
 GET {{baseUrl}}/api/apps/{{appId}}/snapshot?scope={{journeyScope}}
@@ -196,7 +196,7 @@ X-CSRF-Token: {{csrf}}
 ### Actual synthetic completion-screen observation arrives under the new receipt version
 POST {{baseUrl}}/v1/logs
 Content-Type: application/x-protobuf
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/standard-journey-goal.bin
 
@@ -206,7 +206,7 @@ GET {{baseUrl}}/api/apps/{{appId}}/snapshot?scope={{journeyScope}}
 ### Exact goal replay cannot start another journey
 POST {{baseUrl}}/v1/logs
 Content-Type: application/x-protobuf
-Authorization: Bearer {{browserToken}}
+Authorization: Bearer {{telemetryKey}}
 
 < ./generated/standard-journey-goal.bin
 

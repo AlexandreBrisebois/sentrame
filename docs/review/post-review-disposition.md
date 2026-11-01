@@ -1,5 +1,7 @@
 # Independent challenge and current disposition
 
+Current source direction (2026-11-01): the approved `remove-server-telemetry-and-unify-app-key` change supersedes server-only/combined telemetry and producer-role guidance below. Retain this document as review history; use the developer guide and CONTRACT for one-key client behavior.
+
 An independent GPT-6 Astra review challenged the initial capability draft against primary sources and the WFS example. Thirteen findings changed the planning contracts below. “Corrected” means documentation changed; runtime behavior, security, accessibility, performance and OTLP compatibility remain unimplemented and unqualified. The original review and its hashed baseline are preserved in the portable Library review package. No second broad review of the corrected package is claimed.
 
 ## Findings and corrections

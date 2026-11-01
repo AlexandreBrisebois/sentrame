@@ -8,7 +8,7 @@ The main choices are settled. These are planning requirements, not implemented c
 - Historical and live **maps**, ordered evidence, rare/stopping context and warning/exception continuation/recovery through completion.
 - Clean-live toggle and the selected app's accumulated seven-day traffic behind the selected live anonymous visit, with distinct counts.
 - Accepted time-at-stage analysis: node size for duration, edge thickness traffic, median plus slower cases, timing quality and accessible numeric/table alternatives.
-- Automatic first-mapped-event start, active-goal end, next-event restart and 30-minute inactivity closure as inactive, not failed. Browser tabs stay separate; server-only logical scopes do not need tabs; correctly correlated client/server evidence is supported.
+- Automatic first-mapped-event start, active-goal end, next-event restart and 30-minute inactivity closure as inactive, not failed. Client visits require explicit separate tab scopes. Server-only and combined telemetry journeys are superseded by the approved one-key client direction.
 - Saved goal-backward, bounded beginning/end-segment and origin-forward reference views over recorded boundaries, with honest partial/expired evidence.
 - Owner passphrase access, privacy minimization, 30-day detailed journeys and 12-month count/conversion/timing summaries without individual drilldown after detail expires.
 - A discovery-led public integration guide for agents helping developers instrument other apps, separate from Sentrame's own engineering harness.

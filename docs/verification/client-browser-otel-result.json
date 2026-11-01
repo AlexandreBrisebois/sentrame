@@ -1,0 +1,47 @@
+{
+  "status": "passed",
+  "browser": "native Microsoft Edge on macOS",
+  "route": "same-origin loopback forwarder to HTTP Protobuf receiver, no compression",
+  "records": 6,
+  "logs": 4,
+  "nativeSpans": 2,
+  "journeys": 1,
+  "completedGoals": 1,
+  "path": [
+    "Home observed",
+    "Search observed",
+    "Goal observed"
+  ],
+  "errorType": "SyntheticClientError",
+  "nativeParentVerified": true,
+  "replayRecords": 6,
+  "forwarderRejections": {
+    "wrong-origin": 403,
+    "oversized": 413
+  },
+  "sourceHashes": {
+    "browser.js": "4bf46eb78fb7934d9ecb3ca79d21fcc2029e9a9b3c6b9b050f588deef572fdff",
+    "server.mjs": "f16d3c8da033dfbfc3583e580171cf8c78f58e8e157880d4a714f0e0654ce177",
+    "public/app.js": "90ef3be620bff272bc4019bdde147c467afbde81809845cd437b439ca5dcb0f2",
+    "public/index.html": "c088cd811d9e2d7f29b5e5afe91641d0a27fbf9ddb1f5f25a6500e057d4b2bdd"
+  },
+  "receiverRestartPreservedExactRecords": 6,
+  "postRestartBrowserRecords": 7,
+  "postRestartCompletedGoals": 1,
+  "browserExporterReconfigured": false,
+  "browserProviderInitializationsObserved": 1,
+  "noExportBeforeBeginVerified": true,
+  "publicBundleContainsKeyOrPassphrase": false,
+  "directOriginAttemptRejectedUnderSelfOnlyCSP": true,
+  "protectedDiagnosticReadVerified": true,
+  "protobufNotJsonOrGzipVerified": true,
+  "versions": {
+    "@opentelemetry/api": "1.10.0",
+    "@opentelemetry/sdk-trace": "3.0.0",
+    "@opentelemetry/sdk-logs": "3.0.0",
+    "@opentelemetry/resources": "3.0.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "0.300.0",
+    "@opentelemetry/exporter-logs-otlp-proto": "0.300.0"
+  },
+  "sampleDirectory": "/tmp/sentrame-browser-client-w895lkxv"
+}

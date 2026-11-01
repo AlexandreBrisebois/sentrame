@@ -1,68 +1,37 @@
-# Local synthetic demonstration
+# Local synthetic client demonstration
 
-Current multi-app setup: register/select the app in the owner UI, obtain generated connection settings, and configure the existing standard exporter/provider. Credentials route the app; no Sentrame SDK, app-ID attribute or instrumentation rewrite is required. Keep server credentials out of browser recipes. Journeys is the default; explicit Traces remains available. Greenfield installation does not import legacy data/credentials. See [app workspace guidance](../MULTI-APP.md). Synthetic fixture tools register/select only their demonstration app through owner APIs and seed synthetic mappings only there; a running service and owner passphrase are required.
+Use only an explicitly selected disposable loopback installation. These commands create/select the demonstration app and submit synthetic observations through actual APIs. They must not target real retained data without separate authorization. They never preload a separate graph database.
 
-These demonstrations use the same authenticated standard OTLP ingestion, SQLite commit, derivation and protected read paths as other local producers. They do not instrument or contact WFS. Readable source cases are in `rest/fixtures/scenarios.json`; they are semantic fixture descriptions, not a proprietary telemetry protocol. The generator translates them to official OTLP Protobuf messages using the pinned `go.opentelemetry.io/proto/otlp` schema and `google.golang.org/protobuf` runtime.
+## Generate and run
 
-Run from the repository root after starting the local service with the same environment:
+Start the built service with a private synthetic owner passphrase, matching loopback origin/address and a fresh data folder. From the same configured shell, use the Task fixture commands:
 
 ```sh
-go run ./cmd/fixtures generate
-go run ./cmd/fixtures verify
+task demo
+task demo:workspace
+task demo:diagnostics
+task demo:standard
 ```
 
-`SENTRAME_PASSPHRASE`, `SENTRAME_BROWSER_TOKEN` and `SENTRAME_SERVER_TOKEN` must be available to the generator. `SENTRAME_URL` defaults to `http://127.0.0.1:8096`. No default credentials ship with the fixtures. Keep the generated `rest/.env`, `rest/generated/login.json`, binary files and manifest private; their directory is ignored by Git and generated files use mode 0600. The fixture tool prints statuses and bounded scope counts, never credentials or telemetry bodies.
-
-`generate` creates fresh occurrence timestamps and random logical, tab, record, action and stage identities. Cases with the same source scope label share a generated logical/tab scope; action and stage identities remain distinct. `rest/generated/manifest.json` preserves the generated identities and SHA-256 hashes. Re-running `generate` creates a fresh demonstration; it does not reset existing data. Re-running an identified POST or `replay` uses the exact existing protobuf bytes and tests idempotent delivery. Records deliberately lacking identity cannot promise deduplication.
-
-The paired generated `.json` files are readable official OTLP JSON encodings of the binary requests. The HTTP requests send `.bin` bodies with `application/x-protobuf`; they do not send JSON renamed as Protobuf. Generation never writes to the database.
-
-## VS Code REST Client
-
-1. Start the local service and generate the fixtures with its local synthetic environment.
-2. Open `rest/demo.http` with the REST Client extension. The adjacent ignored `.env` supplies the endpoint, producer tokens and generated view variables; `generated/login.json` supplies the owner login body.
-3. Send the first unauthenticated snapshot request and confirm 401. Send owner login, allowing REST Client to retain its session cookie. The later protected requests use that independent owner session.
-4. Send the ingestion requests in order. The identical server replay should return success without adding commitments. The healthy browser entry and first server commitment deliberately share one local record ID; trusted producer namespaces keep them distinct. The mixed valid/future-invalid request should return 400 and commit zero records.
-5. Open the healthy scoped snapshot, then the fixed seven-day app baseline behind the live scope. The final SSE request streams authenticated invalidations; stop the request to close it.
-
-The verifier parses this exact `.http` file, substitutes the same generated variables, reads the same binary/login files and executes its literal methods, paths, headers and bodies. It checks the declared status of every request, privacy sentinel absence in public responses, initial SSE delivery, then checks scoped evidence/model results through protected snapshots. Those additional assertions are API reads, not alternate fixture insertion.
+The tool registers/selects **Sentrame demonstration**, reads its one `telemetryKey` through owner connection settings and configures its own sender in memory. The generated `rest/.env`, login bodies, protobuf files and manifests are private ignored local output. Never paste their values into reports or commit them. No per-role environment credentials are needed. Existing SDK/exporter/route qualification is separate from official wire fixture success.
 
 ## Product walkthrough
 
-- **Healthy loop:** browser entry and recipe-stage timing surround ten trusted server commitments. A completion-screen observation ends one journey. Inspect ten Vote occurrences and nine Vote→Vote transitions; replay must leave them unchanged.
-- **Supported slower cases:** the `timing-samples` scope contains one completed journey with twenty explicit Stage entry/exit pairs. Its measured durations are 1 through 20 seconds; the scoped map/table should show 20 samples, median 10.5 seconds, p90 18 seconds and 100% completed timing coverage. These are stage occurrences within one journey, not twenty independent visits.
-- **Post-commit recovery:** distinguish browser intent, persisted server vote, publication exception, recovery and later completion. The error remains friction and never undoes the commitment. Unsafe message/stack/household/URL sentinel attributes are omitted.
-- **Initial convergence:** a completion screen without votes still evidences that visit's screen goal. It does not prove who caused agreement.
-- **Server-only:** an operation has no invented browser tab and ends with an explicit exhausted reason.
-- **Missing context and authority:** ordinary telemetry lacking session/tab/event IDs remains accepted-unassigned. A browser `vote.committed` carrying self-asserted server attributes cannot establish trusted persistence.
-- **Silence:** a 31-minute-old entry closes inactive, not failed or tired. No fabricated exit reason is emitted.
-- **Historical versus live:** a prior-day case belongs to the app baseline. A new live scope is separate and receives a completion follow-up with the same logical identity. The fixed baseline remains app-wide while live is scoped.
+The current client scenario uses explicit random visit/tab context, navigation, intents, `vote.result.observed`, optional goal `completion.entered`, healthy repeated results, client errors/recovery and distinct timing bases. Missing-context observations remain received/unassigned; a claimed runtime origin grants no stronger assurance. Stable event IDs are unique within the app/signal identity domain; exact replay reuses identical bytes and does not invent additional actions.
 
-For a fresh manual live observation, run:
+Use **Tools**, the seven direct journey views, retained evidence and client diagnostic Traces to inspect the question and return to its context. Goals are optional. Native spans do not create visits automatically; HTTP success/result labels do not prove durable persistence. Live current/baseline populations and timing units remain separate.
 
-```sh
-go run ./cmd/fixtures live
-```
+For the live demo, `task demo:live` starts a new synthetic capture and `task demo:followup` sends its later screen observation. Replay preserves prepared identity/bytes. Do not reuse a follow-up manifest whose acknowledgement state was changed outside the CLI; start a new disposable case instead.
 
-This regenerates fresh synthetic identities and sends only `live-start.bin` through actual ingestion. Select the new active live scope from `rest/generated/manifest.json` in the UI and start live observation. Then run:
+## VS Code REST Client
 
-```sh
-go run ./cmd/fixtures followup
-```
+The `.http` requests use one `{{telemetryKey}}` plus owner-session CSRF for protected mutations. Use the generated private environment and exact files. The CLI executes the same literal requests for reproducibility; this does not claim that the VS Code extension itself, real browsers or deployed routes were tested.
 
-On its first manual send, `followup` refreshes only occurrence/observed timestamps to the current time, so the completion occurs after the UI's live T0. It preserves the scope, tab, action and event ID, rewrites the paired protobuf/JSON body and updates its manifest hash. The manifest is marked **prepared before the HTTP attempt**; retries then reuse exact bytes, including after an ambiguous network failure. A successful response marks it sent. The literal REST verifier also marks its successful follow-up sent; running the CLI after verification therefore replays unchanged bytes instead of conflicting with accepted evidence.
+## Standard OTel voting operations
 
-Start a fresh `live` case for the manual walkthrough rather than reusing a completion already sent independently through VS Code: externally clicking a REST request cannot update the CLI's local acknowledgement marker. The follow-up uses the actual receiver/storage/derivation path and does not rebuild a separate in-memory journey. To replay the ten commitments:
+`task demo:standard` exercises ordinary spans/logs, native structure/timing and standard one-key receipt, then service/carrier/name mappings, optional label hints and an explicitly scoped client retry/result/screen story. Navigation/result stream filenames identify fixture contents, not producer roles. The qualified client journey computation is `journey-client-v5`.
 
-```sh
-go run ./cmd/fixtures replay
-```
-
-## Qualification boundaries
-
-The fixture requests can verify direct-origin OTLP/HTTP binary logs and the actual owner/SSE/read seams. They do not by themselves qualify a standard SDK/exporter, HTTP JSON, gzip, traces, metrics, gRPC, browser SDK lifecycle/CORS/CSP, a Collector forwarding acknowledgement, power-loss durability, Home Server capacity or Tunnel routing. Record those separately in release verification. Repeated use retains multiple demonstration scopes until explicit synthetic reset or retention; the verifier checks only its newly generated scopes.
-
-The `.http` file is version-controlled; generated credentials and protobuf bodies are intentionally reproducible local outputs. Never substitute real app credentials or personal content to run this demonstration.
+The retained wire matrix and actual exporter/browser/container/Home Server/Tunnel cells must be reported separately after running this source version. Earlier verification below is preserved historical evidence of the previous browser/server model; it is not active server integration support or qualification of the single-key release.
 
 ## Recorded local verification
 

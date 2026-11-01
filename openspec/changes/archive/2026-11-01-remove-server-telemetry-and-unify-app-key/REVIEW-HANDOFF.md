@@ -1,5 +1,7 @@
 # Review handoff — remove server telemetry and unify app key
 
+Current local implementation status (2026-11-01): see [IMPLEMENTATION-HANDOFF.md](IMPLEMENTATION-HANDOFF.md) for applied behavior, verified checks and remaining acceptance/source limitations. The dated planning record below is preserved.
+
 Prepared 2026-10-31. Specification/design review only. No implementation or operational cutover is authorized by these artifacts.
 
 ## Result

@@ -19,7 +19,7 @@ func TestLifecycleSummaryAndNoDetailAfterExpiry(t *testing.T) {
 	defer s.DB.Close()
 	now := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
 	s.Now = func() time.Time { return now }
-	es := []Evidence{{Source: "browser", Signal: "logs", Name: "discovery.entered", Scope: "synthetic", Tab: "tab", Record: "first", Time: now.UnixNano(), Attrs: map[string]string{}}, {Source: "browser", Signal: "logs", Name: "completion.entered", Scope: "synthetic", Tab: "tab", Record: "last", Time: now.Add(time.Minute).UnixNano(), Attrs: map[string]string{}}}
+	es := []Evidence{{Source: "client", Signal: "logs", Name: "discovery.entered", Scope: "synthetic", Tab: "tab", Record: "first", Time: now.UnixNano(), Attrs: map[string]string{}}, {Source: "client", Signal: "logs", Name: "completion.entered", Scope: "synthetic", Tab: "tab", Record: "last", Time: now.Add(time.Minute).UnixNano(), Attrs: map[string]string{}}}
 	if e = s.Insert(es); e != nil {
 		t.Fatal(e)
 	}
@@ -51,7 +51,7 @@ func TestFinalizedBoundaryLateGoalCannotCreateEligibleCompletionOrSecondSummary(
 	now := start
 	s.Now = func() time.Time { return now }
 	makeEvent := func(name, id string, offset time.Duration) Evidence {
-		return Evidence{Source: "browser", Signal: "logs", Name: name, Scope: "scope", Tab: "tab", Record: id, Time: start.Add(offset).UnixNano(), Attrs: map[string]string{}}
+		return Evidence{Source: "client", Signal: "logs", Name: name, Scope: "scope", Tab: "tab", Record: id, Time: start.Add(offset).UnixNano(), Attrs: map[string]string{}}
 	}
 	if e = s.Insert([]Evidence{makeEvent("discovery.entered", "start", 0), makeEvent("completion.entered", "goal", 2*time.Minute)}); e != nil {
 		t.Fatal(e)
@@ -93,7 +93,7 @@ func TestInactivityAdvancesCommittedLifecycleRevision(t *testing.T) {
 	defer s.DB.Close()
 	now := time.Now()
 	s.Now = func() time.Time { return now }
-	s.Insert([]Evidence{{Source: "server", Name: "discovery.entered", Scope: "scope", Signal: "logs", Time: now.UnixNano(), Attrs: map[string]string{}}})
+	s.Insert([]Evidence{{Source: "client", Name: "discovery.entered", Scope: "scope", Tab: "tab", Signal: "logs", Time: now.UnixNano(), Attrs: map[string]string{}}})
 	s.Cleanup()
 	var before, after string
 	s.DB.QueryRow(`SELECT value FROM settings WHERE key='revision'`).Scan(&before)
@@ -118,7 +118,7 @@ func TestPublicReadsThirtyDayDetailTwelveMonthSummaryAndFreshGeneration(t *testi
 	for i := 0; i < logs.Len(); i++ {
 		logs.At(i).SetTimestamp(pcommon.NewTimestampFromTime(base.Add(time.Duration(i) * time.Millisecond)))
 	}
-	if code := requestLogs(t, c, server.URL, "browser-test", ls); code != 200 {
+	if code := requestLogs(t, c, server.URL, "client-test", ls); code != 200 {
 		t.Fatal(code)
 	}
 	clock = base.Add(31 * 24 * time.Hour)
@@ -157,7 +157,7 @@ func TestPublicReadsThirtyDayDetailTwelveMonthSummaryAndFreshGeneration(t *testi
 	if oldGeneration == newGeneration {
 		t.Fatal("reregistered dataset reusedgeneration")
 	}
-	next, err := New(fresh, "synthetic owner passphrase", "browser-next", "server-next", "")
+	next, err := New(fresh, "synthetic owner passphrase", "client-next", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestPublicReadsThirtyDayDetailTwelveMonthSummaryAndFreshGeneration(t *testi
 	origin := httptest.NewServer(next.Handler(""))
 	defer origin.Close()
 	next.Origin = origin.URL
-	if code := requestLogs(t, c, origin.URL, "browser-test", ls); code != 401 {
+	if code := requestLogs(t, c, origin.URL, "client-test", ls); code != 401 {
 		t.Fatalf("old queued credential entered newgeneration %d", code)
 	}
 }

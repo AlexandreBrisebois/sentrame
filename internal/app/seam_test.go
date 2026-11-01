@@ -27,7 +27,7 @@ func fixtureService(t *testing.T) (*Service, *httptest.Server, *http.Client) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	svc, e := New(s, "synthetic owner passphrase", "browser-test", "server-test", "")
+	svc, e := New(s, "synthetic owner passphrase", "client-test", "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -92,7 +92,7 @@ func logFixture(names ...string) plog.Logs {
 func TestStandardExporterDurableProtectedRead(t *testing.T) {
 	svc, server, c := fixtureService(t)
 	ctx := context.Background()
-	exp, e := otlploghttp.New(ctx, otlploghttp.WithEndpointURL(server.URL+"/v1/logs"), otlploghttp.WithHeaders(map[string]string{"Authorization": "Bearer browser-test"}), otlploghttp.WithInsecure())
+	exp, e := otlploghttp.New(ctx, otlploghttp.WithEndpointURL(server.URL+"/v1/logs"), otlploghttp.WithHeaders(map[string]string{"Authorization": "Bearer client-test"}), otlploghttp.WithInsecure())
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -133,7 +133,7 @@ func TestStandardExporterDurableProtectedRead(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer reopened.DB.Close()
-	restarted, e := New(reopened, "synthetic owner passphrase", "browser-test", "server-test", "")
+	restarted, e := New(reopened, "synthetic owner passphrase", "client-test", "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -156,39 +156,42 @@ func TestStandardExporterDurableProtectedRead(t *testing.T) {
 }
 func TestAtomicReplayAuthorityAndFailedCommit(t *testing.T) {
 	svc, server, c := fixtureService(t)
+	if status := requestLogs(t, c, server.URL, "retired-server-key", logFixture("unauthorized")); status != 401 {
+		t.Fatalf("retired/unknown key accepted: %d", status)
+	}
 	ls := logFixture("discovery.entered", "completion.entered")
-	if status := requestLogs(t, c, server.URL, "browser-test", ls); status != 200 {
+	if status := requestLogs(t, c, server.URL, "client-test", ls); status != 200 {
 		t.Fatalf("intake %d", status)
 	}
-	if status := requestLogs(t, c, server.URL, "browser-test", ls); status != 200 {
+	if status := requestLogs(t, c, server.URL, "client-test", ls); status != 200 {
 		t.Fatalf("replay %d", status)
 	}
 	es, _ := svc.Store.Evidence()
 	if len(es) != 2 {
 		t.Fatalf("replay grew %d", len(es))
 	}
-	if status := requestLogs(t, c, server.URL, "server-test", ls); status != 200 {
+	if status := requestLogs(t, c, server.URL, "client-test", ls); status != 200 {
 		t.Fatal(status)
 	}
 	es, _ = svc.Store.Evidence()
-	if len(es) != 4 {
-		t.Fatal("namespaces collapsed")
+	if len(es) != 2 {
+		t.Fatal("single app-key replay duplicated observations")
 	}
 	bad := logFixture("new.valid", "old.invalid")
 	bad.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(1).SetTimestamp(pcommon.NewTimestampFromTime(time.Now().Add(-31 * 24 * time.Hour)))
-	if status := requestLogs(t, c, server.URL, "browser-test", bad); status != 400 {
+	if status := requestLogs(t, c, server.URL, "client-test", bad); status != 400 {
 		t.Fatalf("atomic status %d", status)
 	}
 	es, _ = svc.Store.Evidence()
-	if len(es) != 4 {
+	if len(es) != 2 {
 		t.Fatal("mixed batch partially committed")
 	}
 	ls.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).SetEventName("conflict")
-	if status := requestLogs(t, c, server.URL, "browser-test", ls); status != 400 {
+	if status := requestLogs(t, c, server.URL, "client-test", ls); status != 400 {
 		t.Fatalf("conflict %d", status)
 	}
 	svc.Store.DB.Close()
-	if status := requestLogs(t, c, server.URL, "browser-test", logFixture("after.close")); status != 503 {
+	if status := requestLogs(t, c, server.URL, "client-test", logFixture("after.close")); status != 503 {
 		t.Fatalf("failed commit %d", status)
 	}
 }

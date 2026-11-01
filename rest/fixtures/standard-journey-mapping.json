@@ -5,84 +5,74 @@
       "event": "voting.page.entered",
       "step": "Voting",
       "kind": "stage-start",
-      "source": "browser",
       "carrier": "log",
-      "service": "synthetic-voting-browser",
+      "service": "synthetic-voting-client",
       "timing": "paired"
     },
     {
       "event": "voting.page.exited",
       "step": "Voting",
       "kind": "stage-end",
-      "source": "browser",
       "carrier": "log",
-      "service": "synthetic-voting-browser",
+      "service": "synthetic-voting-client",
       "timing": "paired"
     },
     {
       "event": "activity.changed",
       "step": "Presence",
       "kind": "activity",
-      "source": "browser",
       "carrier": "log",
-      "service": "synthetic-voting-browser"
+      "service": "synthetic-voting-client"
     },
     {
       "event": "vote.requested",
       "step": "Vote intent",
       "kind": "activity",
-      "source": "browser",
       "carrier": "log",
-      "service": "synthetic-voting-browser"
+      "service": "synthetic-voting-client"
     },
     {
       "event": "POST /votes",
       "step": "Vote processing",
       "kind": "step",
-      "source": "server",
       "carrier": "span",
-      "service": "synthetic-voting-api",
+      "service": "synthetic-voting-results",
       "timing": "native-span"
     },
     {
-      "event": "vote.committed",
-      "step": "Vote saved",
+      "event": "vote.result.observed",
+      "step": "Vote result observed",
       "kind": "step",
-      "source": "server",
       "carrier": "span-event",
-      "service": "synthetic-voting-api"
+      "service": "synthetic-voting-results"
     },
     {
-      "event": "vote.persistence.failed",
+      "event": "vote.result.readence.failed",
       "step": "Persistence failure",
       "kind": "activity",
-      "source": "server",
       "carrier": "log",
-      "service": "synthetic-voting-api"
+      "service": "synthetic-voting-results"
     },
     {
       "event": "publication.failed",
       "step": "Publication error",
       "kind": "activity",
-      "source": "server",
       "carrier": "log",
-      "service": "synthetic-voting-api"
+      "service": "synthetic-voting-results"
     },
     {
       "event": "publication.recovered",
       "step": "Recovered",
       "kind": "step",
-      "source": "server",
       "carrier": "log",
-      "service": "synthetic-voting-api"
+      "service": "synthetic-voting-results"
     },
     {
       "event": "completion.entered",
       "step": "Completion",
       "kind": "step",
-      "source": "browser",
       "carrier": "log",
-      "service": "synthetic-voting-browser"
+      "service": "synthetic-voting-client"
     }
   ]
 }

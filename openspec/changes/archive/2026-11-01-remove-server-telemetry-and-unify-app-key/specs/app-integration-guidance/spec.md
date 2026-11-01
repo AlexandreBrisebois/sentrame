@@ -35,7 +35,7 @@ The agent guide SHALL require source/SDK discovery, explicit question and eviden
 - **THEN** it locates client navigation/result/retry/error boundaries, inventories current exporters, proposes only missing observations, checks privacy/authority and reports actual versus unrun evidence without changing business behavior
 
 ### Requirement: Configuration-only app onboarding
-User/developer/deployment guides, producer contract and agent instructions SHALL explain UI registration, JSON credential persistence and standard exporter configuration. Registered client senders SHALL need no changes during restart. Existing two-key deployments SHALL follow the explicit reviewed lifecycle cutover. New-app setup SHALL require no Sentrame SDK, app-ID field or instrumentation rewrite. Key handling SHALL distinguish the private registry/owner interface from a potentially extractable client write key.
+User, developer and deployment guides, the producer contract and agent instructions SHALL explain UI registration, JSON credential persistence and standard exporter configuration. Client senders SHALL need no changes on restart. Two-key deployments SHALL follow the reviewed lifecycle cutover. New-app setup SHALL require no Sentrame SDK, app-ID field or instrumentation rewrite. Key handling SHALL distinguish the private registry and owner interface from a potentially extractable client write key.
 
 #### Scenario: Owner adds a product
 - **WHEN** the owner follows onboarding for a second app

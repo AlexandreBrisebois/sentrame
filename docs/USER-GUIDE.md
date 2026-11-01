@@ -18,15 +18,15 @@ A restart requires a new sign-in. For first-time installation, synthetic demonst
 
 ## Choose your application
 
-Sign in, choose **Add app**, enter a unique name and register. Connection settings open with generated browser/server credentials, masked until reveal or copy. Configure your existing standard exporter; no Sentrame SDK or app-ID field is needed. Server credentials stay server-side. New apps have empty mappings.
+Sign in, choose **Add app**, enter a unique name and register. Connection settings open with generated one app telemetry key, masked until reveal or copy. Configure your existing standard exporter; no Sentrame SDK or app-ID field is needed. Server credentials stay server-side. New apps have empty mappings.
 
-Use the app selector for separate products and **Account (⋯) → App settings** to rename, rotate a role or remove an app after typing its name. Each app has its own history, mappings, references, lifecycle and invitations. App URLs and tabs keep their own selection; switching closes old editors/streams and clears old app data. Journeys is first and opens by default for owners and viewers, including after switching from Traces. Explicit trace links and saved trace references open Traces. A journey empty state stays in Journeys with connection/mapping/correlation guidance.
+Use the app selector for separate products and **Account (⋯) → App settings** to rename, rotate the app key or remove an app after typing its name. Each app has its own history, mappings, references, lifecycle and invitations. App URLs and tabs keep their own selection; switching closes old editors/streams and clears old app data. Journeys is first and opens by default for owners and viewers, including after switching from Traces. Explicit trace links and saved trace references open Traces. A journey empty state stays in Journeys with connection/mapping/correlation guidance.
 
 Temporary invitations name the selected app and its read-only whole-app scope and lifetime. They do not grant app administration, other apps or credentials. See [storage, recovery and limits](MULTI-APP.md). This release is greenfield: register apps again in a fresh directory; old single-app data and credentials are not imported.
 
 ### What can appear automatically
 
-**Traces** reconstructs native operation parents/timing from ordinary spans and trace-linked logs; no stage or visit fields are required. **Journeys** can also show goal-free browser navigation when a new app has an empty captured definition and named browser logs supply an anonymous session, tab and usable source order. Neither view infers a vote was saved or creates a completion goal. Explicit event-to-stage mappings control configured business meaning; choose a trusted emitted outcome as the goal only when you need that completion question. Server-only logs, metrics and nearby timestamps do not become browser navigation automatically. See the [integration guide](DEVELOPER-GUIDE.md#6-add-journey-context-only-when-you-need-it) before changing senders.
+**Traces** reconstructs native operation parents/timing from ordinary spans and trace-linked logs; no stage or visit fields are required. **Journeys** can also show goal-free browser navigation when a new app has an empty captured definition and named browser logs supply an anonymous session, tab and usable source order. Neither view infers a vote was saved or creates a completion goal. Explicit event-to-stage mappings control configured business meaning; choose an emitted client observation as the goal only when you need that completion question. Uncorrelated logs, metrics and nearby timestamps do not become client navigation automatically. See the [integration guide](DEVELOPER-GUIDE.md#progress-from-receipt-to-a-useful-client-journey) before changing senders.
 
 ## Start with the graph
 
@@ -96,9 +96,8 @@ Select an event node, then **Configure event…**. For an already mapped stage, 
 
 | Field | What to enter |
 | --- | --- |
-| **Stage** | A short graph label, such as `Voting` or `Vote saved`. Several events may share a stage name. For a timing start/end pair, use the same stage name. Activity still requires a label, but does not add a graph node. |
+| **Stage** | A short graph label, such as `Voting` or `Vote result observed`. Several events may share a stage name. For a timing start/end pair, use the same stage name. Activity still requires a label, but does not add a graph node. |
 | **Kind** | How this event affects the path or timing; see below. |
-| **Trusted producer** | **Browser**, **Server** or **Any source**. Choose Server when the event must prove a server-side saved change. This filters by the receiver’s configured producer assignment; it does not make a browser claim trustworthy. |
 | **Condition key** | Optional retained attribute name to test, such as `reason`. |
 | **Equals** | The exact value required for that key, such as `exhausted`. It is case-sensitive literal text. |
 
@@ -106,7 +105,7 @@ Select an event node, then **Configure event…**. For an already mapped stage, 
 
 | Kind | Effect |
 | --- | --- |
-| **step** | Adds an occurrence to the journey path. Use for an action or milestone such as Vote saved. |
+| **step** | Adds an occurrence to the journey path. Use for an action or milestone such as Vote result observed. |
 | **explicit exit** | Ends the journey with its emitted reason. Exhausting available recipes, for example, is not automatically a failure. |
 | **stage start** | Adds an entry step and starts explicit stage timing. |
 | **stage end** | Supplies the matching timing end without adding another graph step. |
@@ -302,9 +301,9 @@ Switch to **Journeys** for configured chronological business paths. Trace-only t
 
 ## Give ordinary telemetry business meaning
 
-Received logs also offer **Configure event** directly under **Unassigned records**. The editor fills in the received service, producer and carrier when there is one observed context. When an event exists in several contexts, choose **Received event context** to select the actual service and producer; exact service suggestions are also available. **Received records for this mapping** loads automatically from retained app-wide history, independently of the graph time range. It shows the matching count and up to five recent examples with their retained attributes. **Pick a condition from received data (optional)** fills both Condition key and Equals from an observed field/value, with its occurrence count. Leave both fields empty to match all records in the selected context. If a condition matches nothing, the editor shows examples and alternative values from that context before the condition. Choices are limited to 64 retained, allowlisted field/value pairs, with omissions disclosed. Changing a condition, selector or goal automatically rechecks the complete draft; activation stays disabled until the current check passes. Use the dedicated **Completion goal** section in **Mappings & goal** to choose an event that proves success, including an unmapped received event. The editor selects **Use this event as the completion goal** and offers **Activate completion goal** after automatic validation. A goal is optional and separate from an exit or dead end. The activation button explains unmet stage, validation or conflict requirements. Failed checks offer **Retry check**. Missing correlation is reported separately and does not block saving a valid definition; those records remain unassigned.
+Received logs also offer **Configure event** directly under **Unassigned records**. The editor fills in the received service, producer and carrier when there is one observed context. When an event exists in several contexts, choose **Received event context** to select the actual service and producer; exact service suggestions are also available. **Received records for this mapping** loads automatically from retained app-wide history, independently of the graph time range. It shows the matching count and up to five recent examples with their retained attributes. **Pick a condition from received data (optional)** fills both Condition key and Equals from an observed field/value, with its occurrence count. Leave both fields empty to match all records in the selected context. If a condition matches nothing, the editor shows examples and alternative values from that context before the condition. Choices are limited to 64 retained, allowlisted field/value pairs, with omissions disclosed. Changing a condition, selector or goal automatically rechecks the complete draft; activation stays disabled until the current check passes. Use the dedicated **Completion goal** section in **Mappings & goal** to choose an event that records the intended client observation, including an unmapped received event. The editor selects **Use this event as the completion goal** and offers **Activate completion goal** after automatic validation. A goal is optional and separate from an exit or dead end. The activation button explains unmet stage, validation or conflict requirements. Failed checks offer **Retry check**. Missing correlation is reported separately and does not block saving a valid definition; those records remain unassigned.
 
-On a trace operation, span event or log, choose **Give business meaning**. The editor starts with the retained exact service/carrier/source/name. Enter a literal Stage label, choose Kind and an optional retained key/value condition, then review the automatically updated matches and validation before activation. Select **Use this event as the completion goal** only for the intended successful outcome. No stage tag is needed. A trusted `vote.committed` span event can map to **Vote saved** while a similarly named log remains separate.
+On a trace operation, span event or log, choose **Give business meaning**. The editor starts with the retained exact service/carrier/name. Enter a literal Stage label, choose Kind and an optional retained key/value condition, then review the automatically updated matches and validation before activation. Select **Use this event as the completion goal** only for the intended successful outcome. No stage tag is needed. A client `vote.result.observed` span event can map to **Vote result observed** while a similarly named log remains separate. This records what the client reported, not proof of a durable save.
 
 Native-span timing measures inclusive operation elapsed time using native identity. Point observations have no duration by label. Explicit paired boundaries and next-event estimates are separate policies; a broader page stage needs real supporting observations. Do not sum nested operations into unique page time. An end-boundary span goal requires a valid completed span; a named event goal uses its event timestamp. A generic successful HTTP request and browser intent do not prove persistence.
 
@@ -313,9 +312,9 @@ Default trace labels use capture-time definitions. Use the interpretation menu f
 
 ## Optional emitted label suggestions
 
-An unmapped record may offer **Use emitted suggestion: voting.persist**. Choosing it fills a literal Stage in the editor; Preview and activation remain required. There is no automatically activated mapping. Different emitted labels remain separate suggestions, with at most32 per contextual selector and omissions disclosed. Missing/invalid tags offer none and do not prevent ordinary-name mapping.
+An unmapped record may offer **Use emitted suggestion: voting.result**. Choosing it fills a literal Stage in the editor; Preview and activation remain required. There is no automatically activated mapping. Different emitted labels remain separate suggestions, with at most32 per contextual selector and omissions disclosed. Missing/invalid tags offer none and do not prevent ordinary-name mapping.
 
-One explicit owner mapping always wins. If the emitter says `voting` while the owner says **Vote saved**, the stage remains **Vote saved**, and the emitted hint remains inspectable. Two overlapping explicit rules must be disambiguated. Child records do not inherit a span's label. Changed emitted hints do not rename prior captures or establish a goal, Kind, session or authority.
+One explicit owner mapping always wins. If the emitter says `voting` while the owner says **Vote result observed**, the stage remains **Vote result observed**, and the emitted hint remains inspectable. Two overlapping explicit rules must be disambiguated. Child records do not inherit a span's label. Changed emitted hints do not rename prior captures or establish a goal, Kind, session or authority.
 
 
 ## Scoped native timing and references
@@ -324,8 +323,14 @@ Explicit scope/tab can relate multiple request traces into one configured journe
 
 In Traces, choose or save a **Trace reference** with a name, current view and definition interpretation. It stays distinct from journey goal/segment references. An explicit preview pins that definition; the default uses recorded capture context. Expired/deleted targets remain unavailable even when the saved query survives. A late earlier mapped prefix within the supported inactivity gap retains the known capture definition instead of adopting the latest labels. No personal identity index is created.
 
-Observed-active time requires actual browser visibility/idle observations within a complete native browser interval or an optional paired page interval in the same capture. It measures capped positive observed intervals; gaps remain unknown, and server operation time cannot borrow browser presence.
+Observed-active time requires actual browser visibility/idle observations within a complete native browser interval or an optional paired page interval in the same capture. It measures capped positive observed intervals; gaps remain unknown, and unrelated operation time cannot borrow scoped presence.
 
 The ranked path list shows at most 20 display-limited groups, with omitted group/member counts and **Browse all retained paths** for further evidence. It separates displayed-group membership and share of all retained journeys from shared-prefix support and exact whole captured-path support. Exact captured paths are not claims of completed journeys. Use the independently labeled prefix or exact actions; their supporting populations overlap and must not be added. Graph inspectors use the same population-specific matching examples, timeline, retained diagnostics and trace-return flow as the tables.
 
 Graph error markers keep the affected population visible as `L!` and/or `B!` beside each connection. They mark retained error evidence, while solid Live and dashed Baseline contributions preserve their population colors and occurrence widths. An error marker does not classify the whole journey as failed.
+
+## Existing history after the single-key transition
+
+App settings exposes one Telemetry key and whole-key rotation. Updating every sender is required after rotation; the client key grants writes only and cannot authenticate a real action or certify persistence. Existing two-key installations need the explicit offline migration described in [App workspaces](MULTI-APP.md#existing-two-key-managed-installations), not automatic startup conversion.
+
+Mixed historical journeys and old summaries that cannot isolate client evidence are non-comparable to current results. Preserved records do not mean a legacy server explorer remains available. Unsupported old references explain the compatibility boundary and offer return or a current-client period; they must not silently widen filters or show missing history as zero traffic. New mapping definitions apply prospectively.

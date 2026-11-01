@@ -1,8 +1,8 @@
 package app
 
 // Evidence is the only retained projection. Attribute values outside this contract are never stored.
-const projectionPolicy = "structural-v2"
-const schemaVersion = 3
+const projectionPolicy = "client-structural-v3"
+const schemaVersion = 4
 
 type SpanLink struct {
 	Trace string `json:"trace"`

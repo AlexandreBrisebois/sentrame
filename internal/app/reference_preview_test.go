@@ -17,7 +17,7 @@ func TestUnsavedReferencePreviewUsesCapturedReadPathWithoutSaving(t *testing.T) 
 		t.Fatal(err)
 	}
 	defer store.DB.Close()
-	svc, err := New(store, "synthetic owner passphrase", "browser-test", "server-test", "http://localhost")
+	svc, err := New(store, "synthetic owner passphrase", "client-test", "http://localhost")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestUnsavedReferencePreviewUsesCapturedReadPathWithoutSaving(t *testing.T) 
 	cookie := logged.Result().Cookies()[0]
 	now := time.Now().Add(-time.Minute)
 	for i, name := range []string{"discovery.entered", "vote.requested", "completion.entered"} {
-		if err := store.Insert([]Evidence{{Source: "browser", Signal: "logs", Name: name, Scope: "visit", Tab: "tab", Record: fmt.Sprint(i), Time: now.Add(time.Duration(i) * time.Second).UnixNano(), Attrs: map[string]string{}}}); err != nil {
+		if err := store.Insert([]Evidence{{Source: "client", Signal: "logs", Name: name, Scope: "visit", Tab: "tab", Record: fmt.Sprint(i), Time: now.Add(time.Duration(i) * time.Second).UnixNano(), Attrs: map[string]string{}}}); err != nil {
 			t.Fatal(err)
 		}
 	}

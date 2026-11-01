@@ -11,7 +11,7 @@ import (
 func TestTraceContextUsesCanonicalSourceHexIdentity(t *testing.T) {
 	svc, server, c := fixtureService(t)
 	b := protocolBody(t, "traces", "proto", "canonical.trace")
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -27,7 +27,7 @@ func TestInvalidStandardSpanIdentityRejectsWholeDirectRequest(t *testing.T) {
 	span := tr.ResourceSpans().AppendEmpty().ScopeSpans().AppendEmpty().Spans().AppendEmpty()
 	span.SetName("missing.standard.ids")
 	b, _ := ptraceotlp.NewExportRequestFromTraces(tr).MarshalProto()
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 400 {
 		t.Fatalf("invalid standard trace/span IDs accepted: %d", code)
 	}
@@ -46,7 +46,7 @@ func TestSpanEventInheritsOnlyVerifiedParentLogicalContext(t *testing.T) {
 	span.Attributes().PutStr("session.id", "verified-logical-scope")
 	span.Attributes().PutStr("tab.id", "verified-tab")
 	b, _ := req.MarshalProto()
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}

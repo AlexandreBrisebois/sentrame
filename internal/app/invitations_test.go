@@ -28,7 +28,7 @@ func newInvitationHarness(t *testing.T) *invitationHarness {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.DB.Close() })
-	s, err := New(store, "synthetic owner passphrase", "browser-test", "server-test", "http://localhost")
+	s, err := New(store, "synthetic owner passphrase", "client-test", "http://localhost")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestInvitationsOneUseExpiryAndOrigin(t *testing.T) {
 func TestInvitationsRestartGenerationAndSSE(t *testing.T) {
 	x := newInvitationHarness(t)
 	_, token := x.create(1)
-	s, err := New(x.s.Store, "synthetic owner passphrase", "browser-test", "server-test", "http://localhost")
+	s, err := New(x.s.Store, "synthetic owner passphrase", "client-test", "http://localhost")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func TestInvitationsIDsNeverReuseAndSessionsDoNotSurviveRestart(t *testing.T) {
 	if w := x.call("GET", "/api/session", "", viewer, "", false); w.Code != 401 {
 		t.Fatal("old grant resurrected", w.Code)
 	}
-	s, err := New(x.s.Store, "synthetic owner passphrase", "browser-test", "server-test", "http://localhost")
+	s, err := New(x.s.Store, "synthetic owner passphrase", "client-test", "http://localhost")
 	if err != nil {
 		t.Fatal(err)
 	}

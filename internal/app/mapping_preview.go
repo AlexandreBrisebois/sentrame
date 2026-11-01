@@ -41,7 +41,7 @@ func previewMappingEvidence(es []Evidence, mapping Mapping) mappingPreviewEviden
 		}
 		if mappingMatches(e, mapping) {
 			out.Matches++
-			if e.Scope == "" || e.Source == "browser" && e.Tab == "" {
+			if e.Scope == "" || e.Tab == "" {
 				out.MissingContext++
 			}
 			if len(out.MatchingExamples) < mappingPreviewExampleLimit {

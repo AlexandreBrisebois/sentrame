@@ -92,7 +92,7 @@ func (s *Service) managedAPI(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "App unavailable", 404)
 				return
 			}
-			write(w, map[string]string{"browser": a.Browser, "server": a.Server, "endpoint": s.Origin, "name": a.Name})
+			write(w, map[string]string{"telemetryKey": a.Key, "endpoint": s.Origin, "name": a.Name})
 			return
 		}
 		if r.Method != "POST" {
@@ -100,9 +100,9 @@ func (s *Service) managedAPI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var in struct {
-			Name         string `json:"name"`
-			Role         string `json:"role"`
-			Confirmation string `json:"confirmation"`
+			Name         string          `json:"name"`
+			Role         json.RawMessage `json:"role"`
+			Confirmation string          `json:"confirmation"`
 		}
 		if !decode(w, r, &in) {
 			return
@@ -112,11 +112,11 @@ func (s *Service) managedAPI(w http.ResponseWriter, r *http.Request) {
 		case "rename":
 			e = s.Registry.Update(id, in.Name, "")
 		case "rotate":
-			if in.Role != "browser" && in.Role != "server" {
-				http.Error(w, "Choose browser or server", 400)
+			if in.Role != nil {
+				http.Error(w, "Producer roles are unsupported; rotate the app telemetry key", 400)
 				return
 			}
-			e = s.Registry.Update(id, "", in.Role)
+			e = s.Registry.Update(id, "", "key")
 		case "remove":
 			e = s.Registry.Delete(id, in.Confirmation)
 		default:

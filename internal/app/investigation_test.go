@@ -13,8 +13,8 @@ func TestInvestigationReferenceKeepsLiveContinuationAndPreferences(t *testing.T)
 	csrf := loginTest(t, c, server.URL)
 	now := time.Now().UTC()
 	svc.Store.Insert([]Evidence{
-		{Source: "browser", Signal: "logs", Name: "discovery.entered", Scope: "continuation", Tab: "tab", Record: "before", Time: now.Add(-time.Minute).UnixNano(), Attrs: map[string]string{}},
-		{Source: "browser", Signal: "logs", Name: "completion.entered", Scope: "continuation", Tab: "tab", Record: "inside", Time: now.Add(-time.Second).UnixNano(), Attrs: map[string]string{}},
+		{Source: "client", Signal: "logs", Name: "discovery.entered", Scope: "continuation", Tab: "tab", Record: "before", Time: now.Add(-time.Minute).UnixNano(), Attrs: map[string]string{}},
+		{Source: "client", Signal: "logs", Name: "completion.entered", Scope: "continuation", Tab: "tab", Record: "inside", Time: now.Add(-time.Second).UnixNano(), Attrs: map[string]string{}},
 	})
 	input := map[string]any{"name": "Frozen continuation", "mode": "overview", "layout": "matrix", "from": now.Add(-30 * time.Second).Format(time.RFC3339Nano), "to": now.Format(time.RFC3339Nano), "selectionPolicy": "evidence-window", "presentation": map[string]any{"version": 1, "metric": "journeys", "stages": []string{"Discovery", "Completion"}, "sort": "traffic", "groupRepeats": true}}
 	code, body := appRequest(t, c, server.URL, "POST", "/api/views", csrf, input)
@@ -63,7 +63,7 @@ func TestInvestigationCoverageSeparatesEvidencePageFromPopulation(t *testing.T) 
 	now := time.Now().UTC()
 	es := make([]Evidence, 2002)
 	for i := range es {
-		es[i] = Evidence{Source: "server", Signal: "logs", Name: "unmapped", Record: fmt.Sprint(i), Time: now.Add(-time.Minute).UnixNano() + int64(i), Attrs: map[string]string{}}
+		es[i] = Evidence{Source: "client", Signal: "logs", Name: "unmapped", Record: fmt.Sprint(i), Time: now.Add(-time.Minute).UnixNano() + int64(i), Attrs: map[string]string{}}
 	}
 	if e := svc.Store.Insert(es); e != nil {
 		t.Fatal(e)
@@ -104,7 +104,7 @@ func TestInvestigationEvidenceListCapPreservesMappedDenominators(t *testing.T) {
 	now := time.Now().UTC()
 	es := make([]Evidence, 2002)
 	for i := range es {
-		es[i] = Evidence{Source: "browser", Signal: "logs", Name: "discovery.entered", Scope: "capped-list", Tab: "one-tab", Record: fmt.Sprint(i), Time: now.Add(-time.Minute).UnixNano() + int64(i), Sequence: int64(i + 1), Attrs: map[string]string{}}
+		es[i] = Evidence{Source: "client", Signal: "logs", Name: "discovery.entered", Scope: "capped-list", Tab: "one-tab", Record: fmt.Sprint(i), Time: now.Add(-time.Minute).UnixNano() + int64(i), Sequence: int64(i + 1), Attrs: map[string]string{}}
 	}
 	if err := svc.Store.Insert(es); err != nil {
 		t.Fatal(err)

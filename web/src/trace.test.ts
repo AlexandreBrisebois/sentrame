@@ -15,12 +15,12 @@ test('ambiguous and cyclic parents never manufacture a tree chain',()=>{
 
 test('business mapping starts with retained service, carrier and trusted producer, without custom context',async()=>{
  const {contextualMapping}=await import('./trace.ts');
- const mapping=contextualMapping({name:'vote.persist',service:'voting-api',source:'server',signal:'traces',attrs:{}} as any);
- assert.equal(mapping.service,'voting-api');assert.equal(mapping.carrier,'span');assert.equal(mapping.source,'server');assert.equal(mapping.key,'');
+ const mapping=contextualMapping({name:'vote.persist',service:'voting-api',source:'client',signal:'traces',attrs:{}} as any);
+ assert.equal(mapping.service,'voting-api');assert.equal(mapping.carrier,'span');assert.ok(!('source' in mapping));assert.equal(mapping.key,'');
 });
 
 test('stage hint stays evidence until an explicit suggestion is accepted into a literal rule',async()=>{
- const {contextualMapping}=await import('./trace.ts');const e={name:'vote.committed',service:'voting-api',source:'server',signal:'logs',attrs:{'stage.name':'voting.persist'}} as any;
+ const {contextualMapping}=await import('./trace.ts');const e={name:'vote.committed',service:'voting-api',source:'client',signal:'logs',attrs:{'stage.name':'voting.persist'}} as any;
  assert.equal(contextualMapping(e).step,'vote.committed');
  assert.equal(contextualMapping(e,'voting.persist').step,'voting.persist');
  assert.equal(contextualMapping(e,'voting.persist').key,'');

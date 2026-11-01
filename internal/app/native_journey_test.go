@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 )
@@ -21,6 +22,7 @@ func scopedNative(t *testing.T) []byte {
 	sp := q.Traces().ResourceSpans().At(0).ScopeSpans().At(0).Spans()
 	for i := 0; i < sp.Len(); i++ {
 		sp.At(i).Attributes().PutStr("session.id", "synthetic-native-scope")
+		sp.At(i).Attributes().PutStr("tab.id", "synthetic-native-tab")
 	}
 	b, _ = q.MarshalProto()
 	return b
@@ -44,7 +46,7 @@ func TestNativeJourneyInclusiveTimingAndGoalEnd(t *testing.T) {
 	_, server, c := fixtureService(t)
 	csrf := loginTest(t, c, server.URL)
 	d := ordinaryDefinition()
-	d["goal"] = "vote.persist"
+	d["goal"] = "vote.result.read"
 	d["fallbackTiming"] = true
 	postMeaning(t, c, server.URL, csrf, "/api/definitions", d, 200)
 	b := scopedNative(t)
@@ -52,7 +54,7 @@ func TestNativeJourneyInclusiveTimingAndGoalEnd(t *testing.T) {
 	q.UnmarshalProto(b)
 	sp := q.Traces().ResourceSpans().At(0).ScopeSpans().At(0).Spans()
 	goalEnd := int64(sp.At(1).EndTimestamp())
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -76,8 +78,8 @@ func TestNativeJourneyInclusiveTimingAndGoalEnd(t *testing.T) {
 	if native != 3 {
 		t.Fatalf("native samples %d want3", native)
 	}
-	if j.Tab != "" {
-		t.Fatal("server-only scope invented browser tab")
+	if j.Tab != "synthetic-native-tab" {
+		t.Fatal("client scope lost explicit tab")
 	}
 }
 func TestNativeJourneyLateEarlierParentPreservesDefinition(t *testing.T) {
@@ -95,15 +97,15 @@ func TestNativeJourneyLateEarlierParentPreservesDefinition(t *testing.T) {
 	sp.At(0).CopyTo(r.ScopeSpans().AppendEmpty().Spans().AppendEmpty())
 	sp.RemoveIf(func(p ptrace.Span) bool { return p.Name() == "POST /votes" })
 	first, _ := q.MarshalProto()
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", first)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", first)
 	if code != 200 {
 		t.Fatal(code)
 	}
 	d = ordinaryDefinition()
-	d["mappings"].([]map[string]any)[2]["step"] = "Changed persistence"
+	d["mappings"].([]map[string]any)[2]["step"] = "Changed result read"
 	postMeaning(t, c, server.URL, csrf, "/api/definitions", d, 200)
 	body, _ := late.MarshalProto()
-	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", body)
+	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", body)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -112,7 +114,7 @@ func TestNativeJourneyLateEarlierParentPreservesDefinition(t *testing.T) {
 		t.Fatal("late earlier parent silently changed captured definition")
 	}
 	for _, stage := range model.Journeys[0].Path {
-		if stage == "Changed persistence" {
+		if stage == "Changed result read" {
 			t.Fatal("historical labels remapped")
 		}
 	}
@@ -123,10 +125,10 @@ func TestNativeJourneyMissingEndAndSummaryExpiry(t *testing.T) {
 	d := ordinaryDefinition()
 	d["goal"] = "missing.parent"
 	rules := d["mappings"].([]map[string]any)
-	d["mappings"] = append(rules, map[string]any{"event": "missing.parent", "step": "Incomplete operation", "source": "server", "carrier": "span", "kind": "step"})
+	d["mappings"] = append(rules, map[string]any{"event": "missing.parent", "step": "Incomplete operation", "carrier": "span", "kind": "step"})
 	postMeaning(t, c, server.URL, csrf, "/api/definitions", d, 200)
 	b := scopedNative(t)
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -145,7 +147,7 @@ func TestNativeJourneyMissingEndAndSummaryExpiry(t *testing.T) {
 		t.Fatal(err)
 	}
 	getTraceJSON(t, c, server.URL, "/api/traces/11111111111111111111111111111111", 404)
-	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 400 {
 		t.Fatal("expired replay resurrected detail")
 	}
@@ -179,7 +181,7 @@ func TestTraceReferenceModeRetainsDefinitionAndExpires(t *testing.T) {
 	svc, server, c := fixtureService(t)
 	csrf := loginTest(t, c, server.URL)
 	b := scopedNative(t)
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -207,7 +209,7 @@ func TestNativeAndPagePresenceBasesStaySeparate(t *testing.T) {
 	d := Definition{Version: 1, Goal: "done", Mappings: []Mapping{{Event: "operation", Step: "Operation", Kind: "step", Carrier: "span", Timing: "native-span"}, {Event: "page.start", Step: "Voting", Kind: "stage-start", Timing: "paired"}, {Event: "page.end", Step: "Voting", Kind: "stage-end", Timing: "paired"}, {Event: "presence", Step: "Presence", Kind: "activity"}, {Event: "done", Step: "Done", Kind: "step"}}}
 	es := []Evidence{}
 	add := func(name, signal string, offset time.Duration, attrs map[string]string) {
-		es = append(es, Evidence{ID: int64(len(es) + 1), Name: name, Signal: signal, Source: "browser", Service: "voting-ui", Scope: "scope", Tab: "tab", Time: base + int64(offset), Record: fmt.Sprint(len(es) + 1), Definition: 1, Attrs: attrs})
+		es = append(es, Evidence{ID: int64(len(es) + 1), Name: name, Signal: signal, Source: "client", Service: "voting-ui", Scope: "scope", Tab: "tab", Time: base + int64(offset), Record: fmt.Sprint(len(es) + 1), Definition: 1, Attrs: attrs})
 	}
 	add("page.start", "logs", 0, map[string]string{})
 	es[0].Occurrence = "page-pair"
@@ -247,28 +249,38 @@ func TestNativeAndPagePresenceBasesStaySeparate(t *testing.T) {
 	}
 }
 
-func TestNativeScopeDeletionAndBrowserSeparation(t *testing.T) {
+func TestNativeScopeDeletionAndMissingTabSeparation(t *testing.T) {
 	_, server, c := fixtureService(t)
 	csrf := loginTest(t, c, server.URL)
 	postMeaning(t, c, server.URL, csrf, "/api/definitions", ordinaryDefinition(), 200)
 	b := scopedNative(t)
-	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "browser-test", b)
+	uncorrelated := ptraceotlp.NewExportRequest()
+	if err := uncorrelated.UnmarshalProto(b); err != nil {
+		t.Fatal(err)
+	}
+	spans := uncorrelated.Traces().ResourceSpans().At(0).ScopeSpans().At(0).Spans()
+	for i := 0; i < spans.Len(); i++ {
+		spans.At(i).Attributes().Remove("tab.id")
+		spans.At(i).SetTraceID(pcommon.TraceID{9})
+	}
+	withoutTab, _ := uncorrelated.MarshalProto()
+	code, _ := protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", withoutTab)
 	if code != 200 {
 		t.Fatal(code)
 	}
 	if len(readNativeModel(t, c, server.URL).Journeys) != 0 {
-		t.Fatal("browser without tab or server authority fabricated journey")
+		t.Fatal("missing client tab fabricated journey")
 	}
-	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}
 	if len(readNativeModel(t, c, server.URL).Journeys) != 1 {
-		t.Fatal("server-only explicit scope unavailable")
+		t.Fatal("explicit client visit/tab scope unavailable")
 	}
 	postMeaning(t, c, server.URL, csrf, "/api/delete", map[string]string{"scope": "synthetic-native-scope"}, 200)
 	getTraceJSON(t, c, server.URL, "/api/traces/11111111111111111111111111111111", 404)
-	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "server-test", b)
+	code, _ = protocolRequest(t, c, server.URL, "traces", "application/x-protobuf", "", "client-test", b)
 	if code != 200 {
 		t.Fatal(code)
 	}
@@ -277,9 +289,9 @@ func TestNativeScopeDeletionAndBrowserSeparation(t *testing.T) {
 
 func TestNativeOccurrenceConflictingTimingBasesDoNotDoublePool(t *testing.T) {
 	base := time.Now().Add(-time.Minute).UnixNano()
-	occurrence := "server/t/s"
+	occurrence := "client/t/s"
 	d := Definition{Version: 1, Goal: "done", Mappings: []Mapping{{Event: "op", Step: "Voting", Kind: "step", Carrier: "span", Timing: "native-span"}, {Event: "begin", Step: "Voting", Kind: "stage-start", Timing: "paired"}, {Event: "end", Step: "Voting", Kind: "stage-end", Timing: "paired"}, {Event: "done", Step: "Done", Kind: "step"}}}
-	es := []Evidence{{ID: 1, Name: "op", Signal: "traces", Source: "server", Scope: "scope", Trace: "t", Span: "s", Time: base, End: base + 1000, Definition: 1, Record: "t/s"}, {ID: 2, Name: "begin", Signal: "logs", Source: "server", Scope: "scope", Time: base, Definition: 1, Occurrence: occurrence, Record: "begin"}, {ID: 3, Name: "end", Signal: "logs", Source: "server", Scope: "scope", Time: base + 1000, Definition: 1, Occurrence: occurrence, Record: "end"}, {ID: 4, Name: "done", Signal: "logs", Source: "server", Scope: "scope", Time: base + 2000, Definition: 1, Record: "done"}}
+	es := []Evidence{{ID: 1, Name: "op", Signal: "traces", Source: "client", Scope: "scope", Tab: "tab", Trace: "t", Span: "s", Time: base, End: base + 1000, Definition: 1, Record: "t/s"}, {ID: 2, Name: "begin", Signal: "logs", Source: "client", Scope: "scope", Tab: "tab", Time: base, Definition: 1, Occurrence: occurrence, Record: "begin"}, {ID: 3, Name: "end", Signal: "logs", Source: "client", Scope: "scope", Tab: "tab", Time: base + 1000, Definition: 1, Occurrence: occurrence, Record: "end"}, {ID: 4, Name: "done", Signal: "logs", Source: "client", Scope: "scope", Tab: "tab", Time: base + 2000, Definition: 1, Record: "done"}}
 	m := Derive(es, []Definition{d}, base+3000)
 	for _, timing := range m.Journeys[0].Timings {
 		if timing.Complete {
